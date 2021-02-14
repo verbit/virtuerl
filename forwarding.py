@@ -1,0 +1,148 @@
+import json
+import os
+import threading
+
+import iptc
+
+STATE_FILE = "forwardings.json"
+
+
+class PortForwardingController:
+    def __init__(self):
+        self.lock = threading.Lock()
+
+    def _update_state_file(self, forwardings):
+
+        # f = tempfile.NamedTemporaryFile('w+', delete=False)
+        # try:
+        #     f.write(json.dumps(forwardings))
+        #     f.flush()
+        #     f.close()
+        #     os.rename(f.name, STATE_FILE)
+        #     self._sync(forwardings)
+        # finally:
+        #     try:
+        #         os.remove(f.name)
+        #     except:
+        #         pass
+        with open(STATE_FILE, mode="w") as f:
+            f.write(json.dumps(forwardings))
+        self._sync(forwardings)
+
+    def _read_state_file(self):
+        if not os.path.isfile(STATE_FILE):
+            return []
+
+        with open(STATE_FILE) as f:
+            forwardings = json.load(f)
+            return forwardings
+
+    def add(self, forwarding):
+        self.lock.acquire()
+        forwardings = self._read_state_file()
+        forwardings.append(forwarding)
+        self._update_state_file(forwardings)
+        self.lock.release()
+
+    def remove(self, source_port):
+        self.lock.acquire()
+        forwardings = self._read_state_file()
+        try:
+            idx = [f["source_port"] for f in forwardings].index(source_port)
+            del forwardings[idx]
+        except ValueError:
+            pass
+        self._update_state_file(forwardings)
+        self.lock.release()
+
+    def get_forwardings(self):
+        with self.lock:
+            return self._read_state_file()
+
+    def get_forwarding(self, source_port):
+        forwardings = self.get_forwardings()
+        for forwarding in forwardings:
+            if forwarding["source_port"] == source_port:
+                return forwarding
+        return None
+
+    def _sync(self, forwardings):
+        restvirt_chain = "RESTVIRT"
+
+        # nat table
+        if not iptc.easy.has_chain("nat", restvirt_chain):
+            iptc.easy.add_chain("nat", restvirt_chain)
+
+        nat_rule = {"target": restvirt_chain}
+        if not iptc.easy.has_rule("nat", "PREROUTING", nat_rule):
+            iptc.easy.insert_rule("nat", "PREROUTING", nat_rule)
+        if not iptc.easy.has_rule("nat", "OUTPUT", nat_rule):
+            iptc.easy.insert_rule("nat", "OUTPUT", nat_rule)
+
+        state_rules = [_forwarding_to_nat_rule(f) for f in forwardings]
+
+        # step 1: delete iptables rules that are not in the state
+        for rule in iptc.easy.dump_chain("nat", restvirt_chain):
+            if rule not in state_rules:
+                iptc.easy.delete_rule("nat", restvirt_chain, rule)
+
+        # step 2: add iptables rule from state
+        for rule in state_rules:
+            if not iptc.easy.has_rule("nat", restvirt_chain, rule):
+                iptc.easy.insert_rule("nat", restvirt_chain, rule)
+
+                # nat rules
+        if not iptc.easy.has_chain("nat", restvirt_chain):
+            iptc.easy.add_chain("nat", restvirt_chain)
+
+        # filter table
+        if not iptc.easy.has_chain("filter", restvirt_chain):
+            iptc.easy.add_chain("filter", restvirt_chain)
+
+        nat_rule = {"target": restvirt_chain}
+        if not iptc.easy.has_rule("filter", "FORWARD", nat_rule):
+            iptc.easy.insert_rule("filter", "FORWARD", nat_rule)
+
+        state_rules = [_forwarding_to_fwd_rule(f) for f in forwardings]
+
+        # step 1: delete iptables rules that are not in the state
+        for rule in iptc.easy.dump_chain("filter", restvirt_chain):
+            if rule not in state_rules:
+                iptc.easy.delete_rule("filter", restvirt_chain, rule)
+
+        # step 2: add iptables rule from state
+        for rule in state_rules:
+            if not iptc.easy.has_rule("filter", restvirt_chain, rule):
+                iptc.easy.insert_rule("filter", restvirt_chain, rule)
+
+    def sync(self):
+        self.lock.acquire()
+        forwardings = self._read_state_file()
+        self._sync(forwardings)
+        self.lock.release()
+
+
+def _forwarding_to_nat_rule(f):
+    return {
+        "protocol": "tcp",
+        "tcp": {
+            "dport": str(f["source_port"]),
+        },
+        "target": {
+            "DNAT": {
+                "to_destination": f"{f['target_ip']}:{f['target_port']}",
+            }
+        },
+    }
+
+
+def _forwarding_to_fwd_rule(f):
+    return {
+        "protocol": "tcp",
+        "out-interface": "virbr0",
+        "dst": f["target_ip"],
+        "tcp": {
+            "dport": str(f["target_port"]),
+        },
+        "target": "ACCEPT",
+    }

@@ -1,0 +1,29 @@
+name: Build
+on:
+  push:
+    branches-ignore:
+      - main
+jobs:
+  restvirt:
+    name: Restvirt
+    runs-on: ubuntu-20.04
+    #env:
+    #  CLERK_DB_ENGINE: django.db.backends.sqlite3
+    #  CLERK_DB_NAME: ":memory:"
+    steps:
+      - name: Set up Python 3.8.5
+        uses: actions/setup-python@v2
+        with:
+          python-version: 3.8.5
+      - name: Check out code
+        uses: actions/checkout@v2
+      - name: Install dependencies
+#        run: pip install -r requirements.txt
+        run: pip install black flake8
+      - name: Lint
+        run: |
+          black --check --diff --color ./
+          flake8 ./
+      #- name: Test
+      #  run: |
+      #    pytest

@@ -1,0 +1,13 @@
+version: "3.3"
+services:
+  web:
+    image: restvirt:latest
+    build: .
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+    network_mode: host
+    volumes:
+    - "/data/restvirt:/data/restvirt"
+    - "/var/run/libvirt:/var/run/libvirt"
+    - ".:/app"
