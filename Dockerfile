@@ -1,4 +1,5 @@
 FROM debian:bullseye-slim
+LABEL org.opencontainers.image.source=https://github.com/verbit/restvirt
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
