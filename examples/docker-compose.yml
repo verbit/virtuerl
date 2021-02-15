@@ -7,5 +7,5 @@ services:
       - NET_RAW
     network_mode: host
     volumes:
-    - "/data/restvirt:/data/restvirt"
-    - "/var/run/libvirt:/var/run/libvirt"
+      - "/data/restvirt:/data/restvirt"
+      - "/var/run/libvirt:/var/run/libvirt"
