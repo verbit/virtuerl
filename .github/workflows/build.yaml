@@ -27,3 +27,5 @@ jobs:
       #- name: Test
       #  run: |
       #    pytest
+      - name: Build
+        run: docker build .
