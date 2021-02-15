@@ -1,9 +1,8 @@
 name: Deploy
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    tags:
+      - v*
 jobs:
   deploy:
     name: Deploy
@@ -20,11 +19,19 @@ jobs:
           registry: ghcr.io
           username: verbit
           password: ${{ secrets.GHCR_PAT }}
+      - name: Set version
+        run: |
+          # from refs/tags/v1.2.3 get 1.2.3
+          VERSION=${GITHUB_REF#refs/tags/v}
+          PLACEHOLDER='__version__ = "unknown"'
+          VERSION_FILE='version.py'
+          # ensure the placeholder is there. If grep doesn't find the placeholder
+          # it exits with exit code 1 and github actions aborts the build.
+          grep "$PLACEHOLDER" "$VERSION_FILE"
+          sed -i "s/$PLACEHOLDER/__version__ = \"${VERSION}\"/g" "$VERSION_FILE"
       - name: Deploy image
         run: |
-          SHA_SHORT=$(git rev-parse --short HEAD)
-          DATE=$(date +%Y%m%d%H%M%S)
-          IMAGE_VERSION=ci-${SHA_SHORT}-${DATE}
+          IMAGE_VERSION=${GITHUB_REF#refs/tags/}
           docker build -t restvirt:${IMAGE_VERSION} .
           docker tag restvirt:${IMAGE_VERSION} ghcr.io/verbit/restvirt:${IMAGE_VERSION}
           docker push ghcr.io/verbit/restvirt:${IMAGE_VERSION}

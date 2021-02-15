@@ -15,6 +15,7 @@ from image import (
     create_cloud_config_image,
     IMAGES_ROOT,
 )
+from version import __version__
 
 app = Flask(__name__)
 pwc = PortForwardingController()
@@ -74,6 +75,11 @@ def http_error(e):
     if hasattr(e, "code") and e.code is not None:
         code = e.code
     return jsonify(error=str(e)), code
+
+
+@app.route("/info")
+def info():
+    return jsonify(version=__version__)
 
 
 @app.route("/domains", methods=["POST"])
