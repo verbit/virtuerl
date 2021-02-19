@@ -54,7 +54,7 @@ def get_domain(uuid):
         "name": domain_dict["domain"]["name"],
         "vcpu": int(domain_dict["domain"]["vcpu"]["#text"]),
         "memory": int(domain_dict["domain"]["memory"]["#text"]) // 1024,
-        "network": domain_dict["domain"]["devices"]["interface"]["source"]["@network"],
+        # "network": domain_dict["domain"]["devices"]["interface"]["source"]["@network"],
         "bridge": domain_dict["domain"]["devices"]["interface"]["source"]["@bridge"],
         "state": libvirt_state_to_string(state),
         "private_ip": private_ip,
@@ -131,15 +131,19 @@ def create_domain():
       <source file='{cloud_config_image_path}'/>
       <target dev='vde' bus='sata'/>
     </disk>
-    <interface type='network'>
-      <mac address='{mac}'/>
-      <source network='default'/>
+    <interface type='bridge'>
+        <source bridge='br2'/>
+        <mac address='{mac}'/>
     </interface>
     <console type='pty'/>
   </devices>
 </domain>"""
     )
 
+# <interface type='network'>
+# <mac address='{mac}'/>
+# <source network='default'/>
+# </interface>
     create_cloud_config_image(
         dom.UUIDString(), req_json["user_data"], mac, str(ip), req_json["name"]
     )
