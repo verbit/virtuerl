@@ -55,7 +55,7 @@ def get_domain(uuid):
         "vcpu": int(domain_dict["domain"]["vcpu"]["#text"]),
         "memory": int(domain_dict["domain"]["memory"]["#text"]) // 1024,
         # "network": domain_dict["domain"]["devices"]["interface"]["source"]["@network"],
-        "bridge": domain_dict["domain"]["devices"]["interface"]["source"]["@bridge"],
+        # "bridge": domain_dict["domain"]["devices"]["interface"]["source"]["@bridge"],
         "state": libvirt_state_to_string(state),
         "private_ip": private_ip,
         "user_data": user_data,
@@ -103,9 +103,15 @@ def create_domain():
     )
     root_image_path = vol.path()
 
-    ip = ip_address(req_json["private_ip"])
-    mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
-        0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
+    ip_br = ip_address(req_json["private_ip"])
+    mac_bridge = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
+        0x52, 0x54, 0x00, 0x00, ip_br.packed[-2], ip_br.packed[-1]
+    )
+    packed = bytearray(ip_br.packed)
+    packed[-2] = 122
+    ip_gw = ip_address(bytes(packed))
+    mac_gateway = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
+        0x52, 0x54, 0x00, 0x01, ip_gw.packed[-2], ip_gw.packed[-1]
     )
     cloud_config_image_path = image._cloud_config_path(req_json["name"])
 
@@ -133,19 +139,19 @@ def create_domain():
     </disk>
     <interface type='bridge'>
         <source bridge='br2'/>
-        <mac address='{mac}'/>
+        <mac address='{mac_bridge}'/>
+    </interface>
+    <interface type='network'>
+        <mac address='{mac_gateway}'/>
+        <source network='default'/>
     </interface>
     <console type='pty'/>
   </devices>
 </domain>"""
     )
 
-# <interface type='network'>
-# <mac address='{mac}'/>
-# <source network='default'/>
-# </interface>
     create_cloud_config_image(
-        dom.UUIDString(), req_json["user_data"], mac, str(ip), req_json["name"]
+        dom.UUIDString(), req_json["user_data"], mac_bridge, str(ip_br), mac_gateway, str(ip_gw), req_json["name"]
     )
     pool.refresh()
 

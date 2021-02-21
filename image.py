@@ -36,20 +36,27 @@ def read_ip_from_cloud_config_image(name):
     return ip
 
 
-def create_cloud_config_image(domain_id, user_data, mac, ip, name):
+def create_cloud_config_image(domain_id, user_data, mac_br, ip_br, mac_gw, ip_gw, name):
     network_config = f"""version: 2
 ethernets:
   primary:
-     match:
-       macaddress: "{mac}"
-     dhcp4: false
-     # default libvirt network
-     addresses:
-       - {ip}/24
-     gateway4: 192.168.122.1
-     nameservers:
-       addresses:
-         - 192.168.122.1
+    mtu: 1450
+    match:
+      macaddress: "{mac_br}"
+    dhcp4: false
+    addresses:
+      - {ip_br}/24
+  gateway:
+    match:
+        macaddress: "{mac_gw}"
+    dhcp4: false
+    # default libvirt network
+    addresses:
+      - {ip_gw}/24
+    gateway4: 192.168.122.1
+    nameservers:
+      addresses:
+        - 192.168.122.1
 """
 
     meta_config = f"""instance-id: {domain_id}
