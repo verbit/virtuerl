@@ -4,12 +4,12 @@ import threading
 
 import iptc
 
-STATE_FILE = "forwardings.json"
-
 
 class PortForwardingController:
-    def __init__(self):
+    def __init__(self, state_dir, state_file_name="forwardings.json"):
         self.lock = threading.Lock()
+        self.state_dir = state_dir
+        self.state_file_path = os.path.join(state_dir, state_file_name)
 
     def _update_state_file(self, forwardings):
 
@@ -18,22 +18,22 @@ class PortForwardingController:
         #     f.write(json.dumps(forwardings))
         #     f.flush()
         #     f.close()
-        #     os.rename(f.name, STATE_FILE)
+        #     os.rename(f.name, self.state_file_path)
         #     self._sync(forwardings)
         # finally:
         #     try:
         #         os.remove(f.name)
         #     except:
         #         pass
-        with open(STATE_FILE, mode="w") as f:
+        with open(self.state_file_path, mode="w") as f:
             f.write(json.dumps(forwardings))
         self._sync(forwardings)
 
     def _read_state_file(self):
-        if not os.path.isfile(STATE_FILE):
+        if not os.path.isfile(self.state_file_path):
             return []
 
-        with open(STATE_FILE) as f:
+        with open(self.state_file_path) as f:
             forwardings = json.load(f)
             return forwardings
 
