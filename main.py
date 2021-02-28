@@ -1,10 +1,14 @@
+import argparse
+import logging
 import os
+import re
 import string
 from ipaddress import ip_address
 
 import libvirt
 import xmltodict
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, Response
+from passlib.apache import HtpasswdFile
 from werkzeug.exceptions import HTTPException
 
 import image
@@ -18,7 +22,6 @@ from image import (
 from version import __version__
 
 app = Flask(__name__)
-pwc = PortForwardingController()
 conn = libvirt.open("qemu:///session?socket=/var/run/libvirt/libvirt-sock")
 
 
@@ -77,9 +80,51 @@ def http_error(e):
     return jsonify(error=str(e)), code
 
 
+@app.before_request
+def basic_auth():
+    if htpasswd is None:
+        return
+
+    if request.endpoint == "info":
+        return
+
+    auth = request.authorization
+    authenticated = (
+        auth is not None
+        and auth.type == "basic"
+        and htpasswd.check_password(auth.username, auth.password)
+    )
+    if authenticated:
+        return
+
+    return Response(status=401, headers={"WWW-Authenticate": 'Basic realm="Login required"'})
+
+
 @app.route("/info")
 def info():
-    return jsonify(version=__version__)
+    res = {"version": __version__}
+    return jsonify(**res)
+
+
+def materialize_stats(d):
+    stats = {}
+    for k, v in d.items():
+        if callable(v):
+            stats[k] = v(d)
+        elif isinstance(v, dict):
+            stats[k] = materialize_stats(v)
+        else:
+            stats[k] = v
+    return stats
+
+
+@app.route("/stats")
+def server_stats():
+    res = {"stats": "not supported"}
+    if server is not None:
+        stats = materialize_stats(server.stats)
+        res["stats"] = stats
+    return jsonify(**res)
 
 
 @app.route("/domains", methods=["POST"])
@@ -379,6 +424,52 @@ def delete_port_forwarding(source_port):
 
 
 if __name__ == "__main__":
+    p = re.compile(r"^(\S*):(\d+)$")
+
+    def bind_address(s):
+        match = p.match(s)
+        if not match:
+            raise argparse.ArgumentTypeError("invalid bind address: " + s)
+        res = match.group(1), int(match.group(2))
+        return res
+
+    parser = argparse.ArgumentParser(
+        description="restvirt", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    parser.add_argument("--debug", action="store_true", help="run in debug mode")
+    parser.add_argument(
+        "-b", "--bind", type=bind_address, default=":8090", help="server bind address"
+    )
+    parser.add_argument("-c", "--config", default="/etc/restvirt", help="configuration folder")
+    parser.add_argument("--ssl-cert")
+    parser.add_argument("--ssl-priv")
+    parser.add_argument("--htpasswd")
+    args = parser.parse_args()
+
+    print(args)
+
+    host, port = args.bind
+    host = host or "0.0.0.0"
+
+    pwc = PortForwardingController(args.config, state_file_name="forwardings.json")
     pwc.sync()
-    app.config["PROPAGATE_EXCEPTIONS"] = False
-    app.run(host="0.0.0.0", port=8090, debug=True, use_debugger=False)
+
+    if args.htpasswd is None:
+        htpasswd = None
+    else:
+        htpasswd = HtpasswdFile(args.htpasswd)
+
+    if args.debug:
+        app.config["PROPAGATE_EXCEPTIONS"] = False
+        app.run(host=host, port=port, debug=True, use_debugger=False)
+    else:
+        from cheroot.wsgi import Server as WSGIServer
+        from cheroot.ssl.builtin import BuiltinSSLAdapter
+
+        # app.logger.addHandler(logging.StreamHandler())
+        app.logger.setLevel(logging.INFO)
+        server = WSGIServer((host, port), app)
+        server.stats["Enabled"] = True
+        if args.ssl_cert is not None or args.ssl_priv is not None:
+            server.ssl_adapter = BuiltinSSLAdapter(args.ssl_cert, args.ssl_priv)
+        server.safe_start()
