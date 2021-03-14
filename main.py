@@ -23,6 +23,7 @@ from version import __version__
 
 app = Flask(__name__)
 conn = libvirt.open("qemu:///session?socket=/var/run/libvirt/libvirt-sock")
+libvirt.registerErrorHandler(lambda u, e: None, None)
 
 
 def libvirt_state_to_string(state):
