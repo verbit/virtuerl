@@ -68,7 +68,14 @@ def get_domain(uuid):
 
 @app.errorhandler(libvirt.libvirtError)
 def libvirt_error(e):
-    return jsonify(error=str(e), type=str(type(e)), error_code=e.get_error_code()), 500
+    status_code = 500
+    if e.get_error_code() in [
+        libvirt.VIR_ERR_NO_DOMAIN,
+        libvirt.VIR_ERR_NO_STORAGE_VOL,
+    ]:
+        status_code = 404
+
+    return jsonify(error=str(e), type=str(type(e)), error_code=e.get_error_code()), status_code
 
 
 @app.errorhandler(HTTPException)
