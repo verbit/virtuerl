@@ -356,7 +356,7 @@ def attach_volume(domain_id, volume_id):
     ]
 
     if volume_id in volumes_ids:
-        return jsonify()
+        return jsonify(disk_address=disk_address(domain, volume_id))
 
     disk_shortnames = [d["target"]["@dev"][-1:] for d in disks]
     disk_letter = sorted(set(string.ascii_lowercase).difference(disk_shortnames))[0]
