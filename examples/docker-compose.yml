@@ -4,7 +4,13 @@ services:
     image: restvirt:latest
     command:
       - -b
-      - :8090
+      - :8093
+      - --ssl-cert
+      - /etc/restvirt/cert.pem
+      - --ssl-priv
+      - /etc/restvirt/privkey.pem
+      - --htpasswd
+      - /etc/restvirt/htpasswd
     cap_add:
       - NET_ADMIN
       - NET_RAW
