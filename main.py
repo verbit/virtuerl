@@ -12,6 +12,7 @@ from passlib.apache import HtpasswdFile
 from werkzeug.exceptions import HTTPException
 
 import image
+from dns import DNSController
 from forwarding import PortForwardingController
 from image import (
     read_ip_from_cloud_config_image,
@@ -431,6 +432,32 @@ def delete_port_forwarding(source_port, protocol):
     return jsonify(), 200
 
 
+@app.route("/dns")
+def dns_mappings():
+    return jsonify(dns.get_mappings())
+
+
+@app.route("/dns/<name>")
+def dns_mapping(name):
+    mapping = dns.get_mapping(name)
+    if mapping is None:
+        return jsonify(), 404
+    return jsonify(ip=mapping)
+
+
+@app.route("/dns/<name>", methods=["DELETE"])
+def delete_dns_mapping(name):
+    dns.remove(name)
+    return jsonify(), 200
+
+
+@app.route("/dns/<name>", methods=["PUT"])
+def set_dns_mapping(name):
+    ip = request.json["ip"]
+    dns.set(name, ip)
+    return jsonify(), 200
+
+
 if __name__ == "__main__":
     p = re.compile(r"^(\S*):(\d+)$")
 
@@ -461,6 +488,10 @@ if __name__ == "__main__":
 
     pwc = PortForwardingController(args.config, state_file_name="forwardings.json")
     pwc.sync()
+
+    net = conn.networkLookupByName("default")
+    dns = DNSController(net, args.config, state_file_name="dns.json")
+    dns.sync()
 
     if args.htpasswd is None:
         htpasswd = None
