@@ -38,24 +38,22 @@ class PortForwardingController:
             return forwardings
 
     def add(self, forwarding):
-        self.lock.acquire()
-        forwardings = self._read_state_file()
-        forwardings.append(forwarding)
-        self._update_state_file(forwardings)
-        self.lock.release()
+        with self.lock:
+            forwardings = self._read_state_file()
+            forwardings.append(forwarding)
+            self._update_state_file(forwardings)
 
     def remove(self, source_port, protocol):
-        self.lock.acquire()
-        forwardings = self._read_state_file()
-        try:
-            idx = [(f["source_port"], f["protocol"]) for f in forwardings].index(
-                (source_port, protocol)
-            )
-            del forwardings[idx]
-        except ValueError:
-            pass
-        self._update_state_file(forwardings)
-        self.lock.release()
+        with self.lock:
+            forwardings = self._read_state_file()
+            try:
+                idx = [(f["source_port"], f["protocol"]) for f in forwardings].index(
+                    (source_port, protocol)
+                )
+                del forwardings[idx]
+            except ValueError:
+                pass
+            self._update_state_file(forwardings)
 
     def get_forwardings(self):
         with self.lock:
