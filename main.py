@@ -417,17 +417,17 @@ def port_forwardings():
     return jsonify(port_forwardings=pwc.get_forwardings())
 
 
-@app.route("/forwardings/<int:source_port>")
-def port_forwarding(source_port):
-    forwarding = pwc.get_forwarding(source_port)
+@app.route("/forwardings/<int:source_port>-<protocol>")
+def port_forwarding(source_port, protocol):
+    forwarding = pwc.get_forwarding(source_port, protocol)
     if forwarding is None:
         return jsonify(), 404
     return jsonify(**forwarding)
 
 
-@app.route("/forwardings/<int:source_port>", methods=["DELETE"])
-def delete_port_forwarding(source_port):
-    pwc.remove(source_port)
+@app.route("/forwardings/<int:source_port>-<protocol>", methods=["DELETE"])
+def delete_port_forwarding(source_port, protocol):
+    pwc.remove(source_port, protocol)
     return jsonify(), 200
 
 

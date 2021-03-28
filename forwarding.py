@@ -44,11 +44,13 @@ class PortForwardingController:
         self._update_state_file(forwardings)
         self.lock.release()
 
-    def remove(self, source_port):
+    def remove(self, source_port, protocol):
         self.lock.acquire()
         forwardings = self._read_state_file()
         try:
-            idx = [f["source_port"] for f in forwardings].index(source_port)
+            idx = [(f["source_port"], f["protocol"]) for f in forwardings].index(
+                (source_port, protocol)
+            )
             del forwardings[idx]
         except ValueError:
             pass
@@ -59,10 +61,10 @@ class PortForwardingController:
         with self.lock:
             return self._read_state_file()
 
-    def get_forwarding(self, source_port):
+    def get_forwarding(self, source_port, protocol):
         forwardings = self.get_forwardings()
         for forwarding in forwardings:
-            if forwarding["source_port"] == source_port:
+            if forwarding["source_port"] == source_port and forwarding["protocol"] == protocol:
                 return forwarding
         return None
 
@@ -123,9 +125,10 @@ class PortForwardingController:
 
 
 def _forwarding_to_nat_rule(f):
+    prot = f["protocol"]
     return {
-        "protocol": "tcp",
-        "tcp": {
+        "protocol": prot,
+        prot: {
             "dport": str(f["source_port"]),
         },
         "target": {
@@ -137,11 +140,12 @@ def _forwarding_to_nat_rule(f):
 
 
 def _forwarding_to_fwd_rule(f):
+    prot = f["protocol"]
     return {
-        "protocol": "tcp",
+        "protocol": prot,
         "out-interface": "virbr0",
         "dst": f["target_ip"],
-        "tcp": {
+        prot: {
             "dport": str(f["target_port"]),
         },
         "target": "ACCEPT",
