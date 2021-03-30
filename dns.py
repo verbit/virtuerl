@@ -73,23 +73,26 @@ class DNSController:
         with self.lock:
             zone = self.zone.copy()
 
-        reply = request.reply()
+        reply = None
         qname = request.q.qname
         qtype = QTYPE[request.q.qtype]
         for name, rtype, rr in zone:
             # Check if label & type match
-            if qname.matchGlob(name) and (qtype == rtype or qtype == "ANY" or rtype == "CNAME"):
-                # Since we have a glob match fix reply label
-                a = copy.copy(rr)
-                a.rname = qname
-                reply.add_answer(a)
-                # Check for A/AAAA records associated with reply and
-                # add in additional section
-            if rtype in ["CNAME", "NS", "MX", "PTR"]:
-                for a_name, a_rtype, a_rr in zone:
-                    if a_name == rr.rdata.label and a_rtype in ["A", "AAAA"]:
-                        reply.add_ar(a_rr)
-        if not reply.rr:
+            if qname.matchGlob(name):
+                reply = request.reply()
+                if qtype == rtype or qtype == "ANY" or rtype == "CNAME":
+                    # Since we have a glob match fix reply label
+                    a = copy.copy(rr)
+                    a.rname = qname
+                    reply.add_answer(a)
+                    # Check for A/AAAA records associated with reply and
+                    # add in additional section
+                    if rtype in ["CNAME", "NS", "MX", "PTR"]:
+                        for a_name, a_rtype, a_rr in zone:
+                            if a_name == rr.rdata.label and a_rtype in ["A", "AAAA"]:
+                                reply.add_answer(a_rr)
+        if reply is None:
+            reply = request.reply()
             reply.header.rcode = RCODE.NXDOMAIN
         return reply
 
