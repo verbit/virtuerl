@@ -12,7 +12,7 @@ from passlib.apache import HtpasswdFile
 from werkzeug.exceptions import HTTPException
 
 import image
-from dns import DNSController
+from dns import DNSController, DNSRecord
 from forwarding import PortForwardingController
 from image import (
     read_ip_from_cloud_config_image,
@@ -437,24 +437,27 @@ def dns_mappings():
     return jsonify(dns.get_mappings())
 
 
-@app.route("/dns/<name>")
-def dns_mapping(name):
-    mapping = dns.get_mapping(name)
+@app.route("/dns/<name>-<type>")
+def dns_mapping(name, type):
+    mapping = dns.get_mapping(name, type)
     if mapping is None:
         return jsonify(), 404
-    return jsonify(ip=mapping)
+    return jsonify(mapping)
 
 
-@app.route("/dns/<name>", methods=["DELETE"])
-def delete_dns_mapping(name):
-    dns.remove(name)
+@app.route("/dns/<name>-<type>", methods=["DELETE"])
+def delete_dns_mapping(name, type):
+    dns.remove(name, type)
     return jsonify(), 200
 
 
-@app.route("/dns/<name>", methods=["PUT"])
-def set_dns_mapping(name):
-    ip = request.json["ip"]
-    dns.set(name, ip)
+@app.route("/dns/<name>-<type>", methods=["PUT"])
+def set_dns_mapping(name, type):
+    # TODO: check that they are identical
+    record_dict = request.json
+    record_dict["name"] = name
+    record_dict["type"] = type
+    dns.set(DNSRecord(**record_dict))
     return jsonify(), 200
 
 
@@ -489,9 +492,8 @@ if __name__ == "__main__":
     pwc = PortForwardingController(args.config, state_file_name="forwardings.json")
     pwc.sync()
 
-    net = conn.networkLookupByName("default")
-    dns = DNSController(net, args.config, state_file_name="dns.json")
-    dns.sync()
+    dns = DNSController(args.config, state_file_name="dns.json")
+    dns.start()
 
     if args.htpasswd is None:
         htpasswd = None
