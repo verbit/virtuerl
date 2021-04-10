@@ -3,7 +3,7 @@ import logging
 import os
 import re
 import string
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_network
 
 import libvirt
 import xmltodict
@@ -20,6 +20,7 @@ from image import (
     create_cloud_config_image,
     IMAGES_ROOT,
 )
+from route import AliasIPController
 from version import __version__
 
 app = Flask(__name__)
@@ -461,6 +462,35 @@ def set_dns_mapping(name, type):
     return jsonify(), 200
 
 
+@app.route("/routes")
+def get_routes():
+    return jsonify(
+        **{str(dst): [str(gw) for gw in gateways] for dst, gateways in route.get_routes().items()}
+    )
+
+
+@app.route("/routes/<ip>")
+def get_route(ip):
+    dst = ip_network(ip.replace("-", "/"))
+    return jsonify(**{str(dst): [str(gw) for gw in route.get_route(dst)]})
+
+
+@app.route("/routes/<ip>", methods=["PUT"])
+def add_route(ip):
+    j = request.json
+    dst = ip_network(ip.replace("-", "/"))
+    gateways = [ip_address(gw) for gw in j["gateways"]]
+    route.set(dst, gateways)
+    return jsonify()
+
+
+@app.route("/routes/<ip>", methods=["DELETE"])
+def delete_route(ip):
+    dst = ip_network(ip.replace("-", "/"))
+    route.remove(dst)
+    return jsonify()
+
+
 if __name__ == "__main__":
     p = re.compile(r"^(\S*):(\d+)$")
 
@@ -494,6 +524,9 @@ if __name__ == "__main__":
 
     dns = DNSController(args.config, state_file_name="dns.json")
     dns.start()
+
+    route = AliasIPController(args.config, state_file_name="routes.json")
+    route.sync()
 
     if args.htpasswd is None:
         htpasswd = None
