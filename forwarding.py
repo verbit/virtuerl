@@ -122,6 +122,7 @@ class PortForwardingController:
         self.lock.release()
 
 
+# FIXME: limit to eno2 src port
 def _forwarding_to_nat_rule(f):
     prot = f["protocol"]
     return {
@@ -137,6 +138,7 @@ def _forwarding_to_nat_rule(f):
     }
 
 
+# FIXME: limit to eno2 src port
 def _forwarding_to_fwd_rule(f):
     prot = f["protocol"]
     return {
