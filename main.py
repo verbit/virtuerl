@@ -379,9 +379,13 @@ def attach_volume(domain_id, volume_id):
 @app.route("/domains/<uuid:domain_id>/volumes/<volume_id>", methods=["DELETE"])
 def detach_volume(domain_id, volume_id):
     domain = conn.lookupByUUIDString(str(domain_id))
-    domain.detachDeviceAlias(
-        f"ua-{volume_id}", libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG
-    )
+    try:
+        domain.detachDeviceAlias(
+            f"ua-{volume_id}", libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG
+        )
+    except:
+        # TODO: check for string "no device found with alias"
+        pass
     return jsonify()
 
 
