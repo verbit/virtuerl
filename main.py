@@ -189,6 +189,7 @@ def create_domain():
     <interface type='network'>
       <mac address='{mac}'/>
       <source network='default'/>
+      <model type='virtio'/>
     </interface>
     <console type='pty'/>
   </devices>
