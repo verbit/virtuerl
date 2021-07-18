@@ -15,10 +15,10 @@ import image
 from dns import DNSController, DNSRecord
 from forwarding import PortForwardingController
 from image import (
-    read_ip_from_cloud_config_image,
-    read_user_data_from_cloud_config_image,
     create_cloud_config_image,
     IMAGES_ROOT,
+    read_ip_from_cloud_config_image,
+    read_user_data_from_cloud_config_image,
 )
 from route import AliasIPController
 from version import __version__
@@ -469,15 +469,31 @@ def set_dns_mapping(name, type):
 
 @app.route("/routes")
 def get_routes():
+    routes = route.get_routes().items()
+    route.get_routes(namespace=request.args.get("namespace"))
     return jsonify(
-        **{str(dst): [str(gw) for gw in gateways] for dst, gateways in route.get_routes().items()}
+        routes=[
+            {
+                "destination": str(dst),
+                "gateways": [str(gw) for gw in r.gateways],
+                "namespace": r.namespace,
+            }
+            for dst, r in routes
+        ]
     )
 
 
 @app.route("/routes/<ip>")
 def get_route(ip):
     dst = ip_network(ip.replace("-", "/"))
-    return jsonify(**{str(dst): [str(gw) for gw in route.get_route(dst)]})
+    r = route.get_route(dst)
+    return jsonify(
+        {
+            "destination": str(dst),
+            "gateways": [str(gw) for gw in r.gateways],
+            "namespace": r.namespace,
+        }
+    )
 
 
 @app.route("/routes/<ip>", methods=["PUT"])
@@ -485,7 +501,8 @@ def add_route(ip):
     j = request.json
     dst = ip_network(ip.replace("-", "/"))
     gateways = [ip_address(gw) for gw in j["gateways"]]
-    route.set(dst, gateways)
+    namespace = j.get("namespace", "default")
+    route.set(dst, gateways, namespace)
     return jsonify()
 
 
