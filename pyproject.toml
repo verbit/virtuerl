@@ -4,5 +4,12 @@ exclude = '''
 (
       migrations/
     | venv/
+    | .*_pb2(_grpc)?.py
 )
 '''
+
+[tool.isort]
+profile="black"
+combine_as_imports="true"
+skip_glob=["*_pb2.py","*_pb2_grpc.py"]
+line_length=100
