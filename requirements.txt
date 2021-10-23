@@ -1,0 +1,8 @@
+libvirt-python==7.8.0
+grpcio==1.41.0
+protobuf==3.18.1
+pyroute2==0.6.5
+python-iptables==1.0.0
+SQLAlchemy==1.4.25
+xmltodict==0.12.0
+dnslib==0.9.16
