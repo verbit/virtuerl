@@ -1,0 +1,34 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+
+import "google/protobuf/empty.proto";
+
+message DNSRecordIdentifier {
+  string name = 1;
+  string type = 2;
+}
+
+message DNSRecord {
+  string name = 1;
+  string type = 2;
+  uint64 ttl = 3;
+  repeated string records = 4;
+}
+
+message ListDNSRecordsRequest {}
+
+message ListDNSRecordsResponse {
+  repeated DNSRecord dns_records = 1;
+}
+
+message PutDNSRecordRequest {
+  DNSRecord dns_record = 1;
+}
+
+service DNS {
+  rpc GetDNSRecord(DNSRecordIdentifier) returns (DNSRecord) {}
+  rpc ListDNSRecords(ListDNSRecordsRequest) returns (ListDNSRecordsResponse) {}
+  rpc PutDNSRecord(PutDNSRecordRequest) returns (DNSRecord) {}
+  rpc DeleteDNSRecord(DNSRecordIdentifier) returns (google.protobuf.Empty) {}
+}
