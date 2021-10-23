@@ -1,7 +1,7 @@
 version: "3.3"
 services:
   web:
-    image: restvirt:latest
+    image: ghcr.io/verbit/restvirt:latest
     command:
       - -b
       - :8093
