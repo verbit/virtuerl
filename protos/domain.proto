@@ -1,0 +1,43 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+
+import "google/protobuf/empty.proto";
+
+message GetDomainRequest {
+  string uuid = 1;
+}
+
+message Domain {
+  uint64 id = 1;
+  string uuid = 2;
+  string name = 3;
+  uint32 vcpu = 4;
+  uint64 memory = 5;
+  string network = 6;
+  string bridge = 7;
+  string state = 8;
+  string private_ip = 9;
+  string user_data = 10;
+}
+
+message ListDomainsRequest {}
+
+message ListDomainsResponse {
+  repeated Domain domains = 1;
+}
+
+message CreateDomainRequest {
+  Domain domain = 1;
+}
+
+message DeleteDomainRequest {
+  string uuid = 1;
+}
+
+service DomainService {
+  rpc GetDomain(GetDomainRequest) returns (Domain) {}
+  rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {}
+  rpc CreateDomain(CreateDomainRequest) returns (Domain) {}
+  rpc DeleteDomain(DeleteDomainRequest) returns (google.protobuf.Empty) {}
+}

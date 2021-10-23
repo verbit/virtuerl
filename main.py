@@ -3,27 +3,43 @@ import logging
 import os
 import re
 import string
-from ipaddress import ip_address, ip_network
+from concurrent import futures
+from ipaddress import ip_address
+from timeit import default_timer as timer
 
+import grpc
 import libvirt
 import xmltodict
-from flask import Flask, jsonify, request, Response
-from passlib.apache import HtpasswdFile
-from werkzeug.exceptions import HTTPException
+from sqlalchemy import create_engine, event
+from sqlalchemy.engine import Engine
+from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.pool import StaticPool
 
+import dns_pb2_grpc
+import domain_pb2
+import domain_pb2_grpc
 import image
-from dns import DNSController, DNSRecord
-from forwarding import PortForwardingController
+import port_forwarding_pb2_grpc
+import route_pb2_grpc
+import volume_pb2
+import volume_pb2_grpc
+from dns import DNSController, DNSService
 from image import (
-    create_cloud_config_image,
     IMAGES_ROOT,
+    create_cloud_config_image,
     read_ip_from_cloud_config_image,
     read_user_data_from_cloud_config_image,
 )
-from route import AliasIPController
-from version import __version__
+from models import Base
+from port_forwarding import IPTablesPortForwardingSynchronizer, PortForwardingService
+from route import (
+    GenericRouteController,
+    GenericRouteTableController,
+    IPRouteSynchronizer,
+    IPRouteTableSynchronizer,
+    RouteService,
+)
 
-app = Flask(__name__)
 conn = libvirt.open("qemu:///session?socket=/var/run/libvirt/libvirt-sock")
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
@@ -48,12 +64,8 @@ def libvirt_state_to_string(state):
     return "UNKNOWN"
 
 
-def get_domain(uuid):
-    domain = conn.lookupByUUIDString(uuid)
+def domain_to_dict(domain):
     domain_dict = xmltodict.parse(domain.XMLDesc())
-    state, _ = domain.state()
-    private_ip = read_ip_from_cloud_config_image(domain_dict["domain"]["name"])
-    user_data = read_user_data_from_cloud_config_image(domain_dict["domain"]["name"])
     return {
         "id": int(domain_dict["domain"]["@id"]),
         "uuid": domain_dict["domain"]["uuid"],
@@ -62,90 +74,50 @@ def get_domain(uuid):
         "memory": int(domain_dict["domain"]["memory"]["#text"]) // 1024,
         "network": domain_dict["domain"]["devices"]["interface"]["source"]["@network"],
         "bridge": domain_dict["domain"]["devices"]["interface"]["source"]["@bridge"],
-        "state": libvirt_state_to_string(state),
-        "private_ip": private_ip,
-        "user_data": user_data,
     }
 
 
-@app.errorhandler(libvirt.libvirtError)
-def libvirt_error(e):
-    status_code = 500
-    if e.get_error_code() in [
-        libvirt.VIR_ERR_NO_DOMAIN,
-        libvirt.VIR_ERR_NO_STORAGE_VOL,
-    ]:
-        status_code = 404
-
-    return jsonify(error=str(e), type=str(type(e)), error_code=e.get_error_code()), status_code
-
-
-@app.errorhandler(HTTPException)
-def http_error(e):
-    if hasattr(e, "original_exception"):
-        e = e.original_exception
-    code = 500
-    if hasattr(e, "code") and e.code is not None:
-        code = e.code
-    return jsonify(error=str(e)), code
+def get_domain(uuid):
+    domain = conn.lookupByUUIDString(uuid)
+    domain_dict = domain_to_dict(domain)
+    state, _ = domain.state()
+    private_ip = read_ip_from_cloud_config_image(domain_dict["name"])
+    user_data = read_user_data_from_cloud_config_image(domain_dict["name"])
+    domain_dict["state"] = libvirt_state_to_string(state)
+    domain_dict["private_ip"] = private_ip
+    domain_dict["user_data"] = user_data
+    return domain_dict
 
 
-@app.before_request
-def basic_auth():
-    if htpasswd is None:
-        return
-
-    if request.endpoint == "info":
-        return
-
-    auth = request.authorization
-    authenticated = (
-        auth is not None
-        and auth.type == "basic"
-        and htpasswd.check_password(auth.username, auth.password)
-    )
-    if authenticated:
-        return
-
-    return Response(status=401, headers={"WWW-Authenticate": 'Basic realm="Login required"'})
+# TODO: Add something like this to GRPC
+# @app.errorhandler(libvirt.libvirtError)
+# def libvirt_error(e):
+#     status_code = 500
+#     if e.get_error_code() in [
+#         libvirt.VIR_ERR_NO_DOMAIN,
+#         libvirt.VIR_ERR_NO_STORAGE_VOL,
+#     ]:
+#         status_code = 404
+#
+#     return jsonify(error=str(e), type=str(type(e)), error_code=e.get_error_code()), status_code
 
 
-@app.route("/info")
-def info():
-    res = {"version": __version__}
-    return jsonify(**res)
+class DomainService(domain_pb2_grpc.DomainServiceServicer):
+    def GetDomain(self, request, context):
+        return domain_pb2.Domain(**get_domain(request.uuid))
 
+    def ListDomains(self, request, context):
+        print("HERE")
+        domains = conn.listAllDomains()
+        ds = [domain_to_dict(d) for d in domains]
+        return domain_pb2.ListDomainsResponse(domains=ds)
 
-def materialize_stats(d):
-    stats = {}
-    for k, v in d.items():
-        if callable(v):
-            stats[k] = v(d)
-        elif isinstance(v, dict):
-            stats[k] = materialize_stats(v)
-        else:
-            stats[k] = v
-    return stats
+    def CreateDomain(self, request, context):
+        pool = conn.storagePoolLookupByName("restvirtimages")
 
-
-@app.route("/stats")
-def server_stats():
-    res = {"stats": "not supported"}
-    if server is not None:
-        stats = materialize_stats(server.stats)
-        res["stats"] = stats
-    return jsonify(**res)
-
-
-@app.route("/domains", methods=["POST"])
-def create_domain():
-    req_json = request.json
-
-    pool = conn.storagePoolLookupByName("restvirtimages")
-
-    vol = pool.createXML(
-        f"""<volume type='file'>
-  <name>{req_json['name']}-root.qcow2</name>
+        vol = pool.createXML(
+            f"""<volume type='file'>
+  <name>{request.name}-root.qcow2</name>
   <capacity unit='GiB'>{20}</capacity>
   <backingStore>
     <path>{os.path.join(IMAGES_ROOT, 'focal-server-cloudimg-amd64.img')}</path>
@@ -155,23 +127,23 @@ def create_domain():
     <format type='qcow2'/>
   </target>
 </volume>"""
-    )
-    root_image_path = vol.path()
+        )
+        root_image_path = vol.path()
 
-    ip = ip_address(req_json["private_ip"])
-    mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
-        0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
-    )
-    cloud_config_image_path = image._cloud_config_path(req_json["name"])
+        ip = ip_address(request.private_ip)
+        mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
+            0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
+        )
+        cloud_config_image_path = image._cloud_config_path(request.name)
 
-    dom = conn.defineXML(
-        f"""<domain type='kvm'>
+        dom = conn.defineXML(
+            f"""<domain type='kvm'>
   <features>
     <acpi/>
   </features>
-  <name>{req_json['name']}</name>
-  <vcpu>{req_json['vcpu']}</vcpu>
-  <memory unit='MiB'>{req_json['memory']}</memory>
+  <name>{request.name}</name>
+  <vcpu>{request.vcpu}</vcpu>
+  <memory unit='MiB'>{request.memory}</memory>
   <os>
     <type>hvm</type>
   </os>
@@ -194,44 +166,27 @@ def create_domain():
     <console type='pty'/>
   </devices>
 </domain>"""
-    )
+        )
 
-    create_cloud_config_image(
-        dom.UUIDString(), req_json["user_data"], mac, str(ip), req_json["name"]
-    )
-    pool.refresh()
+        create_cloud_config_image(dom.UUIDString(), request.user_data, mac, str(ip), request.name)
+        pool.refresh()
 
-    dom.setAutostart(True)
-    dom.create()
+        dom.setAutostart(True)
+        dom.create()
 
-    return jsonify(uuid=dom.UUIDString())
+        return domain_pb2.Domain(**get_domain(dom.UUIDString()))
 
+    def DeleteDomain(self, request, context):
+        dom = conn.lookupByUUIDString(str(request.uuid))
+        name = dom.name()
+        dom.destroy()
+        dom.undefine()
 
-@app.route("/domains")
-def domains():
-    domains = conn.listAllDomains()
-    return jsonify(domains=[xmltodict.parse(d.XMLDesc()) for d in domains])
-
-
-@app.route("/domains/<uuid:id>")
-def domain(id):
-    return jsonify(**get_domain(str(id)))
-
-
-@app.route("/domains/<uuid:id>", methods=["DELETE"])
-def delete_domain(id):
-    dom = conn.lookupByUUIDString(str(id))
-    name = dom.name()
-    dom.destroy()
-    dom.undefine()
-
-    pool = conn.storagePoolLookupByName("restvirtimages")
-    vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
-    vol.delete()
-    vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
-    vol.delete()
-
-    return jsonify()
+        pool = conn.storagePoolLookupByName("restvirtimages")
+        vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
+        vol.delete()
+        vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
+        vol.delete()
 
 
 def _volume_to_dict(vol):
@@ -242,47 +197,6 @@ def _volume_to_dict(vol):
         "name": name,
         "size": cap,
     }
-
-
-@app.route("/volumes")
-def volumes():
-    pool = conn.storagePoolLookupByName("volumes")
-    vols = pool.listAllVolumes()
-    vol_dicts = [_volume_to_dict(vol) for vol in vols]
-    return jsonify(volumes=vol_dicts)
-
-
-@app.route("/volumes/<id>")
-def get_volume(id):
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.storageVolLookupByName(id)
-    return jsonify(**_volume_to_dict(vol))
-
-
-@app.route("/volumes", methods=["POST"])
-def create_volume():
-    req_json = request.json
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.createXML(
-        f"""<volume>
-  <name>{req_json['name']}</name>
-  <capacity unit='bytes'>{req_json['size']}</capacity>
-  <target>
-    <format type='qcow2'/>
-  </target>
-</volume>"""
-    )
-    return jsonify(id=vol.name())
-
-
-@app.route("/volumes/<id>", methods=["DELETE"])
-def delete_volume(id):
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.storageVolLookupByName(id)
-    if _get_all_attachments(conn.listAllDomains(), vol):
-        return jsonify(error="volume is attached"), 409
-    vol.delete()
-    return jsonify()
 
 
 def _get_attachments(domain):
@@ -316,14 +230,6 @@ def _get_all_attachments(domains, vol):
     return filtered_domains
 
 
-@app.route("/volumes/<id>/domains")
-def domain_attachments(id):
-    domains = conn.listAllDomains()
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.storageVolLookupByName(id)
-    return jsonify(domains=_get_all_attachments(domains, vol))
-
-
 def _disk_address(domain_dict, volume_id):
     disks = domain_dict["domain"]["devices"]["disk"]
 
@@ -337,183 +243,138 @@ def disk_address(domain, volume_id):
     return _disk_address(domain_dict, volume_id)
 
 
-@app.route("/domains/<uuid:domain_id>/volumes")
-def volume_attachments(domain_id):
-    domain = conn.lookupByUUIDString(str(domain_id))
-    return jsonify(attachments=_get_attachments(domain))
+class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
+    def GetVolume(self, request, context):
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(id)
+        return volume_pb2.Volume(**_volume_to_dict(vol))
 
+    def ListVolumes(self, request, context):
+        pool = conn.storagePoolLookupByName("volumes")
+        vols = pool.listAllVolumes()
+        vol_dicts = [_volume_to_dict(vol) for vol in vols]
+        return volume_pb2.ListVolumesResponse(volumes=[volume_pb2.Volume(**d) for d in vol_dicts])
 
-@app.route("/domains/<uuid:domain_id>/volumes/<volume_id>", methods=["PUT"])
-def attach_volume(domain_id, volume_id):
-    domain = conn.lookupByUUIDString(str(domain_id))
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.storageVolLookupByName(volume_id)
+    def CreateVolume(self, request, context):
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.createXML(
+            f"""<volume>
+  <name>{request.volume.name}</name>
+  <capacity unit='bytes'>{request.volume.size}</capacity>
+  <target>
+    <format type='qcow2'/>
+  </target>
+</volume>"""
+        )
+        return volume_pb2.Volume(
+            id=vol.name(),
+            name=request.volume.name,
+            size=request.volume.size,
+        )
 
-    domain_dict = xmltodict.parse(domain.XMLDesc())
-    disks = domain_dict["domain"]["devices"]["disk"]
+    def DeleteVolume(self, request, context):
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(id)
+        if _get_all_attachments(conn.listAllDomains(), vol):
+            raise Exception("volume is attached z")
+        vol.delete()
 
-    volumes_ids = [
-        d["alias"]["@name"][3:]
-        for d in disks
-        if d["@device"] == "disk" and d["alias"]["@name"].startswith("ua-")
-    ]
+    def ListVolumeAttachments(self, request, context):
+        domain = conn.lookupByUUIDString(request.domain_id)
+        return volume_pb2.ListVolumeAttachmentsResponse(
+            attachments=[
+                volume_pb2.VolumeAttachment(domain_id=request.domain_id, **a)
+                for a in _get_attachments(domain)
+            ]
+        )
 
-    if volume_id in volumes_ids:
-        return jsonify(disk_address=disk_address(domain, volume_id))
+    def GetVolumeAttachment(self, request, context):
+        domain = conn.lookupByUUIDString(request.domain_id)
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(request.volume_id)
 
-    disk_shortnames = [d["target"]["@dev"][-1:] for d in disks]
-    disk_letter = sorted(set(string.ascii_lowercase).difference(disk_shortnames))[0]
-    domain.attachDeviceFlags(
-        f"""<disk type='file' device='disk'>
+        return volume_pb2.VolumeAttachment(
+            domain_id=domain.UUIDString(),
+            volume_id=vol.name(),
+            disk_address=disk_address(domain, request.volume_id),
+        )
+
+    def AttachVolume(self, request, context):
+        domain = conn.lookupByUUIDString(request.domain_id)
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(request.volume_id)
+
+        domain_dict = xmltodict.parse(domain.XMLDesc())
+        disks = domain_dict["domain"]["devices"]["disk"]
+
+        volumes_ids = [
+            d["alias"]["@name"][3:]
+            for d in disks
+            if d["@device"] == "disk" and d["alias"]["@name"].startswith("ua-")
+        ]
+
+        if request.volume_id in volumes_ids:
+            return volume_pb2.VolumeAttachment(
+                domain_id=request.domain_id,
+                volume_id=request.volume_id,
+                disk_address=disk_address(domain, request.volume_id),
+            )
+
+        disk_shortnames = [d["target"]["@dev"][-1:] for d in disks]
+        disk_letter = sorted(set(string.ascii_lowercase).difference(disk_shortnames))[0]
+        domain.attachDeviceFlags(
+            f"""<disk type='file' device='disk'>
    <driver name='qemu' type='qcow2'/>
    <source file='{vol.path()}'/>
    <target dev='vd{disk_letter}' bus='virtio'/>
-   <alias name='ua-{volume_id}'/>
+   <alias name='ua-{request.volume_id}'/>
  </disk>
  """,
-        libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG,
-    )
-
-    return jsonify(disk_address=disk_address(domain, volume_id))
-
-
-@app.route("/domains/<uuid:domain_id>/volumes/<volume_id>", methods=["DELETE"])
-def detach_volume(domain_id, volume_id):
-    domain = conn.lookupByUUIDString(str(domain_id))
-    try:
-        domain.detachDeviceAlias(
-            f"ua-{volume_id}", libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG
+            libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG,
         )
-    except:
-        # TODO: check for string "no device found with alias"
-        pass
-    return jsonify()
+
+        return volume_pb2.VolumeAttachment(
+            domain_id=request.domain_id,
+            volume_id=request.volume_id,
+            disk_address=disk_address(domain, request.volume_id),
+        )
+
+    def DetachVolume(self, request, context):
+        domain = conn.lookupByUUIDString(request.domain_id)
+        try:
+            domain.detachDeviceAlias(
+                f"ua-{request.volume_id}",
+                libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG,
+            )
+        except:
+            # TODO: check for string "no device found with alias"
+            pass
 
 
-@app.route("/domains/<uuid:domain_id>/volumes/<volume_id>")
-def volume_attachment(domain_id, volume_id):
-    domain = conn.lookupByUUIDString(str(domain_id))
-    pool = conn.storagePoolLookupByName("volumes")
-    vol = pool.storageVolLookupByName(volume_id)
+class UnaryUnaryInterceptor(grpc.ServerInterceptor):
+    def intercept_service(self, continuation, handler_call_details):
+        next = continuation(handler_call_details)
+        if next.unary_unary is None:
+            return next
 
-    return jsonify(
-        domain_id=domain.UUIDString(),
-        volume_id=vol.name(),
-        disk_address=disk_address(domain, volume_id),
-    )
+        def letsgo(request, context):
+            start = timer()
+            response = next.unary_unary(request, context)
+            logging.debug(f"{handler_call_details.method} [{(timer() - start)*1000:.3f} ms]")
+            return response
 
-
-# @app.route('/forwardings/<int:source_port>', methods=['PUT'])
-# def create_port_forwarding(source_port):
-#     req_json = request.json
-#     if req_json['source_port'] != source_port:
-#         return jsonify(error=f'source port must be {source_port}'), 400
-#
-#     pwc.add(req_json)
-#     return jsonify(), 201
-
-
-@app.route("/forwardings", methods=["POST"])
-def create_port_forwarding():
-    pwc.add(request.json)
-    return jsonify(), 201
-
-
-@app.route("/forwardings")
-def port_forwardings():
-    return jsonify(port_forwardings=pwc.get_forwardings())
-
-
-@app.route("/forwardings/<int:source_port>-<protocol>")
-def port_forwarding(source_port, protocol):
-    forwarding = pwc.get_forwarding(source_port, protocol)
-    if forwarding is None:
-        return jsonify(), 404
-    return jsonify(**forwarding)
-
-
-@app.route("/forwardings/<int:source_port>-<protocol>", methods=["DELETE"])
-def delete_port_forwarding(source_port, protocol):
-    pwc.remove(source_port, protocol)
-    return jsonify(), 200
-
-
-@app.route("/dns")
-def dns_mappings():
-    return jsonify(dns.get_mappings())
-
-
-@app.route("/dns/<name>-<type>")
-def dns_mapping(name, type):
-    mapping = dns.get_mapping(name, type)
-    if mapping is None:
-        return jsonify(), 404
-    return jsonify(mapping)
-
-
-@app.route("/dns/<name>-<type>", methods=["DELETE"])
-def delete_dns_mapping(name, type):
-    dns.remove(name, type)
-    return jsonify(), 200
-
-
-@app.route("/dns/<name>-<type>", methods=["PUT"])
-def set_dns_mapping(name, type):
-    # TODO: check that they are identical
-    record_dict = request.json
-    record_dict["name"] = name
-    record_dict["type"] = type
-    dns.set(DNSRecord(**record_dict))
-    return jsonify(), 200
-
-
-@app.route("/routes")
-def get_routes():
-    routes = route.get_routes().items()
-    route.get_routes(namespace=request.args.get("namespace"))
-    return jsonify(
-        routes=[
-            {
-                "destination": str(dst),
-                "gateways": [str(gw) for gw in r.gateways],
-                "namespace": r.namespace,
-            }
-            for dst, r in routes
-        ]
-    )
-
-
-@app.route("/routes/<ip>")
-def get_route(ip):
-    dst = ip_network(ip.replace("-", "/"))
-    r = route.get_route(dst)
-    return jsonify(
-        {
-            "destination": str(dst),
-            "gateways": [str(gw) for gw in r.gateways],
-            "namespace": r.namespace,
-        }
-    )
-
-
-@app.route("/routes/<ip>", methods=["PUT"])
-def add_route(ip):
-    j = request.json
-    dst = ip_network(ip.replace("-", "/"))
-    gateways = [ip_address(gw) for gw in j["gateways"]]
-    namespace = j.get("namespace", "default")
-    route.set(dst, gateways, namespace)
-    return jsonify()
-
-
-@app.route("/routes/<ip>", methods=["DELETE"])
-def delete_route(ip):
-    dst = ip_network(ip.replace("-", "/"))
-    route.remove(dst)
-    return jsonify()
+        return grpc.unary_unary_rpc_method_handler(
+            letsgo,
+            request_deserializer=next.request_deserializer,
+            response_serializer=next.response_serializer,
+        )
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+    logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
+
     p = re.compile(r"^(\S*):(\d+)$")
 
     def bind_address(s):
@@ -531,9 +392,9 @@ if __name__ == "__main__":
         "-b", "--bind", type=bind_address, default=":8090", help="server bind address"
     )
     parser.add_argument("-c", "--config", default="/etc/restvirt", help="configuration folder")
-    parser.add_argument("--ssl-cert")
-    parser.add_argument("--ssl-priv")
-    parser.add_argument("--htpasswd")
+    parser.add_argument("--server-cert")
+    parser.add_argument("--server-key")
+    parser.add_argument("--client-ca-cert")
     args = parser.parse_args()
 
     print(args)
@@ -541,31 +402,69 @@ if __name__ == "__main__":
     host, port = args.bind
     host = host or "0.0.0.0"
 
-    pwc = PortForwardingController(args.config, state_file_name="forwardings.json")
-    pwc.sync()
+    @event.listens_for(Engine, "connect")
+    def set_sqlite_pragma(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
 
-    dns = DNSController(args.config, state_file_name="dns.json")
-    dns.start()
+    engine = create_engine(
+        f"sqlite:///{os.path.join(args.config, 'controller.sqlite3')}",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = scoped_session(sessionmaker(engine, future=True))
 
-    route = AliasIPController(args.config, state_file_name="routes.json")
-    route.sync()
+    dns_controller = DNSController(session_factory)
+    dns_controller.start()
 
-    if args.htpasswd is None:
-        htpasswd = None
+    server = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
+    )
+    dns_pb2_grpc.add_DNSServicer_to_server(DNSService(dns_controller), server)
+    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainService(), server)
+    port_forwarding_service = PortForwardingService(
+        session_factory, IPTablesPortForwardingSynchronizer()
+    )
+    port_forwarding_service.sync()
+    port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(
+        port_forwarding_service, server
+    )
+    route_table_controller = GenericRouteTableController(
+        session_factory, IPRouteTableSynchronizer()
+    )
+    route_table_controller.sync()
+    route_controller = GenericRouteController(session_factory, IPRouteSynchronizer())
+    route_controller.sync()
+    route_pb2_grpc.add_RouteServiceServicer_to_server(
+        RouteService(route_table_controller, route_controller), server
+    )
+    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeService(), server)
+
+    server_key_pair_provided = args.server_cert is not None and args.server_key is not None
+    assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
+    assert args.client_ca_cert is None or server_key_pair_provided
+
+    if server_key_pair_provided:
+        with open(args.server_cert, "rb") as cert, open(args.server_key, "rb") as key:
+            key_pair = (key.read(), cert.read())
+
+        root_certificate = None
+        require_client_auth = args.client_ca_cert is not None
+        if require_client_auth:
+            with open(args.client_ca_cert, "rb") as ca_cert:
+                root_certificate = ca_cert.read()
+
+        creds = grpc.ssl_server_credentials(
+            [key_pair],
+            root_certificates=root_certificate,
+            require_client_auth=require_client_auth,
+        )
+
+        server.add_secure_port(f"{host}:{port}", creds)
     else:
-        htpasswd = HtpasswdFile(args.htpasswd)
-
-    if args.debug:
-        app.config["PROPAGATE_EXCEPTIONS"] = False
-        app.run(host=host, port=port, debug=True, use_debugger=False)
-    else:
-        from cheroot.wsgi import Server as WSGIServer
-        from cheroot.ssl.builtin import BuiltinSSLAdapter
-
-        # app.logger.addHandler(logging.StreamHandler())
-        app.logger.setLevel(logging.INFO)
-        server = WSGIServer((host, port), app)
-        server.stats["Enabled"] = True
-        if args.ssl_cert is not None or args.ssl_priv is not None:
-            server.ssl_adapter = BuiltinSSLAdapter(args.ssl_cert, args.ssl_priv)
-        server.safe_start()
+        server.add_insecure_port(f"{host}:{port}")
+    server.start()
+    server.wait_for_termination()

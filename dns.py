@@ -1,77 +1,59 @@
-import json
-import os
-import threading
-from dataclasses import dataclass, asdict
-from typing import List
-
-from dnslib import RR, QTYPE, copy, RCODE
+from dnslib import QTYPE, RCODE, RR, copy
 from dnslib.server import DNSServer
+from google.protobuf import empty_pb2
+from grpc import StatusCode
+from sqlalchemy import delete, select
 
-
-@dataclass
-class DNSRecord:
-    name: str
-    type: str
-    ttl: int
-    records: List[str]
+import dns_pb2
+import dns_pb2_grpc
+from models import DNSRecord
 
 
 class DNSController:
-    def __init__(self, state_dir, state_file_name="dns.json"):
-        self.lock = threading.Lock()
-        self.state_dir = state_dir
-        self.state_file_path = os.path.join(state_dir, state_file_name)
-
-        self._read_state_file()
+    def __init__(self, session_factory):
+        self.session_factory = session_factory
         self.server = None
 
-    def _update_zone(self):
+    def records(self):
+        with self.session_factory() as session:
+            return session.execute(select(DNSRecord)).scalars().all()
+
+    def record(self, name, type):
+        with self.session_factory() as session:
+            return (
+                session.execute(
+                    select(DNSRecord).filter(
+                        DNSRecord.name == name,
+                        DNSRecord.type == type,
+                    )
+                )
+                .scalars()
+                .one_or_none()
+            )
+
+    def load_zone_list(self):
         zone_file = "\n".join(
-            [f"{f.name} {f.ttl} {f.type} {' '.join(f.records)}" for f in self.records.values()]
+            [f"{f.name} {f.ttl} {f.type} {' '.join(f.records)}" for f in self.records()]
         )
-        self.zone = [(rr.rname, QTYPE[rr.rtype], rr) for rr in RR.fromZone(zone_file)]
-
-    def _update_state_file(self):
-        with open(self.state_file_path, mode="w") as f:
-            f.write(json.dumps([asdict(v) for v in self.records.values()]))
-
-        self._update_zone()
-
-    def _read_state_file(self):
-        if not os.path.isfile(self.state_file_path):
-            self.records = {}
-        else:
-            with open(self.state_file_path) as f:
-                mappings = json.load(f)
-                mappings = [DNSRecord(**r) for r in mappings]
-                self.records = {(r.name, r.type): r for r in mappings}
-
-        self._update_zone()
+        return [(rr.rname, QTYPE[rr.rtype], rr) for rr in RR.fromZone(zone_file)]
 
     def set(self, record: DNSRecord):
-        with self.lock:
-            self.records[(record.name, record.type)] = record
-            self._update_state_file()
+        with self.session_factory() as session:
+            session.merge(record)
+            session.commit()
 
     def remove(self, name, type):
-        with self.lock:
-            try:
-                del self.records[(name, type)]
-                self._update_state_file()
-            except ValueError:
-                pass
-
-    def get_mappings(self):
-        with self.lock:
-            return list(self.records.values())
-
-    def get_mapping(self, name, type):
-        with self.lock:
-            return self.records[(name, type)]
+        with self.session_factory() as session:
+            session.execute(
+                delete(DNSRecord).where(
+                    DNSRecord.name == name,
+                    DNSRecord.type == type,
+                )
+            )
+            session.commit()
 
     def resolve(self, request, handler):
-        with self.lock:
-            zone = self.zone.copy()
+        zone = self.load_zone_list()
 
         reply = None
         qname = request.q.qname
@@ -99,8 +81,55 @@ class DNSController:
     def start(self, port=53):
         self.server = DNSServer(self, port=port)
         self.server.start_thread()
+        return self.server.server.server_address[1]
 
     def stop(self):
         if self.server is not None:
             self.server.stop()
             self.server = None
+
+
+class DNSService(dns_pb2_grpc.DNSServicer):
+    def __init__(self, dns_controller):
+        self.dns_controller = dns_controller
+
+    def GetDNSRecord(self, request, context):
+        record = self.dns_controller.record(request.name, request.type)
+        if record is None:
+            context.set_code(StatusCode.NOT_FOUND)
+            return
+        return dns_pb2.DNSRecord(
+            name=record.name,
+            type=record.type,
+            ttl=record.ttl,
+            records=record.records,
+        )
+
+    def ListDNSRecords(self, request, context):
+        return dns_pb2.ListDNSRecordsResponse(
+            dns_records=[
+                dns_pb2.DNSRecord(
+                    name=record.name,
+                    type=record.type,
+                    ttl=record.ttl,
+                    records=record.records,
+                )
+                for record in self.dns_controller.records()
+            ]
+        )
+
+    def PutDNSRecord(self, request, context):
+        record = request.dns_record
+        self.dns_controller.set(
+            DNSRecord(
+                name=record.name,
+                type=record.type,
+                ttl=record.ttl,
+                records=record.records,
+            )
+        )
+        return record
+
+    def DeleteDNSRecord(self, request, context):
+        self.dns_controller.remove(request.name, request.type)
+        return empty_pb2.Empty()

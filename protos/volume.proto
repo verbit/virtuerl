@@ -1,0 +1,60 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+
+import "google/protobuf/empty.proto";
+
+message GetVolumeRequest {
+  string uuid = 1;
+}
+
+message Volume {
+  string id = 1;
+  string name = 2;
+  uint64 size = 3;
+}
+
+message ListVolumesRequest {}
+
+message ListVolumesResponse {
+  repeated Volume volumes = 1;
+}
+
+message CreateVolumeRequest {
+  Volume volume = 1;
+}
+
+message DeleteVolumeRequest {
+  string uuid = 1;
+}
+
+message VolumeAttachmentIdentifier {
+  string domain_id = 1;
+  string volume_id = 2;
+}
+
+message VolumeAttachment {
+  string domain_id = 1;
+  string volume_id = 2;
+  string disk_address = 3;
+}
+
+message ListVolumeAttachmentsRequest {
+  string domain_id = 1;
+}
+
+message ListVolumeAttachmentsResponse {
+  repeated VolumeAttachment attachments = 1;
+}
+
+service VolumeService {
+  rpc GetVolume(GetVolumeRequest) returns (Volume) {}
+  rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {}
+  rpc CreateVolume(CreateVolumeRequest) returns (Volume) {}
+  rpc DeleteVolume(DeleteVolumeRequest) returns (google.protobuf.Empty) {}
+
+  rpc ListVolumeAttachments(ListVolumeAttachmentsRequest) returns (ListVolumeAttachmentsResponse) {}
+  rpc GetVolumeAttachment(VolumeAttachmentIdentifier) returns (VolumeAttachment) {}
+  rpc AttachVolume(VolumeAttachmentIdentifier) returns (VolumeAttachment) {}
+  rpc DetachVolume(VolumeAttachmentIdentifier) returns (google.protobuf.Empty) {}
+}
