@@ -24,7 +24,7 @@ jobs:
           isort --check --diff --color ./
       - name: Test
         run: |
-          docker build -t restvirt-tests -f Dockerfile.tests .
+          docker build --target test -t restvirt-tests .
           docker run --rm --cap-add=NET_ADMIN -t restvirt-tests
       - name: Build
-        run: docker build .
+        run: docker build -t restvirt .
