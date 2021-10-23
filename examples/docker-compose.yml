@@ -5,12 +5,12 @@ services:
     command:
       - -b
       - :8093
-      - --ssl-cert
-      - /etc/restvirt/cert.pem
-      - --ssl-priv
-      - /etc/restvirt/privkey.pem
-      - --htpasswd
-      - /etc/restvirt/htpasswd
+      - --server-cert
+      - /etc/restvirt/pki/server.crt
+      - --server-key
+      - /etc/restvirt/pki/server.key
+      - --client-ca-cert
+      - /etc/restvirt/pki/ca.crt
     cap_add:
       - NET_ADMIN
       - NET_RAW
