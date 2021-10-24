@@ -11,3 +11,9 @@
 #     for dom in doms.domains:
 #         print(dom)
 #     channel.close()
+
+
+def test_libvirt_linux():
+    import libvirt
+
+    libvirt.getVersion()
