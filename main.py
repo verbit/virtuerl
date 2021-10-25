@@ -437,9 +437,9 @@ def ensure_rfc1918_rules():
 
 
 if __name__ == "__main__":
-    logging.basicConfig(level=logging.DEBUG)
-    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-    logging.getLogger("sqlalchemy.pool").setLevel(logging.DEBUG)
+    logging.basicConfig(
+        level=logging.DEBUG, format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
+    )
 
     p = re.compile(r"^(\S*):(\d+)$")
 
@@ -463,10 +463,13 @@ if __name__ == "__main__":
     parser.add_argument("--client-ca-cert")
     args = parser.parse_args()
 
-    print(args)
+    logging.debug(args)
 
     host, port = args.bind
     host = host or "0.0.0.0"
+
+    if args.debug:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
     @event.listens_for(Engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
