@@ -90,19 +90,6 @@ def get_domain(uuid):
     return domain_dict
 
 
-# TODO: Add something like this to GRPC
-# @app.errorhandler(libvirt.libvirtError)
-# def libvirt_error(e):
-#     status_code = 500
-#     if e.get_error_code() in [
-#         libvirt.VIR_ERR_NO_DOMAIN,
-#         libvirt.VIR_ERR_NO_STORAGE_VOL,
-#     ]:
-#         status_code = 404
-#
-#     return jsonify(error=str(e), type=str(type(e)), error_code=e.get_error_code()), status_code
-
-
 class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def GetDomain(self, request, context):
         return domain_pb2.Domain(**get_domain(request.uuid))
