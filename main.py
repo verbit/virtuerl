@@ -386,6 +386,56 @@ class UnaryUnaryInterceptor(grpc.ServerInterceptor):
         )
 
 
+def ensure_rfc1918_rules():
+    import iptc
+    from pyroute2 import IPSet
+
+    with IPSet() as ips:
+        try:
+            ipset = ips.list("restvirt")[0]
+        except:
+            ips.create("restvirt", "hash:net")
+            ipset = ips.list("restvirt")[0]
+
+        addrs = ipset.get_attr("IPSET_ATTR_ADT").get_attrs("IPSET_ATTR_DATA")
+        nets = set()
+        for addr in addrs:
+            ipv4 = addr.get_attr("IPSET_ATTR_IP_FROM").get_attr("IPSET_ATTR_IPADDR_IPV4")
+            netbits = addr.get_attr("IPSET_ATTR_CIDR")
+            nets.add(f"{ipv4}/{netbits}")
+
+        rfc1918_nets = {"192.168.0.0/16", "172.16.0.0/12", "10.0.0.0/8"}
+        for net in nets:
+            if str(net) not in rfc1918_nets:
+                ips.delete("restvirt", str(net), etype="net")
+        for addr in rfc1918_nets:
+            if addr not in nets:
+                ips.add("restvirt", addr, etype="net")
+
+    rule_exists = False
+    for rule in iptc.easy.dump_chain("nat", "POSTROUTING"):
+        if "set" in rule and rule["target"] == "MASQUERADE":
+            if rule["set"] == [
+                {"match-set": ["restvirt", "src"]},
+                {"match-set": ["!", "restvirt", "dst"]},
+            ]:
+                rule_exists = True
+                break
+
+    if not rule_exists:
+        iptc.easy.insert_rule(
+            "nat",
+            "POSTROUTING",
+            {
+                "set": [
+                    {"match-set": ["restvirt", "src"]},
+                    {"match-set": ["!", "restvirt", "dst"]},
+                ],
+                "target": "MASQUERADE",
+            },
+        )
+
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -432,6 +482,8 @@ if __name__ == "__main__":
     )
     Base.metadata.create_all(engine)
     session_factory = scoped_session(sessionmaker(engine, future=True))
+
+    ensure_rfc1918_rules()
 
     dns_controller = DNSController(session_factory)
     dns_controller.start()
