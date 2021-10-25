@@ -10,6 +10,7 @@ from timeit import default_timer as timer
 import grpc
 import libvirt
 import xmltodict
+from google.protobuf import empty_pb2
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -107,17 +108,18 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         return domain_pb2.Domain(**get_domain(request.uuid))
 
     def ListDomains(self, request, context):
-        print("HERE")
         domains = conn.listAllDomains()
-        ds = [domain_to_dict(d) for d in domains]
+        ds = [domain_pb2.Domain(**domain_to_dict(d)) for d in domains]
         return domain_pb2.ListDomainsResponse(domains=ds)
 
     def CreateDomain(self, request, context):
+        domreq = request.domain
+
         pool = conn.storagePoolLookupByName("restvirtimages")
 
         vol = pool.createXML(
             f"""<volume type='file'>
-  <name>{request.name}-root.qcow2</name>
+  <name>{domreq.name}-root.qcow2</name>
   <capacity unit='GiB'>{20}</capacity>
   <backingStore>
     <path>{os.path.join(IMAGES_ROOT, 'focal-server-cloudimg-amd64.img')}</path>
@@ -130,20 +132,20 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         )
         root_image_path = vol.path()
 
-        ip = ip_address(request.private_ip)
+        ip = ip_address(domreq.private_ip)
         mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
             0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
         )
-        cloud_config_image_path = image._cloud_config_path(request.name)
+        cloud_config_image_path = image._cloud_config_path(domreq.name)
 
         dom = conn.defineXML(
             f"""<domain type='kvm'>
   <features>
     <acpi/>
   </features>
-  <name>{request.name}</name>
-  <vcpu>{request.vcpu}</vcpu>
-  <memory unit='MiB'>{request.memory}</memory>
+  <name>{domreq.name}</name>
+  <vcpu>{domreq.vcpu}</vcpu>
+  <memory unit='MiB'>{domreq.memory}</memory>
   <os>
     <type>hvm</type>
   </os>
@@ -168,7 +170,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 </domain>"""
         )
 
-        create_cloud_config_image(dom.UUIDString(), request.user_data, mac, str(ip), request.name)
+        create_cloud_config_image(dom.UUIDString(), domreq.user_data, mac, str(ip), domreq.name)
         pool.refresh()
 
         dom.setAutostart(True)
@@ -187,6 +189,8 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         vol.delete()
         vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
         vol.delete()
+
+        return empty_pb2.Empty()
 
 
 def _volume_to_dict(vol):
