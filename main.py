@@ -363,7 +363,19 @@ class UnaryUnaryInterceptor(grpc.ServerInterceptor):
 
         def letsgo(request, context):
             start = timer()
-            response = next.unary_unary(request, context)
+            try:
+                response = next.unary_unary(request, context)
+            except libvirt.libvirtError as e:
+                status_code = grpc.StatusCode.INTERNAL
+                if e.get_error_code() in [
+                    libvirt.VIR_ERR_NO_DOMAIN,
+                    libvirt.VIR_ERR_NO_STORAGE_VOL,
+                ]:
+                    status_code = grpc.StatusCode.NOT_FOUND
+                context.set_code(status_code)
+                context.set_details(str(e))
+                response = empty_pb2.Empty()
+
             logging.debug(f"{handler_call_details.method} [{(timer() - start)*1000:.3f} ms]")
             return response
 
