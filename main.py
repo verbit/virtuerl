@@ -67,14 +67,16 @@ def libvirt_state_to_string(state):
 
 def domain_to_dict(domain):
     domain_dict = xmltodict.parse(domain.XMLDesc())
+    d = domain_dict["domain"]
     return {
-        "id": int(domain_dict["domain"]["@id"]),
-        "uuid": domain_dict["domain"]["uuid"],
-        "name": domain_dict["domain"]["name"],
-        "vcpu": int(domain_dict["domain"]["vcpu"]["#text"]),
-        "memory": int(domain_dict["domain"]["memory"]["#text"]) // 1024,
-        "network": domain_dict["domain"]["devices"]["interface"]["source"]["@network"],
-        "bridge": domain_dict["domain"]["devices"]["interface"]["source"]["@bridge"],
+        "id": int(d["@id"]),
+        "uuid": d["uuid"],
+        "name": d["name"],
+        "vcpu": int(d["vcpu"]["#text"]),
+        "memory": int(d["memory"]["#text"]) // 1024,
+        "network": d["devices"]["interface"]["source"]["@network"],
+        "bridge": d["devices"]["interface"]["source"]["@bridge"],
+        "nested_virtualization": any(f["@name"] == "vmx" for f in d["cpu"]["feature"]),
     }
 
 
@@ -130,6 +132,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
   <features>
     <acpi/>
   </features>
+  {"<cpu mode='host-model'></cpu>" if domreq.nested_virtualization else ""}
   <name>{domreq.name}</name>
   <vcpu>{domreq.vcpu}</vcpu>
   <memory unit='MiB'>{domreq.memory}</memory>

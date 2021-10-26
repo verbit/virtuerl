@@ -18,9 +18,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='dns.proto',
   package='',
   syntax='proto3',
-  serialized_options=None,
+  serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\tdns.proto\x1a\x1bgoogle/protobuf/empty.proto\"1\n\x13\x44NSRecordIdentifier\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"E\n\tDNSRecord\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0b\n\x03ttl\x18\x03 \x01(\x04\x12\x0f\n\x07records\x18\x04 \x03(\t\"\x17\n\x15ListDNSRecordsRequest\"9\n\x16ListDNSRecordsResponse\x12\x1f\n\x0b\x64ns_records\x18\x01 \x03(\x0b\x32\n.DNSRecord\"5\n\x13PutDNSRecordRequest\x12\x1e\n\ndns_record\x18\x01 \x01(\x0b\x32\n.DNSRecord2\xf5\x01\n\x03\x44NS\x12\x32\n\x0cGetDNSRecord\x12\x14.DNSRecordIdentifier\x1a\n.DNSRecord\"\x00\x12\x43\n\x0eListDNSRecords\x12\x16.ListDNSRecordsRequest\x1a\x17.ListDNSRecordsResponse\"\x00\x12\x32\n\x0cPutDNSRecord\x12\x14.PutDNSRecordRequest\x1a\n.DNSRecord\"\x00\x12\x41\n\x0f\x44\x65leteDNSRecord\x12\x14.DNSRecordIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\tdns.proto\x1a\x1bgoogle/protobuf/empty.proto\"1\n\x13\x44NSRecordIdentifier\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\"E\n\tDNSRecord\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04type\x18\x02 \x01(\t\x12\x0b\n\x03ttl\x18\x03 \x01(\x04\x12\x0f\n\x07records\x18\x04 \x03(\t\"\x17\n\x15ListDNSRecordsRequest\"9\n\x16ListDNSRecordsResponse\x12\x1f\n\x0b\x64ns_records\x18\x01 \x03(\x0b\x32\n.DNSRecord\"5\n\x13PutDNSRecordRequest\x12\x1e\n\ndns_record\x18\x01 \x01(\x0b\x32\n.DNSRecord2\xf5\x01\n\x03\x44NS\x12\x32\n\x0cGetDNSRecord\x12\x14.DNSRecordIdentifier\x1a\n.DNSRecord\"\x00\x12\x43\n\x0eListDNSRecords\x12\x16.ListDNSRecordsRequest\x1a\x17.ListDNSRecordsResponse\"\x00\x12\x32\n\x0cPutDNSRecord\x12\x14.PutDNSRecordRequest\x1a\n.DNSRecord\"\x00\x12\x41\n\x0f\x44\x65leteDNSRecord\x12\x14.DNSRecordIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -252,6 +252,7 @@ PutDNSRecordRequest = _reflection.GeneratedProtocolMessageType('PutDNSRecordRequ
 _sym_db.RegisterMessage(PutDNSRecordRequest)
 
 
+DESCRIPTOR._options = None
 
 _DNS = _descriptor.ServiceDescriptor(
   name='DNS',

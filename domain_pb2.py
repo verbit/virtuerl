@@ -18,9 +18,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='domain.proto',
   package='',
   syntax='proto3',
-  serialized_options=None,
+  serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x64omain.proto\x1a\x1bgoogle/protobuf/empty.proto\" \n\x10GetDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xa5\x01\n\x06\x44omain\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04vcpu\x18\x04 \x01(\r\x12\x0e\n\x06memory\x18\x05 \x01(\x04\x12\x0f\n\x07network\x18\x06 \x01(\t\x12\x0e\n\x06\x62ridge\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\x12\n\nprivate_ip\x18\t \x01(\t\x12\x11\n\tuser_data\x18\n \x01(\t\"\x14\n\x12ListDomainsRequest\"/\n\x13ListDomainsResponse\x12\x18\n\x07\x64omains\x18\x01 \x03(\x0b\x32\x07.Domain\".\n\x13\x43reateDomainRequest\x12\x17\n\x06\x64omain\x18\x01 \x01(\x0b\x32\x07.Domain\"#\n\x13\x44\x65leteDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t2\xe7\x01\n\rDomainService\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x0c\x64omain.proto\x1a\x1bgoogle/protobuf/empty.proto\" \n\x10GetDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xc4\x01\n\x06\x44omain\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04vcpu\x18\x04 \x01(\r\x12\x0e\n\x06memory\x18\x05 \x01(\x04\x12\x0f\n\x07network\x18\x06 \x01(\t\x12\x0e\n\x06\x62ridge\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\x12\n\nprivate_ip\x18\t \x01(\t\x12\x11\n\tuser_data\x18\n \x01(\t\x12\x1d\n\x15nested_virtualization\x18\x0b \x01(\x08\"\x14\n\x12ListDomainsRequest\"/\n\x13ListDomainsResponse\x12\x18\n\x07\x64omains\x18\x01 \x03(\x0b\x32\x07.Domain\".\n\x13\x43reateDomainRequest\x12\x17\n\x06\x64omain\x18\x01 \x01(\x0b\x32\x07.Domain\"#\n\x13\x44\x65leteDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t2\xe7\x01\n\rDomainService\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -137,6 +137,13 @@ _DOMAIN = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='nested_virtualization', full_name='Domain.nested_virtualization', index=10,
+      number=11, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -150,7 +157,7 @@ _DOMAIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=80,
-  serialized_end=245,
+  serialized_end=276,
 )
 
 
@@ -174,8 +181,8 @@ _LISTDOMAINSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=247,
-  serialized_end=267,
+  serialized_start=278,
+  serialized_end=298,
 )
 
 
@@ -206,8 +213,8 @@ _LISTDOMAINSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=269,
-  serialized_end=316,
+  serialized_start=300,
+  serialized_end=347,
 )
 
 
@@ -238,8 +245,8 @@ _CREATEDOMAINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=318,
-  serialized_end=364,
+  serialized_start=349,
+  serialized_end=395,
 )
 
 
@@ -270,8 +277,8 @@ _DELETEDOMAINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=366,
-  serialized_end=401,
+  serialized_start=397,
+  serialized_end=432,
 )
 
 _LISTDOMAINSRESPONSE.fields_by_name['domains'].message_type = _DOMAIN
@@ -327,6 +334,7 @@ DeleteDomainRequest = _reflection.GeneratedProtocolMessageType('DeleteDomainRequ
 _sym_db.RegisterMessage(DeleteDomainRequest)
 
 
+DESCRIPTOR._options = None
 
 _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   name='DomainService',
@@ -335,8 +343,8 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=404,
-  serialized_end=635,
+  serialized_start=435,
+  serialized_end=666,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetDomain',
