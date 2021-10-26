@@ -17,6 +17,15 @@ from route import RouteService, SyncEventHandler
 OPERATING_SYSTEMS = {"darwin", "linux", "windows"}
 
 
+def pytest_addoption(parser):
+    parser.addoption("--pool-dir", default="/data/restvirt")
+
+
+@pytest.fixture(scope="session")
+def pool_dir(pytestconfig):
+    return pytestconfig.getoption("pool_dir")
+
+
 def pytest_configure(config):
     for os in OPERATING_SYSTEMS:
         config.addinivalue_line("markers", f"{os}: mark tests to only run on {os} operating system")

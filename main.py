@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import string
+import uuid
 from concurrent import futures
 from ipaddress import ip_address
 from timeit import default_timer as timer
@@ -19,14 +20,12 @@ from sqlalchemy.pool import StaticPool
 import dns_pb2_grpc
 import domain_pb2
 import domain_pb2_grpc
-import image
 import port_forwarding_pb2_grpc
 import route_pb2_grpc
 import volume_pb2
 import volume_pb2_grpc
 from dns import DNSController, DNSService
 from image import (
-    IMAGES_ROOT,
     create_cloud_config_image,
     read_ip_from_cloud_config_image,
     read_user_data_from_cloud_config_image,
@@ -41,7 +40,7 @@ from route import (
     RouteService,
 )
 
-conn = libvirt.open("qemu:///session?socket=/var/run/libvirt/libvirt-sock")
+conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
 
@@ -84,8 +83,20 @@ def get_domain(uuid):
     domain = conn.lookupByUUIDString(uuid)
     domain_dict = domain_to_dict(domain)
     state, _ = domain.state()
-    private_ip = read_ip_from_cloud_config_image(domain_dict["name"])
-    user_data = read_user_data_from_cloud_config_image(domain_dict["name"])
+    pool = conn.storagePoolLookupByName("restvirtimages")
+    vol = pool.storageVolLookupByName(f"{domain_dict['name']}-cloud-init.img")
+    stream = conn.newStream()
+    vol.download(stream, 0, 0)
+    vol.info()
+    res = bytearray()
+    while True:
+        bytes = stream.recv(64 * 1024)
+        res += bytes
+        if not len(bytes):
+            break
+    stream.finish()
+    private_ip = read_ip_from_cloud_config_image(res)
+    user_data = read_user_data_from_cloud_config_image(res)
     domain_dict["state"] = libvirt_state_to_string(state)
     domain_dict["private_ip"] = private_ip
     domain_dict["user_data"] = user_data
@@ -93,6 +104,25 @@ def get_domain(uuid):
 
 
 class DomainService(domain_pb2_grpc.DomainServiceServicer):
+    def __init__(self, pool_dir="/data/restvirt"):
+        try:
+            conn.storagePoolLookupByName("restvirtimages")
+        except libvirt.libvirtError as e:
+            print(e.get_error_code())
+            if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_POOL:
+                pool = conn.storagePoolDefineXML(
+                    f"""<pool type="dir">
+      <name>restvirtimages</name>
+      <target>
+        <path>{os.path.join(pool_dir, 'images')}</path>
+      </target>
+    </pool>"""
+                )
+                pool.build()
+                pool.create()
+            else:
+                raise e
+
     def GetDomain(self, request, context):
         return domain_pb2.Domain(**get_domain(request.uuid))
 
@@ -105,13 +135,40 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         domreq = request.domain
 
         pool = conn.storagePoolLookupByName("restvirtimages")
+        base_img_name = "focal-amd64-20211021"
+        try:
+            base_img = pool.storageVolLookupByName(base_img_name)
+        except:
+            from urllib.request import urlopen
+
+            res = urlopen(
+                f"https://cloud-images.ubuntu.com/releases/focal/release-20211021/ubuntu-20.04-server-cloudimg-amd64.img"
+            )
+            size = int(res.getheader("Content-length"))
+            base_img = pool.createXML(
+                f"""<volume type='file'>
+  <name>{base_img_name}</name>
+  <capacity unit='B'>{size}</capacity>
+  <target>
+    <format type='qcow2'/>
+  </target>
+</volume>"""
+            )
+            stream = conn.newStream()
+            base_img.upload(stream, 0, size)
+            while True:
+                chunk = res.read(64 * 1024)
+                if not chunk:
+                    break
+                stream.send(chunk)
+            stream.finish()
 
         vol = pool.createXML(
             f"""<volume type='file'>
   <name>{domreq.name}-root.qcow2</name>
   <capacity unit='GiB'>{20}</capacity>
   <backingStore>
-    <path>{os.path.join(IMAGES_ROOT, 'focal-server-cloudimg-amd64.img')}</path>
+    <path>{base_img.path()}</path>
     <format type='qcow2'/>
   </backingStore>
   <target>
@@ -121,14 +178,30 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         )
         root_image_path = vol.path()
 
+        dom_uuid = uuid.uuid4()
+
         ip = ip_address(domreq.private_ip)
         mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
             0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
         )
-        cloud_config_image_path = image._cloud_config_path(domreq.name)
+        ccfg_raw = create_cloud_config_image(dom_uuid, domreq.user_data, mac, str(ip), domreq.name)
+        stream = conn.newStream()
+        ccfg_vol = pool.createXML(
+            f"""<volume type='file'>
+  <name>{domreq.name}-cloud-init.img</name>
+  <capacity unit='B'>{len(ccfg_raw)}</capacity>
+  <target>
+    <format type='raw'/>
+  </target>
+</volume>"""
+        )
+        ccfg_vol.upload(stream, 0, len(ccfg_raw))
+        stream.send(ccfg_raw)
+        stream.finish()
 
         dom = conn.defineXML(
             f"""<domain type='kvm'>
+  <uuid>{dom_uuid}</uuid>
   <features>
     <acpi/>
   </features>
@@ -147,7 +220,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     </disk>
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
-      <source file='{cloud_config_image_path}'/>
+      <source file='{ccfg_vol.path()}'/>
       <target dev='vde' bus='sata'/>
     </disk>
     <interface type='network'>
@@ -159,9 +232,6 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
   </devices>
 </domain>"""
         )
-
-        create_cloud_config_image(dom.UUIDString(), domreq.user_data, mac, str(ip), domreq.name)
-        pool.refresh()
 
         dom.setAutostart(True)
         dom.create()

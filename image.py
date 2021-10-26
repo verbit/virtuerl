@@ -14,22 +14,27 @@ def _cloud_config_path(name):
     return os.path.join(IMAGES_ROOT, f"{name}-cloud-init.img")
 
 
-def _read_from_cloud_config_file(name, section):
-    out = subprocess.run(
-        ["isoinfo", "-R", "-x", section, "-i", _cloud_config_path(name)],
-        capture_output=True,
-        check=True,
-        text=True,
-    )
-    return out.stdout
+def _read_from_cloud_config_file(data, section):
+
+    with tempfile.NamedTemporaryFile(mode="wb") as f:
+        f.write(data)
+        f.flush()
+
+        out = subprocess.run(
+            ["isoinfo", "-R", "-x", section, "-i", f.name],
+            capture_output=True,
+            check=True,
+            text=True,
+        )
+        return out.stdout
 
 
-def read_user_data_from_cloud_config_image(name):
-    return _read_from_cloud_config_file(name, "/user-data")
+def read_user_data_from_cloud_config_image(data):
+    return _read_from_cloud_config_file(data, "/user-data")
 
 
-def read_ip_from_cloud_config_image(name):
-    network_config = _read_from_cloud_config_file(name, "/network-config")
+def read_ip_from_cloud_config_image(data):
+    network_config = _read_from_cloud_config_file(data, "/network-config")
     network_config_dict = yaml.safe_load(network_config)
     cidr = network_config_dict["ethernets"]["primary"]["addresses"][0]
     ip, prefix = cidr.split("/")
@@ -56,10 +61,11 @@ ethernets:
 local-hostname: {name}
 """
 
-    cloud_config_path = _cloud_config_path(name)
     with tempfile.NamedTemporaryFile(mode="w+") as fn, tempfile.NamedTemporaryFile(
         mode="w+"
-    ) as fud, tempfile.NamedTemporaryFile(mode="w+") as fmd:
+    ) as fud, tempfile.NamedTemporaryFile(mode="w+") as fmd, tempfile.NamedTemporaryFile(
+        mode="rb"
+    ) as out:
         fn.write(network_config)
         fn.flush()
 
@@ -70,7 +76,7 @@ local-hostname: {name}
         fmd.flush()
 
         subprocess.run(
-            ["cloud-localds", "--network-config", fn.name, cloud_config_path, fud.name, fmd.name],
+            ["cloud-localds", "--network-config", fn.name, out.name, fud.name, fmd.name],
             check=True,
         )
-    return cloud_config_path
+        return out.read()
