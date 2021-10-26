@@ -18,9 +18,9 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   name='port_forwarding.proto',
   package='',
   syntax='proto3',
-  serialized_options=None,
+  serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x15port_forwarding.proto\x1a\x1bgoogle/protobuf/empty.proto\"A\n\x18PortForwardingIdentifier\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\"_\n\x0ePortForwarding\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\x12\x11\n\ttarget_ip\x18\x04 \x01(\t\x12\x13\n\x0btarget_port\x18\x05 \x01(\r\"\x1c\n\x1aListPortForwardingsRequest\"H\n\x1bListPortForwardingsResponse\x12)\n\x10port_forwardings\x18\x01 \x03(\x0b\x32\x0f.PortForwarding\"D\n\x18PutPortForwardingRequest\x12(\n\x0fport_forwarding\x18\x01 \x01(\x0b\x32\x0f.PortForwarding2\xbe\x02\n\x15PortForwardingService\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x62\x06proto3'
+  serialized_pb=b'\n\x15port_forwarding.proto\x1a\x1bgoogle/protobuf/empty.proto\"A\n\x18PortForwardingIdentifier\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\"_\n\x0ePortForwarding\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\x12\x11\n\ttarget_ip\x18\x04 \x01(\t\x12\x13\n\x0btarget_port\x18\x05 \x01(\r\"\x1c\n\x1aListPortForwardingsRequest\"H\n\x1bListPortForwardingsResponse\x12)\n\x10port_forwardings\x18\x01 \x03(\x0b\x32\x0f.PortForwarding\"D\n\x18PutPortForwardingRequest\x12(\n\x0fport_forwarding\x18\x01 \x01(\x0b\x32\x0f.PortForwarding2\xbe\x02\n\x15PortForwardingService\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -252,6 +252,7 @@ PutPortForwardingRequest = _reflection.GeneratedProtocolMessageType('PutPortForw
 _sym_db.RegisterMessage(PutPortForwardingRequest)
 
 
+DESCRIPTOR._options = None
 
 _PORTFORWARDINGSERVICE = _descriptor.ServiceDescriptor(
   name='PortForwardingService',

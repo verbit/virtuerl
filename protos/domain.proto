@@ -19,6 +19,7 @@ message Domain {
   string state = 8;
   string private_ip = 9;
   string user_data = 10;
+  bool nested_virtualization = 11;
 }
 
 message ListDomainsRequest {}
