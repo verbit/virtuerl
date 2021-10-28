@@ -23,7 +23,6 @@ FROM base as base_run
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libvirt0 \
         iptables \
-        cloud-image-utils \
     && rm -rf /var/lib/apt/lists/*
 
 

@@ -15,11 +15,11 @@ def data():
     )
 
 
-def test_read_ip_linux(data):
+def test_read_ip(data):
     ip = read_ip_from_cloud_config_image(data)
     assert ip == "192.168.1.43"
 
 
-def test_read_user_data_linux(data):
+def test_read_user_data(data):
     user_data = read_user_data_from_cloud_config_image(data)
     assert user_data == "hello world"
