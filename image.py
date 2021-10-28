@@ -1,32 +1,16 @@
-import os
-import subprocess
-import tempfile
+from io import BytesIO
 
+import pycdlib
 import yaml
-
-IMAGES_ROOT = "/data/restvirt/images"
-
-
-# TODO: rewrite all of that with pycdlib
-
-
-def _cloud_config_path(name):
-    return os.path.join(IMAGES_ROOT, f"{name}-cloud-init.img")
 
 
 def _read_from_cloud_config_file(data, section):
-
-    with tempfile.NamedTemporaryFile(mode="wb") as f:
-        f.write(data)
-        f.flush()
-
-        out = subprocess.run(
-            ["isoinfo", "-R", "-x", section, "-i", f.name],
-            capture_output=True,
-            check=True,
-            text=True,
-        )
-        return out.stdout
+    section_data = BytesIO()
+    iso = pycdlib.PyCdlib()
+    iso.open_fp(BytesIO(data))
+    iso.get_file_from_iso_fp(section_data, joliet_path=section)
+    iso.close()
+    return section_data.getvalue().decode()
 
 
 def read_user_data_from_cloud_config_image(data):
@@ -61,22 +45,33 @@ ethernets:
 local-hostname: {name}
 """
 
-    with tempfile.NamedTemporaryFile(mode="w+") as fn, tempfile.NamedTemporaryFile(
-        mode="w+"
-    ) as fud, tempfile.NamedTemporaryFile(mode="w+") as fmd, tempfile.NamedTemporaryFile(
-        mode="rb"
-    ) as out:
-        fn.write(network_config)
-        fn.flush()
+    iso = pycdlib.PyCdlib()
+    iso.new(
+        interchange_level=3,
+        joliet=3,
+        rock_ridge="1.09",
+        vol_ident="cidata",
+        sys_ident="LINUX",
+    )
 
-        fud.write(user_data)
-        fud.flush()
+    iso_config = {
+        "network-config": network_config,
+        "meta-data": meta_config,
+        "user-data": user_data,
+    }
 
-        fmd.write(meta_config)
-        fmd.flush()
-
-        subprocess.run(
-            ["cloud-localds", "--network-config", fn.name, out.name, fud.name, fmd.name],
-            check=True,
+    for section_name, data_string in iso_config.items():
+        data = data_string.encode()
+        iso.add_fp(
+            BytesIO(data),
+            len(data),
+            iso_path=f'/{section_name.replace("-", "").upper()}.;1',
+            rr_name=section_name,
+            joliet_path=f"/{section_name}",
         )
-        return out.read()
+
+    result = BytesIO()
+    iso.write_fp(result)
+    iso.close()
+
+    return result.getvalue()
