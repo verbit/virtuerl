@@ -1,3 +1,4 @@
+import ipaddress
 from io import BytesIO
 
 import pycdlib
@@ -25,7 +26,10 @@ def read_ip_from_cloud_config_image(data):
     return ip
 
 
-def create_cloud_config_image(domain_id, user_data, mac, ip, name):
+def create_cloud_config_image(domain_id, user_data, mac, network, address, gateway, name):
+    assert gateway in network
+    assert address in network
+
     network_config = f"""version: 2
 ethernets:
   primary:
@@ -34,11 +38,11 @@ ethernets:
      dhcp4: false
      # default libvirt network
      addresses:
-       - {ip}/24
-     gateway4: 192.168.122.1
+       - {address}/{network.prefixlen}
+     gateway4: {gateway}
      nameservers:
        addresses:
-         - 192.168.122.1
+         - {gateway}
 """
 
     meta_config = f"""instance-id: {domain_id}

@@ -56,18 +56,44 @@ def test_libvirt_linux():
     libvirt.getVersion()
 
 
+def test_network_linux(client: domain_pb2_grpc.DomainServiceStub):
+    network = client.CreateNetwork(
+        domain_pb2.CreateNetworkRequest(
+            network=domain_pb2.Network(
+                name="restvirt",
+                cidr="192.168.69.0/24",
+            )
+        )
+    )
+
+    resp = client.GetNetwork(domain_pb2.GetNetworkRequest(uuid=network.uuid))
+    assert resp.name == "restvirt"
+    assert resp.cidr == "192.168.69.0/24"
+
+    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
+
+
 def test_create_domain_linux(client: domain_pb2_grpc.DomainServiceStub):
     from main import ensure_rfc1918_rules
 
     ensure_rfc1918_rules()
 
+    network = client.CreateNetwork(
+        domain_pb2.CreateNetworkRequest(
+            network=domain_pb2.Network(
+                name="restvirt",
+                cidr="192.168.69.0/24",
+            )
+        )
+    )
     dom = client.CreateDomain(
         domain_pb2.CreateDomainRequest(
             domain=domain_pb2.Domain(
                 name="test",
                 vcpu=1,
                 memory=512,
-                private_ip="192.168.123.55",
+                private_ip="192.168.69.69",
+                network=network.name,
                 user_data="""#cloud-config
 
 packages:
@@ -80,10 +106,11 @@ runcmd:
         )
     )
 
-    response = wait_for_http("http://192.168.123.55")
+    response = wait_for_http("http://192.168.69.69")
     assert "Welcome to nginx!" in response
 
     client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
+    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
 
 
 def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=180)):

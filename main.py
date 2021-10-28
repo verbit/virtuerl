@@ -1,11 +1,12 @@
 import argparse
+import ipaddress
 import logging
 import os
 import re
 import string
 import uuid
 from concurrent import futures
-from ipaddress import ip_address
+from ipaddress import IPv4Network, ip_address
 from timeit import default_timer as timer
 
 import grpc
@@ -123,6 +124,49 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
             else:
                 raise e
 
+    def GetNetwork(self, request, context):
+        net = conn.networkLookupByUUIDString(request.uuid)
+        net_dict = xmltodict.parse(net.XMLDesc())["network"]
+        net_def = net_dict["ip"]
+        gateway = ipaddress.IPv4Address(net_def["@address"])
+        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
+
+        return domain_pb2.Network(
+            uuid=request.uuid,
+            name=net_dict["name"],
+            cidr=net.with_prefixlen,
+        )
+
+    def ListNetworks(self, request, context):
+        return super().ListNetworks(request, context)
+
+    def CreateNetwork(self, request, context):
+        network = request.network
+        net = IPv4Network(network.cidr)
+        lvnet = conn.networkDefineXML(
+            f"""<network>
+  <name>{network.name}</name>
+  <forward mode='open'/>
+  <bridge stp='on' delay='0'/>
+  <dns>
+    <forwarder domain='internal' addr='127.0.0.1'/>
+  </dns>
+  <ip address='{net[1]}' netmask='{net.netmask}'>
+  </ip>
+</network>
+"""
+        )
+        lvnet.create()
+        lvnet.setAutostart(True)
+        network.uuid = lvnet.UUIDString()
+        return network
+
+    def DeleteNetwork(self, request, context):
+        net = conn.networkLookupByUUIDString(request.uuid)
+        net.destroy()
+        net.undefine()
+        return empty_pb2.Empty()
+
     def GetDomain(self, request, context):
         return domain_pb2.Domain(**get_domain(request.uuid))
 
@@ -180,11 +224,29 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 
         dom_uuid = uuid.uuid4()
 
+        network_name = domreq.network
+        if network_name is None:
+            network_name = "default"  # FIXME: only for backwards-compatibility
+
+        net = conn.networkLookupByName(network_name)
+        net_dict = xmltodict.parse(net.XMLDesc())
+        net_def = net_dict["network"]["ip"]
+        gateway = ipaddress.IPv4Address(net_def["@address"])
+        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
+
         ip = ip_address(domreq.private_ip)
         mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
             0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
         )
-        ccfg_raw = create_cloud_config_image(dom_uuid, domreq.user_data, mac, str(ip), domreq.name)
+        ccfg_raw = create_cloud_config_image(
+            domain_id=dom_uuid,
+            user_data=domreq.user_data,
+            mac=mac,
+            network=net,
+            address=ip,
+            gateway=net[1],
+            name=domreq.name,
+        )
         stream = conn.newStream()
         ccfg_vol = pool.createXML(
             f"""<volume type='file'>
@@ -225,7 +287,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     </disk>
     <interface type='network'>
       <mac address='{mac}'/>
-      <source network='default'/>
+      <source network='{network_name}'/>
       <model type='virtio'/>
     </interface>
     <console type='pty'/>

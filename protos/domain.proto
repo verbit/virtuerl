@@ -36,9 +36,40 @@ message DeleteDomainRequest {
   string uuid = 1;
 }
 
+
+message GetNetworkRequest {
+  string uuid = 1;
+}
+
+message Network {
+  string uuid = 1;
+  string name = 2;
+  string cidr = 3;
+}
+
+message ListNetworksRequest {}
+
+message ListNetworksResponse {
+  repeated Network networks = 1;
+}
+
+message CreateNetworkRequest {
+  Network network = 1;
+}
+
+message DeleteNetworkRequest {
+  string uuid = 1;
+}
+
+
 service DomainService {
   rpc GetDomain(GetDomainRequest) returns (Domain) {}
   rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {}
   rpc CreateDomain(CreateDomainRequest) returns (Domain) {}
   rpc DeleteDomain(DeleteDomainRequest) returns (google.protobuf.Empty) {}
+
+  rpc GetNetwork(GetNetworkRequest) returns (Network) {}
+  rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {}
+  rpc CreateNetwork(CreateNetworkRequest) returns (Network) {}
+  rpc DeleteNetwork(DeleteNetworkRequest) returns (google.protobuf.Empty) {}
 }

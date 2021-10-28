@@ -35,6 +35,26 @@ class DomainServiceStub(object):
                 request_serializer=domain__pb2.DeleteDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.GetNetwork = channel.unary_unary(
+                '/DomainService/GetNetwork',
+                request_serializer=domain__pb2.GetNetworkRequest.SerializeToString,
+                response_deserializer=domain__pb2.Network.FromString,
+                )
+        self.ListNetworks = channel.unary_unary(
+                '/DomainService/ListNetworks',
+                request_serializer=domain__pb2.ListNetworksRequest.SerializeToString,
+                response_deserializer=domain__pb2.ListNetworksResponse.FromString,
+                )
+        self.CreateNetwork = channel.unary_unary(
+                '/DomainService/CreateNetwork',
+                request_serializer=domain__pb2.CreateNetworkRequest.SerializeToString,
+                response_deserializer=domain__pb2.Network.FromString,
+                )
+        self.DeleteNetwork = channel.unary_unary(
+                '/DomainService/DeleteNetwork',
+                request_serializer=domain__pb2.DeleteNetworkRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class DomainServiceServicer(object):
@@ -64,6 +84,30 @@ class DomainServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListNetworks(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_DomainServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -85,6 +129,26 @@ def add_DomainServiceServicer_to_server(servicer, server):
             'DeleteDomain': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteDomain,
                     request_deserializer=domain__pb2.DeleteDomainRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNetwork,
+                    request_deserializer=domain__pb2.GetNetworkRequest.FromString,
+                    response_serializer=domain__pb2.Network.SerializeToString,
+            ),
+            'ListNetworks': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListNetworks,
+                    request_deserializer=domain__pb2.ListNetworksRequest.FromString,
+                    response_serializer=domain__pb2.ListNetworksResponse.SerializeToString,
+            ),
+            'CreateNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateNetwork,
+                    request_deserializer=domain__pb2.CreateNetworkRequest.FromString,
+                    response_serializer=domain__pb2.Network.SerializeToString,
+            ),
+            'DeleteNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteNetwork,
+                    request_deserializer=domain__pb2.DeleteNetworkRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -161,6 +225,74 @@ class DomainService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/DeleteDomain',
             domain__pb2.DeleteDomainRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/DomainService/GetNetwork',
+            domain__pb2.GetNetworkRequest.SerializeToString,
+            domain__pb2.Network.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListNetworks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/DomainService/ListNetworks',
+            domain__pb2.ListNetworksRequest.SerializeToString,
+            domain__pb2.ListNetworksResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CreateNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/DomainService/CreateNetwork',
+            domain__pb2.CreateNetworkRequest.SerializeToString,
+            domain__pb2.Network.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/DomainService/DeleteNetwork',
+            domain__pb2.DeleteNetworkRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
