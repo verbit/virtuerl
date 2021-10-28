@@ -1,3 +1,5 @@
+from ipaddress import ip_address, ip_network
+
 import pytest
 
 from image import (
@@ -9,9 +11,14 @@ from image import (
 
 @pytest.fixture
 def data():
-    name = "name"
     return create_cloud_config_image(
-        "domain_id", "hello world", "mac_address", "192.168.1.43", name
+        domain_id="domain_id",
+        user_data="hello world",
+        mac="mac_address",
+        network=ip_network("192.168.1.0/24"),
+        address=ip_address("192.168.1.43"),
+        gateway=ip_address("192.168.1.1"),
+        name="name",
     )
 
 
