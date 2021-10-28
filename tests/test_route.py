@@ -162,6 +162,8 @@ def client_iproute(engine, rtnl_api):
     yield stub
     server.stop(1)
 
+    rtnl_api.link("del", ifname="restvirtbr0")
+
 
 def test_route_linux(client_iproute: route_pb2_grpc.RouteServiceStub, rtnl_api: IPRoute):
     client = client_iproute

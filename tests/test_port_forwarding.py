@@ -117,3 +117,7 @@ def test_port_forwarding_linux(client_iptables: port_forwarding_pb2_grpc.PortFor
     assert rule["protocol"] == "tcp"
     assert rule["tcp"]["dport"] == "2020"
     assert rule["target"]["DNAT"]["to-destination"] == "192.168.1.69:2021"
+
+    client_iptables.DeletePortForwarding(
+        port_forwarding_pb2.PortForwardingIdentifier(protocol="tcp", source_port=2020)
+    )
