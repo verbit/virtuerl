@@ -225,7 +225,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         dom_uuid = uuid.uuid4()
 
         network_name = domreq.network
-        if network_name is None:
+        if not network_name:
             network_name = "default"  # FIXME: only for backwards-compatibility
 
         net = conn.networkLookupByName(network_name)
