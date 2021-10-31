@@ -179,7 +179,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         domreq = request.domain
 
         pool = conn.storagePoolLookupByName("restvirtimages")
-        base_img_name = "focal-amd64-20211021"
+        base_img_name = "focal-amd64-20211021.qcow2"
         try:
             base_img = pool.storageVolLookupByName(base_img_name)
         except:
