@@ -516,7 +516,7 @@ class UnaryUnaryInterceptor(grpc.ServerInterceptor):
                 ]:
                     status_code = grpc.StatusCode.NOT_FOUND
                 context.set_code(status_code)
-                context.set_details(str(e))
+                context.set_details(f"{e} ({e.get_error_code()})")
                 response = empty_pb2.Empty()
 
             logging.debug(f"{handler_call_details.method} [{(timer() - start)*1000:.3f} ms]")
