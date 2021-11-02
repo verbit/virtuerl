@@ -304,7 +304,13 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def DeleteDomain(self, request, context):
         dom = conn.lookupByUUIDString(str(request.uuid))
         name = dom.name()
-        dom.destroy()
+        try:
+            dom.destroy()
+        except libvirt.libvirtError as e:
+            if "Requested operation is not valid: domain is not running" in str(e):
+                pass
+            else:
+                raise e
         dom.undefine()
 
         pool = conn.storagePoolLookupByName("restvirtimages")
