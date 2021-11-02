@@ -53,7 +53,7 @@ def libvirt_state_to_string(state):
     elif state == libvirt.VIR_DOMAIN_BLOCKED:
         return "BLOCKED"
     elif state == libvirt.VIR_DOMAIN_PAUSED:
-        return "PAUSED "
+        return "PAUSED"
     elif state == libvirt.VIR_DOMAIN_SHUTDOWN:
         return "SHUTDOWN"
     elif state == libvirt.VIR_DOMAIN_CRASHED:
