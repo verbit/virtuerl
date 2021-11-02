@@ -177,33 +177,36 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         domreq = request.domain
 
         pool = conn.storagePoolLookupByName("restvirtimages")
-        base_img_name = "focal-amd64-20211021.qcow2"
-        try:
-            base_img = pool.storageVolLookupByName(base_img_name)
-        except:
-            from urllib.request import urlopen
+        if not domreq.base_image:
+            base_img_name = "focal-amd64-20211021.qcow2"
+            try:
+                base_img = pool.storageVolLookupByName(base_img_name)
+            except:
+                from urllib.request import urlopen
 
-            res = urlopen(
-                f"https://cloud-images.ubuntu.com/releases/focal/release-20211021/ubuntu-20.04-server-cloudimg-amd64.img"
-            )
-            size = int(res.getheader("Content-length"))
-            base_img = pool.createXML(
-                f"""<volume type='file'>
+                res = urlopen(
+                    f"https://cloud-images.ubuntu.com/releases/focal/release-20211021/ubuntu-20.04-server-cloudimg-amd64.img"
+                )
+                size = int(res.getheader("Content-length"))
+                base_img = pool.createXML(
+                    f"""<volume type='file'>
   <name>{base_img_name}</name>
   <capacity unit='B'>{size}</capacity>
   <target>
     <format type='qcow2'/>
   </target>
 </volume>"""
-            )
-            stream = conn.newStream()
-            base_img.upload(stream, 0, size)
-            while True:
-                chunk = res.read(64 * 1024)
-                if not chunk:
-                    break
-                stream.send(chunk)
-            stream.finish()
+                )
+                stream = conn.newStream()
+                base_img.upload(stream, 0, size)
+                while True:
+                    chunk = res.read(64 * 1024)
+                    if not chunk:
+                        break
+                    stream.send(chunk)
+                stream.finish()
+        else:
+            base_img = pool.storageVolLookupByName(domreq.base_image)
 
         vol = pool.createXML(
             f"""<volume type='file'>
