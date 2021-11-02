@@ -66,17 +66,15 @@ def libvirt_state_to_string(state):
 
 
 def domain_to_dict(domain):
-    domain_dict = xmltodict.parse(domain.XMLDesc())
+    domain_dict = xmltodict.parse(domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
     d = domain_dict["domain"]
     return {
-        "id": int(d["@id"]),
         "uuid": d["uuid"],
         "name": d["name"],
         "vcpu": int(d["vcpu"]["#text"]),
         "memory": int(d["memory"]["#text"]) // 1024,
         "network": d["devices"]["interface"]["source"]["@network"],
-        "bridge": d["devices"]["interface"]["source"]["@bridge"],
-        "nested_virtualization": any(f["@name"] == "vmx" for f in d["cpu"]["feature"]),
+        "nested_virtualization": d["cpu"]["@mode"] == "host-model",
     }
 
 
