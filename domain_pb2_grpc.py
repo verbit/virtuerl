@@ -35,6 +35,11 @@ class DomainServiceStub(object):
                 request_serializer=domain__pb2.DeleteDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.DownloadImage = channel.unary_stream(
+                '/DomainService/DownloadImage',
+                request_serializer=domain__pb2.DownloadImageRequest.SerializeToString,
+                response_deserializer=domain__pb2.ImageChunk.FromString,
+                )
         self.GetNetwork = channel.unary_unary(
                 '/DomainService/GetNetwork',
                 request_serializer=domain__pb2.GetNetworkRequest.SerializeToString,
@@ -79,6 +84,12 @@ class DomainServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def DeleteDomain(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DownloadImage(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -130,6 +141,11 @@ def add_DomainServiceServicer_to_server(servicer, server):
                     servicer.DeleteDomain,
                     request_deserializer=domain__pb2.DeleteDomainRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'DownloadImage': grpc.unary_stream_rpc_method_handler(
+                    servicer.DownloadImage,
+                    request_deserializer=domain__pb2.DownloadImageRequest.FromString,
+                    response_serializer=domain__pb2.ImageChunk.SerializeToString,
             ),
             'GetNetwork': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNetwork,
@@ -226,6 +242,23 @@ class DomainService(object):
         return grpc.experimental.unary_unary(request, target, '/DomainService/DeleteDomain',
             domain__pb2.DeleteDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DownloadImage(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_stream(request, target, '/DomainService/DownloadImage',
+            domain__pb2.DownloadImageRequest.SerializeToString,
+            domain__pb2.ImageChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

@@ -20,6 +20,7 @@ message Domain {
   string private_ip = 9;
   string user_data = 10;
   bool nested_virtualization = 11;
+  string base_image = 12;
 }
 
 message ListDomainsRequest {}
@@ -34,6 +35,14 @@ message CreateDomainRequest {
 
 message DeleteDomainRequest {
   string uuid = 1;
+}
+
+message DownloadImageRequest {
+  string domain_id = 1;
+}
+
+message ImageChunk {
+  bytes bytes = 1;
 }
 
 
@@ -67,6 +76,8 @@ service DomainService {
   rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {}
   rpc CreateDomain(CreateDomainRequest) returns (Domain) {}
   rpc DeleteDomain(DeleteDomainRequest) returns (google.protobuf.Empty) {}
+
+  rpc DownloadImage(DownloadImageRequest) returns (stream ImageChunk) {}
 
   rpc GetNetwork(GetNetworkRequest) returns (Network) {}
   rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {}

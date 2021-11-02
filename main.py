@@ -314,6 +314,20 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 
         return empty_pb2.Empty()
 
+    def DownloadImage(self, request, context):
+        dom = conn.lookupByUUIDString(request.domain_id)
+        name = dom.name()
+        pool = conn.storagePoolLookupByName("restvirtimages")
+        vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
+        stream = conn.newStream()
+        vol.download(stream, 0, 0)
+        while True:
+            bytes = stream.recv(64 * 1024)
+            if not bytes:
+                break
+            yield domain_pb2.ImageChunk(bytes=bytes)
+        stream.finish()
+
 
 def _volume_to_dict(vol):
     _, cap, _ = vol.info()
