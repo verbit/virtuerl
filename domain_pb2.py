@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x64omain.proto\x1a\x1bgoogle/protobuf/empty.proto\" \n\x10GetDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xc4\x01\n\x06\x44omain\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04vcpu\x18\x04 \x01(\r\x12\x0e\n\x06memory\x18\x05 \x01(\x04\x12\x0f\n\x07network\x18\x06 \x01(\t\x12\x0e\n\x06\x62ridge\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\x12\n\nprivate_ip\x18\t \x01(\t\x12\x11\n\tuser_data\x18\n \x01(\t\x12\x1d\n\x15nested_virtualization\x18\x0b \x01(\x08\"\x14\n\x12ListDomainsRequest\"/\n\x13ListDomainsResponse\x12\x18\n\x07\x64omains\x18\x01 \x03(\x0b\x32\x07.Domain\".\n\x13\x43reateDomainRequest\x12\x17\n\x06\x64omain\x18\x01 \x01(\x0b\x32\x07.Domain\"#\n\x13\x44\x65leteDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"!\n\x11GetNetworkRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"3\n\x07Network\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04\x63idr\x18\x03 \x01(\t\"\x15\n\x13ListNetworksRequest\"2\n\x14ListNetworksResponse\x12\x1a\n\x08networks\x18\x01 \x03(\x0b\x32\x08.Network\"1\n\x14\x43reateNetworkRequest\x12\x19\n\x07network\x18\x01 \x01(\x0b\x32\x08.Network\"$\n\x14\x44\x65leteNetworkRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t2\xca\x03\n\rDomainService\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12,\n\nGetNetwork\x12\x12.GetNetworkRequest\x1a\x08.Network\"\x00\x12=\n\x0cListNetworks\x12\x14.ListNetworksRequest\x1a\x15.ListNetworksResponse\"\x00\x12\x32\n\rCreateNetwork\x12\x15.CreateNetworkRequest\x1a\x08.Network\"\x00\x12@\n\rDeleteNetwork\x12\x15.DeleteNetworkRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x0c\x64omain.proto\x1a\x1bgoogle/protobuf/empty.proto\" \n\x10GetDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"\xd8\x01\n\x06\x44omain\x12\n\n\x02id\x18\x01 \x01(\x04\x12\x0c\n\x04uuid\x18\x02 \x01(\t\x12\x0c\n\x04name\x18\x03 \x01(\t\x12\x0c\n\x04vcpu\x18\x04 \x01(\r\x12\x0e\n\x06memory\x18\x05 \x01(\x04\x12\x0f\n\x07network\x18\x06 \x01(\t\x12\x0e\n\x06\x62ridge\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\x12\n\nprivate_ip\x18\t \x01(\t\x12\x11\n\tuser_data\x18\n \x01(\t\x12\x1d\n\x15nested_virtualization\x18\x0b \x01(\x08\x12\x12\n\nbase_image\x18\x0c \x01(\t\"\x14\n\x12ListDomainsRequest\"/\n\x13ListDomainsResponse\x12\x18\n\x07\x64omains\x18\x01 \x03(\x0b\x32\x07.Domain\".\n\x13\x43reateDomainRequest\x12\x17\n\x06\x64omain\x18\x01 \x01(\x0b\x32\x07.Domain\"#\n\x13\x44\x65leteDomainRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\")\n\x14\x44ownloadImageRequest\x12\x11\n\tdomain_id\x18\x01 \x01(\t\"\x1b\n\nImageChunk\x12\r\n\x05\x62ytes\x18\x01 \x01(\x0c\"!\n\x11GetNetworkRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"3\n\x07Network\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04\x63idr\x18\x03 \x01(\t\"\x15\n\x13ListNetworksRequest\"2\n\x14ListNetworksResponse\x12\x1a\n\x08networks\x18\x01 \x03(\x0b\x32\x08.Network\"1\n\x14\x43reateNetworkRequest\x12\x19\n\x07network\x18\x01 \x01(\x0b\x32\x08.Network\"$\n\x14\x44\x65leteNetworkRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t2\x83\x04\n\rDomainService\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\rDownloadImage\x12\x15.DownloadImageRequest\x1a\x0b.ImageChunk\"\x00\x30\x01\x12,\n\nGetNetwork\x12\x12.GetNetworkRequest\x1a\x08.Network\"\x00\x12=\n\x0cListNetworks\x12\x14.ListNetworksRequest\x1a\x15.ListNetworksResponse\"\x00\x12\x32\n\rCreateNetwork\x12\x15.CreateNetworkRequest\x1a\x08.Network\"\x00\x12@\n\rDeleteNetwork\x12\x15.DeleteNetworkRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -144,6 +144,13 @@ _DOMAIN = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='base_image', full_name='Domain.base_image', index=11,
+      number=12, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -157,7 +164,7 @@ _DOMAIN = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=80,
-  serialized_end=276,
+  serialized_end=296,
 )
 
 
@@ -181,8 +188,8 @@ _LISTDOMAINSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=278,
-  serialized_end=298,
+  serialized_start=298,
+  serialized_end=318,
 )
 
 
@@ -213,8 +220,8 @@ _LISTDOMAINSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=300,
-  serialized_end=347,
+  serialized_start=320,
+  serialized_end=367,
 )
 
 
@@ -245,8 +252,8 @@ _CREATEDOMAINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=349,
-  serialized_end=395,
+  serialized_start=369,
+  serialized_end=415,
 )
 
 
@@ -277,8 +284,72 @@ _DELETEDOMAINREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=397,
-  serialized_end=432,
+  serialized_start=417,
+  serialized_end=452,
+)
+
+
+_DOWNLOADIMAGEREQUEST = _descriptor.Descriptor(
+  name='DownloadImageRequest',
+  full_name='DownloadImageRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='domain_id', full_name='DownloadImageRequest.domain_id', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=454,
+  serialized_end=495,
+)
+
+
+_IMAGECHUNK = _descriptor.Descriptor(
+  name='ImageChunk',
+  full_name='ImageChunk',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='bytes', full_name='ImageChunk.bytes', index=0,
+      number=1, type=12, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"",
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=497,
+  serialized_end=524,
 )
 
 
@@ -309,8 +380,8 @@ _GETNETWORKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=434,
-  serialized_end=467,
+  serialized_start=526,
+  serialized_end=559,
 )
 
 
@@ -355,8 +426,8 @@ _NETWORK = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=469,
-  serialized_end=520,
+  serialized_start=561,
+  serialized_end=612,
 )
 
 
@@ -380,8 +451,8 @@ _LISTNETWORKSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=522,
-  serialized_end=543,
+  serialized_start=614,
+  serialized_end=635,
 )
 
 
@@ -412,8 +483,8 @@ _LISTNETWORKSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=545,
-  serialized_end=595,
+  serialized_start=637,
+  serialized_end=687,
 )
 
 
@@ -444,8 +515,8 @@ _CREATENETWORKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=597,
-  serialized_end=646,
+  serialized_start=689,
+  serialized_end=738,
 )
 
 
@@ -476,8 +547,8 @@ _DELETENETWORKREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=648,
-  serialized_end=684,
+  serialized_start=740,
+  serialized_end=776,
 )
 
 _LISTDOMAINSRESPONSE.fields_by_name['domains'].message_type = _DOMAIN
@@ -490,6 +561,8 @@ DESCRIPTOR.message_types_by_name['ListDomainsRequest'] = _LISTDOMAINSREQUEST
 DESCRIPTOR.message_types_by_name['ListDomainsResponse'] = _LISTDOMAINSRESPONSE
 DESCRIPTOR.message_types_by_name['CreateDomainRequest'] = _CREATEDOMAINREQUEST
 DESCRIPTOR.message_types_by_name['DeleteDomainRequest'] = _DELETEDOMAINREQUEST
+DESCRIPTOR.message_types_by_name['DownloadImageRequest'] = _DOWNLOADIMAGEREQUEST
+DESCRIPTOR.message_types_by_name['ImageChunk'] = _IMAGECHUNK
 DESCRIPTOR.message_types_by_name['GetNetworkRequest'] = _GETNETWORKREQUEST
 DESCRIPTOR.message_types_by_name['Network'] = _NETWORK
 DESCRIPTOR.message_types_by_name['ListNetworksRequest'] = _LISTNETWORKSREQUEST
@@ -539,6 +612,20 @@ DeleteDomainRequest = _reflection.GeneratedProtocolMessageType('DeleteDomainRequ
   # @@protoc_insertion_point(class_scope:DeleteDomainRequest)
   })
 _sym_db.RegisterMessage(DeleteDomainRequest)
+
+DownloadImageRequest = _reflection.GeneratedProtocolMessageType('DownloadImageRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DOWNLOADIMAGEREQUEST,
+  '__module__' : 'domain_pb2'
+  # @@protoc_insertion_point(class_scope:DownloadImageRequest)
+  })
+_sym_db.RegisterMessage(DownloadImageRequest)
+
+ImageChunk = _reflection.GeneratedProtocolMessageType('ImageChunk', (_message.Message,), {
+  'DESCRIPTOR' : _IMAGECHUNK,
+  '__module__' : 'domain_pb2'
+  # @@protoc_insertion_point(class_scope:ImageChunk)
+  })
+_sym_db.RegisterMessage(ImageChunk)
 
 GetNetworkRequest = _reflection.GeneratedProtocolMessageType('GetNetworkRequest', (_message.Message,), {
   'DESCRIPTOR' : _GETNETWORKREQUEST,
@@ -592,8 +679,8 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=687,
-  serialized_end=1145,
+  serialized_start=779,
+  serialized_end=1294,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetDomain',
@@ -636,9 +723,19 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
+    name='DownloadImage',
+    full_name='DomainService.DownloadImage',
+    index=4,
+    containing_service=None,
+    input_type=_DOWNLOADIMAGEREQUEST,
+    output_type=_IMAGECHUNK,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
     name='GetNetwork',
     full_name='DomainService.GetNetwork',
-    index=4,
+    index=5,
     containing_service=None,
     input_type=_GETNETWORKREQUEST,
     output_type=_NETWORK,
@@ -648,7 +745,7 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListNetworks',
     full_name='DomainService.ListNetworks',
-    index=5,
+    index=6,
     containing_service=None,
     input_type=_LISTNETWORKSREQUEST,
     output_type=_LISTNETWORKSRESPONSE,
@@ -658,7 +755,7 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateNetwork',
     full_name='DomainService.CreateNetwork',
-    index=6,
+    index=7,
     containing_service=None,
     input_type=_CREATENETWORKREQUEST,
     output_type=_NETWORK,
@@ -668,7 +765,7 @@ _DOMAINSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteNetwork',
     full_name='DomainService.DeleteNetwork',
-    index=7,
+    index=8,
     containing_service=None,
     input_type=_DELETENETWORKREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
