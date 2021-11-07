@@ -4,6 +4,7 @@ import logging
 import os
 import re
 import string
+import threading
 import uuid
 from concurrent import futures
 from ipaddress import IPv4Network, ip_address
@@ -104,6 +105,10 @@ def get_domain(uuid):
 
 class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def __init__(self, pool_dir="/data/restvirt"):
+        self.lock = threading.Lock()
+        domains = conn.listAllDomains()
+        self.ips = {get_domain(d.UUIDString())["private_ip"] for d in domains}
+
         try:
             conn.storagePoolLookupByName("restvirtimages")
         except libvirt.libvirtError as e:
@@ -176,6 +181,30 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def CreateDomain(self, request, context):
         domreq = request.domain
 
+        network_name = domreq.network
+        if not network_name:
+            network_name = "default"  # FIXME: only for backwards-compatibility
+
+        net = conn.networkLookupByName(network_name)
+        net_dict = xmltodict.parse(net.XMLDesc())
+        net_def = net_dict["network"]["ip"]
+        gateway = ipaddress.IPv4Address(net_def["@address"])
+        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
+
+        private_ip = domreq.private_ip
+        if not private_ip:
+            available = set(net.hosts())
+            available -= {net.network_address, net.broadcast_address}
+            with self.lock:
+                available -= self.ips
+                private_ip = str(available.pop())
+                self.ips.add(private_ip)
+        else:
+            with self.lock:
+                self.ips.add(private_ip)
+
+        ip = ip_address(private_ip)
+
         pool = conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
             base_img_name = "focal-amd64-20211021.qcow2"
@@ -225,17 +254,6 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 
         dom_uuid = uuid.uuid4()
 
-        network_name = domreq.network
-        if not network_name:
-            network_name = "default"  # FIXME: only for backwards-compatibility
-
-        net = conn.networkLookupByName(network_name)
-        net_dict = xmltodict.parse(net.XMLDesc())
-        net_def = net_dict["network"]["ip"]
-        gateway = ipaddress.IPv4Address(net_def["@address"])
-        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
-
-        ip = ip_address(domreq.private_ip)
         mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
             0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
         )
@@ -304,6 +322,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def DeleteDomain(self, request, context):
         dom = conn.lookupByUUIDString(str(request.uuid))
         name = dom.name()
+        ip = get_domain(dom.UUIDString())["private_ip"]
         try:
             dom.destroy()
         except libvirt.libvirtError as e:
@@ -312,6 +331,9 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
             else:
                 raise e
         dom.undefine()
+
+        with self.lock:
+            self.ips.remove(ip)
 
         pool = conn.storagePoolLookupByName("restvirtimages")
         vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
