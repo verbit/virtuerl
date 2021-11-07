@@ -14,6 +14,7 @@ import grpc
 import libvirt
 import xmltodict
 from google.protobuf import empty_pb2
+from grpc_reflection.v1alpha import reflection
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
@@ -523,6 +524,8 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
 class UnaryUnaryInterceptor(grpc.ServerInterceptor):
     def intercept_service(self, continuation, handler_call_details):
         next = continuation(handler_call_details)
+        if next is None:
+            return None
         if next.unary_unary is None:
             return next
 
@@ -702,5 +705,13 @@ if __name__ == "__main__":
         server.add_secure_port(f"{host}:{port}", creds)
     else:
         server.add_insecure_port(f"{host}:{port}")
+    reflection.enable_server_reflection(
+        [
+            service_descriptor.full_name
+            for service_descriptor in domain_pb2.DESCRIPTOR.services_by_name.values()
+        ]
+        + [reflection.SERVICE_NAME],
+        server,
+    )
     server.start()
     server.wait_for_termination()
