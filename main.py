@@ -80,42 +80,19 @@ def domain_to_dict(domain):
     }
 
 
-def get_domain(uuid):
-    domain = conn.lookupByUUIDString(uuid)
-    domain_dict = domain_to_dict(domain)
-    state, _ = domain.state()
-    pool = conn.storagePoolLookupByName("restvirtimages")
-    vol = pool.storageVolLookupByName(f"{domain_dict['name']}-cloud-init.img")
-    stream = conn.newStream()
-    vol.download(stream, 0, 0)
-    vol.info()
-    res = bytearray()
-    while True:
-        bytes = stream.recv(64 * 1024)
-        res += bytes
-        if not len(bytes):
-            break
-    stream.finish()
-    private_ip = read_ip_from_cloud_config_image(res)
-    user_data = read_user_data_from_cloud_config_image(res)
-    domain_dict["state"] = libvirt_state_to_string(state)
-    domain_dict["private_ip"] = private_ip
-    domain_dict["user_data"] = user_data
-    return domain_dict
-
-
 class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def __init__(self, pool_dir="/data/restvirt"):
+        self.conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
         self.lock = threading.Lock()
-        domains = conn.listAllDomains()
-        self.ips = {get_domain(d.UUIDString())["private_ip"] for d in domains}
+        domains = self.conn.listAllDomains()
+        self.ips = {self._get_domain(d.UUIDString())["private_ip"] for d in domains}
 
         try:
-            conn.storagePoolLookupByName("restvirtimages")
+            self.conn.storagePoolLookupByName("restvirtimages")
         except libvirt.libvirtError as e:
             print(e.get_error_code())
             if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_POOL:
-                pool = conn.storagePoolDefineXML(
+                pool = self.conn.storagePoolDefineXML(
                     f"""<pool type="dir">
       <name>restvirtimages</name>
       <target>
@@ -129,7 +106,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
                 raise e
 
     def GetNetwork(self, request, context):
-        net = conn.networkLookupByUUIDString(request.uuid)
+        net = self.conn.networkLookupByUUIDString(request.uuid)
         net_dict = xmltodict.parse(net.XMLDesc())["network"]
         net_def = net_dict["ip"]
         gateway = ipaddress.IPv4Address(net_def["@address"])
@@ -147,7 +124,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
     def CreateNetwork(self, request, context):
         network = request.network
         net = IPv4Network(network.cidr)
-        lvnet = conn.networkDefineXML(
+        lvnet = self.conn.networkDefineXML(
             f"""<network>
   <name>{network.name}</name>
   <forward mode='open'/>
@@ -166,16 +143,39 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         return network
 
     def DeleteNetwork(self, request, context):
-        net = conn.networkLookupByUUIDString(request.uuid)
+        net = self.conn.networkLookupByUUIDString(request.uuid)
         net.destroy()
         net.undefine()
         return empty_pb2.Empty()
 
+    def _get_domain(self, uuid):
+        domain = self.conn.lookupByUUIDString(uuid)
+        domain_dict = domain_to_dict(domain)
+        state, _ = domain.state()
+        pool = self.conn.storagePoolLookupByName("restvirtimages")
+        vol = pool.storageVolLookupByName(f"{domain_dict['name']}-cloud-init.img")
+        stream = self.conn.newStream()
+        vol.download(stream, 0, 0)
+        vol.info()
+        res = bytearray()
+        while True:
+            bytes = stream.recv(64 * 1024)
+            res += bytes
+            if not len(bytes):
+                break
+        stream.finish()
+        private_ip = read_ip_from_cloud_config_image(res)
+        user_data = read_user_data_from_cloud_config_image(res)
+        domain_dict["state"] = libvirt_state_to_string(state)
+        domain_dict["private_ip"] = private_ip
+        domain_dict["user_data"] = user_data
+        return domain_dict
+
     def GetDomain(self, request, context):
-        return domain_pb2.Domain(**get_domain(request.uuid))
+        return domain_pb2.Domain(**self._get_domain(request.uuid))
 
     def ListDomains(self, request, context):
-        domains = conn.listAllDomains()
+        domains = self.conn.listAllDomains()
         ds = [domain_pb2.Domain(**domain_to_dict(d)) for d in domains]
         return domain_pb2.ListDomainsResponse(domains=ds)
 
@@ -186,7 +186,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         if not network_name:
             network_name = "default"  # FIXME: only for backwards-compatibility
 
-        net = conn.networkLookupByName(network_name)
+        net = self.conn.networkLookupByName(network_name)
         net_dict = xmltodict.parse(net.XMLDesc())
         net_def = net_dict["network"]["ip"]
         gateway = ipaddress.IPv4Address(net_def["@address"])
@@ -206,7 +206,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 
         ip = ip_address(private_ip)
 
-        pool = conn.storagePoolLookupByName("restvirtimages")
+        pool = self.conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
             base_img_name = "focal-amd64-20211021.qcow2"
             try:
@@ -227,7 +227,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
   </target>
 </volume>"""
                 )
-                stream = conn.newStream()
+                stream = self.conn.newStream()
                 base_img.upload(stream, 0, size)
                 while True:
                     chunk = res.read(64 * 1024)
@@ -267,7 +267,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
             gateway=net[1],
             name=domreq.name,
         )
-        stream = conn.newStream()
+        stream = self.conn.newStream()
         ccfg_vol = pool.createXML(
             f"""<volume type='file'>
   <name>{domreq.name}-cloud-init.img</name>
@@ -281,7 +281,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         stream.send(ccfg_raw)
         stream.finish()
 
-        dom = conn.defineXML(
+        dom = self.conn.defineXML(
             f"""<domain type='kvm'>
   <uuid>{dom_uuid}</uuid>
   <features>
@@ -318,12 +318,12 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         dom.setAutostart(True)
         dom.create()
 
-        return domain_pb2.Domain(**get_domain(dom.UUIDString()))
+        return domain_pb2.Domain(**self._get_domain(dom.UUIDString()))
 
     def DeleteDomain(self, request, context):
-        dom = conn.lookupByUUIDString(str(request.uuid))
+        dom = self.conn.lookupByUUIDString(str(request.uuid))
         name = dom.name()
-        ip = get_domain(dom.UUIDString())["private_ip"]
+        ip = self._get_domain(dom.UUIDString())["private_ip"]
         try:
             dom.destroy()
         except libvirt.libvirtError as e:
@@ -336,7 +336,7 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         with self.lock:
             self.ips.remove(ip)
 
-        pool = conn.storagePoolLookupByName("restvirtimages")
+        pool = self.conn.storagePoolLookupByName("restvirtimages")
         vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
         vol.delete()
         vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
@@ -345,11 +345,11 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
         return empty_pb2.Empty()
 
     def DownloadImage(self, request, context):
-        dom = conn.lookupByUUIDString(request.domain_id)
+        dom = self.conn.lookupByUUIDString(request.domain_id)
         name = dom.name()
-        pool = conn.storagePoolLookupByName("restvirtimages")
+        pool = self.conn.storagePoolLookupByName("restvirtimages")
         vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
-        stream = conn.newStream()
+        stream = self.conn.newStream()
         vol.download(stream, 0, 0)
         while True:
             bytes = stream.recv(64 * 1024)
