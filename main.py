@@ -35,7 +35,6 @@ from route import (
     RouteService,
 )
 
-conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
 
@@ -94,19 +93,22 @@ def disk_address(domain, volume_id):
 
 
 class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
+    def __init__(self):
+        self.conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
+
     def GetVolume(self, request, context):
-        pool = conn.storagePoolLookupByName("volumes")
+        pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.storageVolLookupByName(id)
         return volume_pb2.Volume(**_volume_to_dict(vol))
 
     def ListVolumes(self, request, context):
-        pool = conn.storagePoolLookupByName("volumes")
+        pool = self.conn.storagePoolLookupByName("volumes")
         vols = pool.listAllVolumes()
         vol_dicts = [_volume_to_dict(vol) for vol in vols]
         return volume_pb2.ListVolumesResponse(volumes=[volume_pb2.Volume(**d) for d in vol_dicts])
 
     def CreateVolume(self, request, context):
-        pool = conn.storagePoolLookupByName("volumes")
+        pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.createXML(
             f"""<volume>
   <name>{request.volume.name}</name>
@@ -123,14 +125,14 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
         )
 
     def DeleteVolume(self, request, context):
-        pool = conn.storagePoolLookupByName("volumes")
+        pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.storageVolLookupByName(id)
-        if _get_all_attachments(conn.listAllDomains(), vol):
+        if _get_all_attachments(self.conn.listAllDomains(), vol):
             raise Exception("volume is attached z")
         vol.delete()
 
     def ListVolumeAttachments(self, request, context):
-        domain = conn.lookupByUUIDString(request.domain_id)
+        domain = self.conn.lookupByUUIDString(request.domain_id)
         return volume_pb2.ListVolumeAttachmentsResponse(
             attachments=[
                 volume_pb2.VolumeAttachment(domain_id=request.domain_id, **a)
@@ -139,8 +141,8 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
         )
 
     def GetVolumeAttachment(self, request, context):
-        domain = conn.lookupByUUIDString(request.domain_id)
-        pool = conn.storagePoolLookupByName("volumes")
+        domain = self.conn.lookupByUUIDString(request.domain_id)
+        pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.storageVolLookupByName(request.volume_id)
 
         return volume_pb2.VolumeAttachment(
@@ -150,8 +152,8 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
         )
 
     def AttachVolume(self, request, context):
-        domain = conn.lookupByUUIDString(request.domain_id)
-        pool = conn.storagePoolLookupByName("volumes")
+        domain = self.conn.lookupByUUIDString(request.domain_id)
+        pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.storageVolLookupByName(request.volume_id)
 
         domain_dict = xmltodict.parse(domain.XMLDesc())
@@ -190,7 +192,7 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
         )
 
     def DetachVolume(self, request, context):
-        domain = conn.lookupByUUIDString(request.domain_id)
+        domain = self.conn.lookupByUUIDString(request.domain_id)
         try:
             domain.detachDeviceAlias(
                 f"ua-{request.volume_id}",
