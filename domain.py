@@ -163,12 +163,14 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
 
         private_ip = domreq.private_ip
         if not private_ip:
-            available = set(net.hosts())
-            available -= {net.network_address, net.broadcast_address}
+            available = {str(h) for h in net.hosts()}
+            available -= {str(net.network_address), str(net.broadcast_address)}
             with self.lock:
+                print(self.ips)
                 available -= self.ips
-                private_ip = str(available.pop())
+                private_ip = available.pop()
                 self.ips.add(private_ip)
+                print(self.ips)
         else:
             with self.lock:
                 self.ips.add(private_ip)
