@@ -328,3 +328,20 @@ class DomainService(domain_pb2_grpc.DomainServiceServicer):
                 break
             yield domain_pb2.ImageChunk(bytes=bytes)
         stream.finish()
+
+
+class DomainFacade(domain_pb2_grpc.DomainServiceServicer):
+    def __init__(self, channel):
+        self.client = domain_pb2_grpc.DomainServiceStub(channel)
+
+    def GetDomain(self, request, context):
+        return self.client.GetDomain(request)
+
+    def ListDomains(self, request, context):
+        return self.client.ListDomains(request)
+
+    def CreateDomain(self, request, context):
+        return self.client.CreateDomain(request)
+
+    def DeleteDomain(self, request, context):
+        return self.client.DeleteDomain(request)

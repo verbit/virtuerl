@@ -6,16 +6,13 @@ import pytest
 from pyroute2 import IPRoute
 from sqlalchemy.orm import sessionmaker
 
+import daemon_pb2
+import daemon_pb2_grpc
+import route
 import route_pb2
 import route_pb2_grpc
-from route import (
-    GenericRouteController,
-    GenericRouteTableController,
-    IPRouteSynchronizer,
-    IPRouteTableSynchronizer,
-    RouteService,
-    SyncEventHandler,
-)
+from daemon import DaemonService
+from route import GenericRouteController, GenericRouteTableController, RouteService
 
 
 @pytest.fixture
@@ -146,20 +143,34 @@ def client_iproute(engine, rtnl_api):
     rtnl_api.link("set", index=dev, state="up")
 
     logging.basicConfig()
+
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    port = server.add_insecure_port("localhost:0")
+    daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    daemon_port = daemon.add_insecure_port("localhost:0")
+
+    le_channel = grpc.insecure_channel(f"localhost:{daemon_port}")
+    le_client = daemon_pb2_grpc.DaemonServiceStub(le_channel)
+
+    class RouteSyncEventHandler(route.SyncEventHandler):
+        def handle_sync(self, session):
+            le_client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
+
+    sync_handler = RouteSyncEventHandler()
     session_factory = sessionmaker(engine, future=True)
-    route_table_controller = GenericRouteTableController(
-        session_factory, IPRouteTableSynchronizer()
-    )
-    route_controller = GenericRouteController(session_factory, IPRouteSynchronizer())
+    route_table_controller = GenericRouteTableController(session_factory, sync_handler)
+    route_controller = GenericRouteController(session_factory, sync_handler)
     route_pb2_grpc.add_RouteServiceServicer_to_server(
         RouteService(route_table_controller, route_controller), server
     )
-    port = server.add_insecure_port("localhost:0")
     server.start()
+
     channel = grpc.insecure_channel(f"localhost:{port}")
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(DaemonService(channel), daemon)
+    daemon.start()
     stub = route_pb2_grpc.RouteServiceStub(channel)
     yield stub
+    daemon.stop(1)
     server.stop(1)
 
     rtnl_api.link("del", ifname="restvirtbr0")

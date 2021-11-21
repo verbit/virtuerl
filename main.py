@@ -14,24 +14,26 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import daemon_pb2
+import daemon_pb2_grpc
 import dns_pb2_grpc
 import domain_pb2
 import domain_pb2_grpc
 import port_forwarding_pb2_grpc
+import route
 import route_pb2_grpc
 import volume_pb2_grpc
+from daemon import DaemonService
 from dns import DNSController, DNSService
-from domain import DomainService
+from domain import DomainFacade, DomainService
 from models import Base
-from port_forwarding import IPTablesPortForwardingSynchronizer, PortForwardingService
-from route import (
-    GenericRouteController,
-    GenericRouteTableController,
-    IPRouteSynchronizer,
-    IPRouteTableSynchronizer,
-    RouteService,
+from port_forwarding import (
+    IPTablesPortForwardingSynchronizer,
+    PortForwardingFacade,
+    PortForwardingService,
 )
-from volume import VolumeService
+from route import GenericRouteController, GenericRouteTableController, RouteService
+from volume import VolumeFacade, VolumeService
 
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
@@ -177,25 +179,27 @@ if __name__ == "__main__":
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
+    le_channel = grpc.insecure_channel("localhost:8095")
     dns_pb2_grpc.add_DNSServicer_to_server(DNSService(dns_controller), server)
-    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainService(), server)
-    port_forwarding_service = PortForwardingService(
-        session_factory, IPTablesPortForwardingSynchronizer()
-    )
-    port_forwarding_service.sync()
+    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainFacade(le_channel), server)
     port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(
-        port_forwarding_service, server
+        PortForwardingFacade(le_channel), server
     )
-    route_table_controller = GenericRouteTableController(
-        session_factory, IPRouteTableSynchronizer()
-    )
-    route_table_controller.sync()
-    route_controller = GenericRouteController(session_factory, IPRouteSynchronizer())
-    route_controller.sync()
+
+    le_client = daemon_pb2_grpc.DaemonServiceStub(le_channel)
+
+    class RouteSyncEventHandler(route.SyncEventHandler):
+        def handle_sync(self, session):
+            le_client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
+
+    sync_handler = RouteSyncEventHandler()
+
+    route_table_controller = GenericRouteTableController(session_factory, sync_handler)
+    route_controller = GenericRouteController(session_factory, sync_handler)
     route_pb2_grpc.add_RouteServiceServicer_to_server(
         RouteService(route_table_controller, route_controller), server
     )
-    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeService(), server)
+    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeFacade(le_channel), server)
 
     server_key_pair_provided = args.server_cert is not None and args.server_key is not None
     assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
@@ -220,6 +224,7 @@ if __name__ == "__main__":
         server.add_secure_port(f"{host}:{port}", creds)
     else:
         server.add_insecure_port(f"{host}:{port}")
+    server.add_insecure_port("localhost:8094")
     reflection.enable_server_reflection(
         [
             service_descriptor.full_name
@@ -229,4 +234,25 @@ if __name__ == "__main__":
         server,
     )
     server.start()
+
+    # Setup and start daemon server
+    daemon = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
+    )
+    daemon.add_insecure_port("localhost:8095")
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(
+        DaemonService(grpc.insecure_channel("localhost:8094")), daemon
+    )
+    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainService(), daemon)
+    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeService(), daemon)
+    port_forwarding_service = PortForwardingService(
+        session_factory, IPTablesPortForwardingSynchronizer()
+    )
+    port_forwarding_service.sync()
+    port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(
+        port_forwarding_service, daemon
+    )
+    daemon.start()
+
     server.wait_for_termination()
+    daemon.wait_for_termination()
