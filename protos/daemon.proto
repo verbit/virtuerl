@@ -1,0 +1,11 @@
+syntax = "proto3";
+
+option go_package = ".;pb";
+
+import "google/protobuf/empty.proto";
+
+message SyncRoutesRequest {}
+
+service DaemonService {
+  rpc SyncRoutes(SyncRoutesRequest) returns (google.protobuf.Empty) {}
+}

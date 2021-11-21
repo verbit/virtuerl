@@ -55,6 +55,11 @@ class RouteServiceStub(object):
                 request_serializer=route__pb2.RouteIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.Sync = channel.unary_unary(
+                '/RouteService/Sync',
+                request_serializer=route__pb2.SyncRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
 
 
 class RouteServiceServicer(object):
@@ -108,6 +113,12 @@ class RouteServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def Sync(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_RouteServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -149,6 +160,11 @@ def add_RouteServiceServicer_to_server(servicer, server):
             'DeleteRoute': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteRoute,
                     request_deserializer=route__pb2.RouteIdentifier.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'Sync': grpc.unary_unary_rpc_method_handler(
+                    servicer.Sync,
+                    request_deserializer=route__pb2.SyncRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -293,6 +309,23 @@ class RouteService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/DeleteRoute',
             route__pb2.RouteIdentifier.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def Sync(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/RouteService/Sync',
+            route__pb2.SyncRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

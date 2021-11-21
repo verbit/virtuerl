@@ -172,3 +172,20 @@ class PortForwardingService(port_forwarding_pb2_grpc.PortForwardingServiceServic
     def sync(self):
         with self.session_factory() as session:
             self.sync_handler.handle_sync(session)
+
+
+class PortForwardingFacade(port_forwarding_pb2_grpc.PortForwardingServiceServicer):
+    def __init__(self, channel):
+        self.client = port_forwarding_pb2_grpc.PortForwardingServiceStub(channel)
+
+    def GetPortForwarding(self, request, context):
+        return self.client.GetPortForwarding(request)
+
+    def ListPortForwardings(self, request, context):
+        return self.client.ListPortForwardings(request)
+
+    def PutPortForwarding(self, request, context):
+        return self.client.PutPortForwarding(request)
+
+    def DeletePortForwarding(self, request, context):
+        return self.client.DeletePortForwarding(request)

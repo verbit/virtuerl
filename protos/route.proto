@@ -49,6 +49,9 @@ message PutRouteRequest {
   Route route = 1;
 }
 
+message SyncRequest {
+}
+
 service RouteService {
   rpc GetRouteTable(RouteTableIdentifier) returns (RouteTable) {}
   rpc ListRouteTables(ListRouteTablesRequest) returns (ListRouteTablesResponse) {}
@@ -59,4 +62,6 @@ service RouteService {
   rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse) {}
   rpc PutRoute(PutRouteRequest) returns (Route) {}
   rpc DeleteRoute(RouteIdentifier) returns (google.protobuf.Empty) {}
+
+  rpc Sync(SyncRequest) returns (google.protobuf.Empty) {}
 }

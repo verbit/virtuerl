@@ -170,3 +170,32 @@ class VolumeService(volume_pb2_grpc.VolumeServiceServicer):
         except:
             # TODO: check for string "no device found with alias"
             pass
+
+
+class VolumeFacade(volume_pb2_grpc.VolumeServiceServicer):
+    def __init__(self, channel):
+        self.client = volume_pb2_grpc.VolumeServiceStub(channel)
+
+    def GetVolume(self, request, context):
+        return self.client.GetVolume(request)
+
+    def ListVolumes(self, request, context):
+        return self.client.ListVolumes(request)
+
+    def CreateVolume(self, request, context):
+        return self.client.CreateVolume(request)
+
+    def DeleteVolume(self, request, context):
+        return self.client.DeleteVolume(request)
+
+    def ListVolumeAttachments(self, request, context):
+        return self.client.ListVolumeAttachments(request)
+
+    def GetVolumeAttachment(self, request, context):
+        return self.client.GetVolumeAttachment(request)
+
+    def AttachVolume(self, request, context):
+        return self.client.AttachVolume(request)
+
+    def DetachVolume(self, request, context):
+        return self.client.DetachVolume(request)
