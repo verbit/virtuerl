@@ -14,6 +14,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
+import controller_pb2_grpc
 import daemon_pb2
 import daemon_pb2_grpc
 import dns_pb2_grpc
@@ -23,17 +24,12 @@ import port_forwarding_pb2_grpc
 import route
 import route_pb2_grpc
 import volume_pb2_grpc
+from controller import Controller
 from daemon import DaemonService
-from dns import DNSController, DNSService
-from domain import DomainFacade, DomainService
+from dns import DNSController
 from models import Base
-from port_forwarding import (
-    IPTablesPortForwardingSynchronizer,
-    PortForwardingFacade,
-    PortForwardingService,
-)
-from route import GenericRouteController, GenericRouteTableController, RouteService
-from volume import VolumeFacade, VolumeService
+from port_forwarding import IPTablesPortForwardingSynchronizer
+from route import GenericRouteController, GenericRouteTableController
 
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
@@ -180,12 +176,6 @@ if __name__ == "__main__":
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
     le_channel = grpc.insecure_channel("localhost:8095")
-    dns_pb2_grpc.add_DNSServicer_to_server(DNSService(dns_controller), server)
-    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainFacade(le_channel), server)
-    port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(
-        PortForwardingFacade(le_channel), server
-    )
-
     le_client = daemon_pb2_grpc.DaemonServiceStub(le_channel)
 
     class RouteSyncEventHandler(route.SyncEventHandler):
@@ -196,10 +186,19 @@ if __name__ == "__main__":
 
     route_table_controller = GenericRouteTableController(session_factory, sync_handler)
     route_controller = GenericRouteController(session_factory, sync_handler)
-    route_pb2_grpc.add_RouteServiceServicer_to_server(
-        RouteService(route_table_controller, route_controller), server
+
+    controller = Controller(
+        channel=le_channel,
+        dns_controller=dns_controller,
+        route_table_controller=route_table_controller,
+        route_controller=route_controller,
     )
-    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeFacade(le_channel), server)
+    controller_pb2_grpc.add_ControllerServiceServicer_to_server(controller, server)
+    dns_pb2_grpc.add_DNSServicer_to_server(controller, server)
+    domain_pb2_grpc.add_DomainServiceServicer_to_server(controller, server)
+    port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(controller, server)
+    route_pb2_grpc.add_RouteServiceServicer_to_server(controller, server)
+    volume_pb2_grpc.add_VolumeServiceServicer_to_server(controller, server)
 
     server_key_pair_provided = args.server_cert is not None and args.server_key is not None
     assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
@@ -240,19 +239,14 @@ if __name__ == "__main__":
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
     daemon.add_insecure_port("localhost:8095")
-    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(
-        DaemonService(grpc.insecure_channel("localhost:8094")), daemon
+    daemon_service = DaemonService(
+        session_factory,
+        IPTablesPortForwardingSynchronizer(),
+        grpc.insecure_channel("localhost:8094"),
     )
-    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainService(), daemon)
-    volume_pb2_grpc.add_VolumeServiceServicer_to_server(VolumeService(), daemon)
-    port_forwarding_service = PortForwardingService(
-        session_factory, IPTablesPortForwardingSynchronizer()
-    )
-    port_forwarding_service.sync()
-    port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(
-        port_forwarding_service, daemon
-    )
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
     daemon.start()
+    daemon_service.sync()
 
     server.wait_for_termination()
     daemon.wait_for_termination()

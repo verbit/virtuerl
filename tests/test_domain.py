@@ -1,11 +1,8 @@
 import datetime
-import logging
-from concurrent import futures
 from time import sleep
 from urllib.parse import urljoin
 from urllib.request import urlopen
 
-import grpc
 import pytest
 
 import domain_pb2
@@ -22,18 +19,8 @@ def conn():
 
 
 @pytest.fixture
-def client(engine, pool_dir, conn):
-    from main import DomainService
-
-    logging.basicConfig()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    domain_pb2_grpc.add_DomainServiceServicer_to_server(DomainService(pool_dir=pool_dir), server)
-    port = server.add_insecure_port("localhost:0")
-    server.start()
-    channel = grpc.insecure_channel(f"localhost:{port}")
-    stub = domain_pb2_grpc.DomainServiceStub(channel)
-    yield stub
-    server.stop(1)
+def client(controller_client, pool_dir, conn):
+    yield controller_client
 
     img_pool = conn.storagePoolLookupByName("restvirtimages")
     for vol in img_pool.listAllVolumes():

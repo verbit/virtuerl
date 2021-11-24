@@ -1,11 +1,7 @@
 from dnslib import QTYPE, RCODE, RR, copy
 from dnslib.server import DNSServer
-from google.protobuf import empty_pb2
-from grpc import StatusCode
 from sqlalchemy import delete, select
 
-import dns_pb2
-import dns_pb2_grpc
 from models import DNSRecord
 
 
@@ -87,49 +83,3 @@ class DNSController:
         if self.server is not None:
             self.server.stop()
             self.server = None
-
-
-class DNSService(dns_pb2_grpc.DNSServicer):
-    def __init__(self, dns_controller):
-        self.dns_controller = dns_controller
-
-    def GetDNSRecord(self, request, context):
-        record = self.dns_controller.record(request.name, request.type)
-        if record is None:
-            context.set_code(StatusCode.NOT_FOUND)
-            return
-        return dns_pb2.DNSRecord(
-            name=record.name,
-            type=record.type,
-            ttl=record.ttl,
-            records=record.records,
-        )
-
-    def ListDNSRecords(self, request, context):
-        return dns_pb2.ListDNSRecordsResponse(
-            dns_records=[
-                dns_pb2.DNSRecord(
-                    name=record.name,
-                    type=record.type,
-                    ttl=record.ttl,
-                    records=record.records,
-                )
-                for record in self.dns_controller.records()
-            ]
-        )
-
-    def PutDNSRecord(self, request, context):
-        record = request.dns_record
-        self.dns_controller.set(
-            DNSRecord(
-                name=record.name,
-                type=record.type,
-                ttl=record.ttl,
-                records=record.records,
-            )
-        )
-        return record
-
-    def DeleteDNSRecord(self, request, context):
-        self.dns_controller.remove(request.name, request.type)
-        return empty_pb2.Empty()
