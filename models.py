@@ -50,13 +50,6 @@ mapper_registry = registry()
 Base = mapper_registry.generate_base()
 
 
-class Host(Base):
-    __tablename__ = "hosts"
-
-    name = Column(String, primary_key=True)
-    address = Column(String)
-
-
 class RouteTable(Base):
     __tablename__ = "route_tables"
 

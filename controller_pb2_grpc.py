@@ -2,14 +2,16 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import daemon_pb2 as daemon__pb2
+import controller_pb2 as controller__pb2
+import dns_pb2 as dns__pb2
 import domain_pb2 as domain__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 import port_forwarding_pb2 as port__forwarding__pb2
+import route_pb2 as route__pb2
 import volume_pb2 as volume__pb2
 
 
-class DaemonServiceStub(object):
+class ControllerServiceStub(object):
     """Missing associated documentation comment in .proto file."""
 
     def __init__(self, channel):
@@ -18,120 +20,204 @@ class DaemonServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetDNSRecord = channel.unary_unary(
+                '/ControllerService/GetDNSRecord',
+                request_serializer=dns__pb2.DNSRecordIdentifier.SerializeToString,
+                response_deserializer=dns__pb2.DNSRecord.FromString,
+                )
+        self.ListDNSRecords = channel.unary_unary(
+                '/ControllerService/ListDNSRecords',
+                request_serializer=dns__pb2.ListDNSRecordsRequest.SerializeToString,
+                response_deserializer=dns__pb2.ListDNSRecordsResponse.FromString,
+                )
+        self.PutDNSRecord = channel.unary_unary(
+                '/ControllerService/PutDNSRecord',
+                request_serializer=dns__pb2.PutDNSRecordRequest.SerializeToString,
+                response_deserializer=dns__pb2.DNSRecord.FromString,
+                )
+        self.DeleteDNSRecord = channel.unary_unary(
+                '/ControllerService/DeleteDNSRecord',
+                request_serializer=dns__pb2.DNSRecordIdentifier.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
         self.GetNetwork = channel.unary_unary(
-                '/internal.DaemonService/GetNetwork',
+                '/ControllerService/GetNetwork',
                 request_serializer=domain__pb2.GetNetworkRequest.SerializeToString,
                 response_deserializer=domain__pb2.Network.FromString,
                 )
         self.ListNetworks = channel.unary_unary(
-                '/internal.DaemonService/ListNetworks',
+                '/ControllerService/ListNetworks',
                 request_serializer=domain__pb2.ListNetworksRequest.SerializeToString,
                 response_deserializer=domain__pb2.ListNetworksResponse.FromString,
                 )
         self.CreateNetwork = channel.unary_unary(
-                '/internal.DaemonService/CreateNetwork',
+                '/ControllerService/CreateNetwork',
                 request_serializer=domain__pb2.CreateNetworkRequest.SerializeToString,
                 response_deserializer=domain__pb2.Network.FromString,
                 )
         self.DeleteNetwork = channel.unary_unary(
-                '/internal.DaemonService/DeleteNetwork',
+                '/ControllerService/DeleteNetwork',
                 request_serializer=domain__pb2.DeleteNetworkRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetDomain = channel.unary_unary(
-                '/internal.DaemonService/GetDomain',
+                '/ControllerService/GetDomain',
                 request_serializer=domain__pb2.GetDomainRequest.SerializeToString,
                 response_deserializer=domain__pb2.Domain.FromString,
                 )
         self.ListDomains = channel.unary_unary(
-                '/internal.DaemonService/ListDomains',
+                '/ControllerService/ListDomains',
                 request_serializer=domain__pb2.ListDomainsRequest.SerializeToString,
                 response_deserializer=domain__pb2.ListDomainsResponse.FromString,
                 )
         self.CreateDomain = channel.unary_unary(
-                '/internal.DaemonService/CreateDomain',
+                '/ControllerService/CreateDomain',
                 request_serializer=domain__pb2.CreateDomainRequest.SerializeToString,
                 response_deserializer=domain__pb2.Domain.FromString,
                 )
         self.DeleteDomain = channel.unary_unary(
-                '/internal.DaemonService/DeleteDomain',
+                '/ControllerService/DeleteDomain',
                 request_serializer=domain__pb2.DeleteDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.DownloadImage = channel.unary_stream(
-                '/internal.DaemonService/DownloadImage',
+                '/ControllerService/DownloadImage',
                 request_serializer=domain__pb2.DownloadImageRequest.SerializeToString,
                 response_deserializer=domain__pb2.ImageChunk.FromString,
                 )
         self.GetVolume = channel.unary_unary(
-                '/internal.DaemonService/GetVolume',
+                '/ControllerService/GetVolume',
                 request_serializer=volume__pb2.GetVolumeRequest.SerializeToString,
                 response_deserializer=volume__pb2.Volume.FromString,
                 )
         self.ListVolumes = channel.unary_unary(
-                '/internal.DaemonService/ListVolumes',
+                '/ControllerService/ListVolumes',
                 request_serializer=volume__pb2.ListVolumesRequest.SerializeToString,
                 response_deserializer=volume__pb2.ListVolumesResponse.FromString,
                 )
         self.CreateVolume = channel.unary_unary(
-                '/internal.DaemonService/CreateVolume',
+                '/ControllerService/CreateVolume',
                 request_serializer=volume__pb2.CreateVolumeRequest.SerializeToString,
                 response_deserializer=volume__pb2.Volume.FromString,
                 )
         self.DeleteVolume = channel.unary_unary(
-                '/internal.DaemonService/DeleteVolume',
+                '/ControllerService/DeleteVolume',
                 request_serializer=volume__pb2.DeleteVolumeRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.ListVolumeAttachments = channel.unary_unary(
-                '/internal.DaemonService/ListVolumeAttachments',
+                '/ControllerService/ListVolumeAttachments',
                 request_serializer=volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
                 response_deserializer=volume__pb2.ListVolumeAttachmentsResponse.FromString,
                 )
         self.GetVolumeAttachment = channel.unary_unary(
-                '/internal.DaemonService/GetVolumeAttachment',
+                '/ControllerService/GetVolumeAttachment',
                 request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=volume__pb2.VolumeAttachment.FromString,
                 )
         self.AttachVolume = channel.unary_unary(
-                '/internal.DaemonService/AttachVolume',
+                '/ControllerService/AttachVolume',
                 request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=volume__pb2.VolumeAttachment.FromString,
                 )
         self.DetachVolume = channel.unary_unary(
-                '/internal.DaemonService/DetachVolume',
+                '/ControllerService/DetachVolume',
                 request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetPortForwarding = channel.unary_unary(
-                '/internal.DaemonService/GetPortForwarding',
+                '/ControllerService/GetPortForwarding',
                 request_serializer=port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
                 response_deserializer=port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.ListPortForwardings = channel.unary_unary(
-                '/internal.DaemonService/ListPortForwardings',
+                '/ControllerService/ListPortForwardings',
                 request_serializer=port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
                 response_deserializer=port__forwarding__pb2.ListPortForwardingsResponse.FromString,
                 )
         self.PutPortForwarding = channel.unary_unary(
-                '/internal.DaemonService/PutPortForwarding',
+                '/ControllerService/PutPortForwarding',
                 request_serializer=port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
                 response_deserializer=port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.DeletePortForwarding = channel.unary_unary(
-                '/internal.DaemonService/DeletePortForwarding',
+                '/ControllerService/DeletePortForwarding',
                 request_serializer=port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
+        self.GetRouteTable = channel.unary_unary(
+                '/ControllerService/GetRouteTable',
+                request_serializer=route__pb2.RouteTableIdentifier.SerializeToString,
+                response_deserializer=route__pb2.RouteTable.FromString,
+                )
+        self.ListRouteTables = channel.unary_unary(
+                '/ControllerService/ListRouteTables',
+                request_serializer=route__pb2.ListRouteTablesRequest.SerializeToString,
+                response_deserializer=route__pb2.ListRouteTablesResponse.FromString,
+                )
+        self.CreateRouteTable = channel.unary_unary(
+                '/ControllerService/CreateRouteTable',
+                request_serializer=route__pb2.CreateRouteTableRequest.SerializeToString,
+                response_deserializer=route__pb2.RouteTable.FromString,
+                )
+        self.DeleteRouteTable = channel.unary_unary(
+                '/ControllerService/DeleteRouteTable',
+                request_serializer=route__pb2.RouteTableIdentifier.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.GetRoute = channel.unary_unary(
+                '/ControllerService/GetRoute',
+                request_serializer=route__pb2.RouteIdentifier.SerializeToString,
+                response_deserializer=route__pb2.Route.FromString,
+                )
+        self.ListRoutes = channel.unary_unary(
+                '/ControllerService/ListRoutes',
+                request_serializer=route__pb2.ListRoutesRequest.SerializeToString,
+                response_deserializer=route__pb2.ListRoutesResponse.FromString,
+                )
+        self.PutRoute = channel.unary_unary(
+                '/ControllerService/PutRoute',
+                request_serializer=route__pb2.PutRouteRequest.SerializeToString,
+                response_deserializer=route__pb2.Route.FromString,
+                )
+        self.DeleteRoute = channel.unary_unary(
+                '/ControllerService/DeleteRoute',
+                request_serializer=route__pb2.RouteIdentifier.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
         self.SyncRoutes = channel.unary_unary(
-                '/internal.DaemonService/SyncRoutes',
-                request_serializer=daemon__pb2.SyncRoutesRequest.SerializeToString,
+                '/ControllerService/SyncRoutes',
+                request_serializer=controller__pb2.SyncRoutesRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
 
-class DaemonServiceServicer(object):
+class ControllerServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def GetDNSRecord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListDNSRecords(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PutDNSRecord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteDNSRecord(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def GetNetwork(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -259,6 +345,54 @@ class DaemonServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def GetRouteTable(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListRouteTables(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateRouteTable(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteRouteTable(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def GetRoute(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListRoutes(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def PutRoute(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteRoute(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def SyncRoutes(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -266,8 +400,28 @@ class DaemonServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
 
-def add_DaemonServiceServicer_to_server(servicer, server):
+def add_ControllerServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetDNSRecord': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetDNSRecord,
+                    request_deserializer=dns__pb2.DNSRecordIdentifier.FromString,
+                    response_serializer=dns__pb2.DNSRecord.SerializeToString,
+            ),
+            'ListDNSRecords': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListDNSRecords,
+                    request_deserializer=dns__pb2.ListDNSRecordsRequest.FromString,
+                    response_serializer=dns__pb2.ListDNSRecordsResponse.SerializeToString,
+            ),
+            'PutDNSRecord': grpc.unary_unary_rpc_method_handler(
+                    servicer.PutDNSRecord,
+                    request_deserializer=dns__pb2.PutDNSRecordRequest.FromString,
+                    response_serializer=dns__pb2.DNSRecord.SerializeToString,
+            ),
+            'DeleteDNSRecord': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteDNSRecord,
+                    request_deserializer=dns__pb2.DNSRecordIdentifier.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'GetNetwork': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNetwork,
                     request_deserializer=domain__pb2.GetNetworkRequest.FromString,
@@ -373,20 +527,128 @@ def add_DaemonServiceServicer_to_server(servicer, server):
                     request_deserializer=port__forwarding__pb2.PortForwardingIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
+            'GetRouteTable': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRouteTable,
+                    request_deserializer=route__pb2.RouteTableIdentifier.FromString,
+                    response_serializer=route__pb2.RouteTable.SerializeToString,
+            ),
+            'ListRouteTables': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListRouteTables,
+                    request_deserializer=route__pb2.ListRouteTablesRequest.FromString,
+                    response_serializer=route__pb2.ListRouteTablesResponse.SerializeToString,
+            ),
+            'CreateRouteTable': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateRouteTable,
+                    request_deserializer=route__pb2.CreateRouteTableRequest.FromString,
+                    response_serializer=route__pb2.RouteTable.SerializeToString,
+            ),
+            'DeleteRouteTable': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteRouteTable,
+                    request_deserializer=route__pb2.RouteTableIdentifier.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'GetRoute': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetRoute,
+                    request_deserializer=route__pb2.RouteIdentifier.FromString,
+                    response_serializer=route__pb2.Route.SerializeToString,
+            ),
+            'ListRoutes': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListRoutes,
+                    request_deserializer=route__pb2.ListRoutesRequest.FromString,
+                    response_serializer=route__pb2.ListRoutesResponse.SerializeToString,
+            ),
+            'PutRoute': grpc.unary_unary_rpc_method_handler(
+                    servicer.PutRoute,
+                    request_deserializer=route__pb2.PutRouteRequest.FromString,
+                    response_serializer=route__pb2.Route.SerializeToString,
+            ),
+            'DeleteRoute': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteRoute,
+                    request_deserializer=route__pb2.RouteIdentifier.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'SyncRoutes': grpc.unary_unary_rpc_method_handler(
                     servicer.SyncRoutes,
-                    request_deserializer=daemon__pb2.SyncRoutesRequest.FromString,
+                    request_deserializer=controller__pb2.SyncRoutesRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'internal.DaemonService', rpc_method_handlers)
+            'ControllerService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
  # This class is part of an EXPERIMENTAL API.
-class DaemonService(object):
+class ControllerService(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def GetDNSRecord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetDNSRecord',
+            dns__pb2.DNSRecordIdentifier.SerializeToString,
+            dns__pb2.DNSRecord.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListDNSRecords(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListDNSRecords',
+            dns__pb2.ListDNSRecordsRequest.SerializeToString,
+            dns__pb2.ListDNSRecordsResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def PutDNSRecord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/PutDNSRecord',
+            dns__pb2.PutDNSRecordRequest.SerializeToString,
+            dns__pb2.DNSRecord.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteDNSRecord(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteDNSRecord',
+            dns__pb2.DNSRecordIdentifier.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def GetNetwork(request,
@@ -399,7 +661,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetNetwork',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetNetwork',
             domain__pb2.GetNetworkRequest.SerializeToString,
             domain__pb2.Network.FromString,
             options, channel_credentials,
@@ -416,7 +678,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListNetworks',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListNetworks',
             domain__pb2.ListNetworksRequest.SerializeToString,
             domain__pb2.ListNetworksResponse.FromString,
             options, channel_credentials,
@@ -433,7 +695,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateNetwork',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/CreateNetwork',
             domain__pb2.CreateNetworkRequest.SerializeToString,
             domain__pb2.Network.FromString,
             options, channel_credentials,
@@ -450,7 +712,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteNetwork',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteNetwork',
             domain__pb2.DeleteNetworkRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -467,7 +729,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetDomain',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetDomain',
             domain__pb2.GetDomainRequest.SerializeToString,
             domain__pb2.Domain.FromString,
             options, channel_credentials,
@@ -484,7 +746,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListDomains',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListDomains',
             domain__pb2.ListDomainsRequest.SerializeToString,
             domain__pb2.ListDomainsResponse.FromString,
             options, channel_credentials,
@@ -501,7 +763,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateDomain',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/CreateDomain',
             domain__pb2.CreateDomainRequest.SerializeToString,
             domain__pb2.Domain.FromString,
             options, channel_credentials,
@@ -518,7 +780,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteDomain',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteDomain',
             domain__pb2.DeleteDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -535,7 +797,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/internal.DaemonService/DownloadImage',
+        return grpc.experimental.unary_stream(request, target, '/ControllerService/DownloadImage',
             domain__pb2.DownloadImageRequest.SerializeToString,
             domain__pb2.ImageChunk.FromString,
             options, channel_credentials,
@@ -552,7 +814,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetVolume',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetVolume',
             volume__pb2.GetVolumeRequest.SerializeToString,
             volume__pb2.Volume.FromString,
             options, channel_credentials,
@@ -569,7 +831,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListVolumes',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListVolumes',
             volume__pb2.ListVolumesRequest.SerializeToString,
             volume__pb2.ListVolumesResponse.FromString,
             options, channel_credentials,
@@ -586,7 +848,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateVolume',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/CreateVolume',
             volume__pb2.CreateVolumeRequest.SerializeToString,
             volume__pb2.Volume.FromString,
             options, channel_credentials,
@@ -603,7 +865,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteVolume',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteVolume',
             volume__pb2.DeleteVolumeRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -620,7 +882,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListVolumeAttachments',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListVolumeAttachments',
             volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
             volume__pb2.ListVolumeAttachmentsResponse.FromString,
             options, channel_credentials,
@@ -637,7 +899,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetVolumeAttachment',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetVolumeAttachment',
             volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
@@ -654,7 +916,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/AttachVolume',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/AttachVolume',
             volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
@@ -671,7 +933,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DetachVolume',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DetachVolume',
             volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -688,7 +950,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetPortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetPortForwarding',
             port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
             port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
@@ -705,7 +967,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListPortForwardings',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListPortForwardings',
             port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
             port__forwarding__pb2.ListPortForwardingsResponse.FromString,
             options, channel_credentials,
@@ -722,7 +984,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/PutPortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/PutPortForwarding',
             port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
             port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
@@ -739,8 +1001,144 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeletePortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeletePortForwarding',
             port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRouteTable(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetRouteTable',
+            route__pb2.RouteTableIdentifier.SerializeToString,
+            route__pb2.RouteTable.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListRouteTables(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListRouteTables',
+            route__pb2.ListRouteTablesRequest.SerializeToString,
+            route__pb2.ListRouteTablesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CreateRouteTable(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/CreateRouteTable',
+            route__pb2.CreateRouteTableRequest.SerializeToString,
+            route__pb2.RouteTable.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteRouteTable(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteRouteTable',
+            route__pb2.RouteTableIdentifier.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def GetRoute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/GetRoute',
+            route__pb2.RouteIdentifier.SerializeToString,
+            route__pb2.Route.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListRoutes(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/ListRoutes',
+            route__pb2.ListRoutesRequest.SerializeToString,
+            route__pb2.ListRoutesResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def PutRoute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/PutRoute',
+            route__pb2.PutRouteRequest.SerializeToString,
+            route__pb2.Route.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteRoute(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/DeleteRoute',
+            route__pb2.RouteIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -756,8 +1154,8 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/SyncRoutes',
-            daemon__pb2.SyncRoutesRequest.SerializeToString,
+        return grpc.experimental.unary_unary(request, target, '/ControllerService/SyncRoutes',
+            controller__pb2.SyncRoutesRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

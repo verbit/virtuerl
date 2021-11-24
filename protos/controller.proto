@@ -1,17 +1,22 @@
 syntax = "proto3";
 
-package internal;
-
 option go_package = ".;pb";
 
 import "google/protobuf/empty.proto";
 import "domain.proto";
 import "volume.proto";
 import "port_forwarding.proto";
+import "dns.proto";
+import "route.proto";
 
 message SyncRoutesRequest {}
 
-service DaemonService {
+service ControllerService {
+  rpc GetDNSRecord(DNSRecordIdentifier) returns (DNSRecord) {}
+  rpc ListDNSRecords(ListDNSRecordsRequest) returns (ListDNSRecordsResponse) {}
+  rpc PutDNSRecord(PutDNSRecordRequest) returns (DNSRecord) {}
+  rpc DeleteDNSRecord(DNSRecordIdentifier) returns (google.protobuf.Empty) {}
+
   rpc GetNetwork(GetNetworkRequest) returns (Network) {}
   rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {}
   rpc CreateNetwork(CreateNetworkRequest) returns (Network) {}
@@ -39,5 +44,15 @@ service DaemonService {
   rpc PutPortForwarding(PutPortForwardingRequest) returns (PortForwarding) {}
   rpc DeletePortForwarding(PortForwardingIdentifier) returns (google.protobuf.Empty) {}
 
-  rpc SyncRoutes(internal.SyncRoutesRequest) returns (google.protobuf.Empty) {}
+  rpc GetRouteTable(RouteTableIdentifier) returns (RouteTable) {}
+  rpc ListRouteTables(ListRouteTablesRequest) returns (ListRouteTablesResponse) {}
+  rpc CreateRouteTable(CreateRouteTableRequest) returns (RouteTable) {}
+  rpc DeleteRouteTable(RouteTableIdentifier) returns (google.protobuf.Empty) {}
+
+  rpc GetRoute(RouteIdentifier) returns (Route) {}
+  rpc ListRoutes(ListRoutesRequest) returns (ListRoutesResponse) {}
+  rpc PutRoute(PutRouteRequest) returns (Route) {}
+  rpc DeleteRoute(RouteIdentifier) returns (google.protobuf.Empty) {}
+
+  rpc SyncRoutes(SyncRoutesRequest) returns (google.protobuf.Empty) {}
 }

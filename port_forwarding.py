@@ -1,11 +1,7 @@
 import threading
 
-from google.protobuf import empty_pb2
-from grpc import StatusCode
-from sqlalchemy import delete, select
+from sqlalchemy import select
 
-import port_forwarding_pb2
-import port_forwarding_pb2_grpc
 from models import PortForwarding
 
 
@@ -96,96 +92,3 @@ def _forwarding_to_fwd_rule(f):
         },
         "target": "ACCEPT",
     }
-
-
-class PortForwardingService(port_forwarding_pb2_grpc.PortForwardingServiceServicer):
-    def __init__(self, session_factory, sync_handler):
-        self.session_factory = session_factory
-        self.sync_handler = sync_handler
-
-    def GetPortForwarding(self, request, context):
-        with self.session_factory() as session:
-            forwarding = (
-                session.execute(
-                    select(PortForwarding).filter(
-                        PortForwarding.protocol == request.protocol,
-                        PortForwarding.source_port == request.source_port,
-                    )
-                )
-                .scalars()
-                .one_or_none()
-            )
-        if forwarding is None:
-            context.set_code(StatusCode.NOT_FOUND)
-            return
-        return port_forwarding_pb2.PortForwarding(
-            protocol=forwarding.protocol,
-            source_port=forwarding.source_port,
-            target_ip=forwarding.target_ip,
-            target_port=forwarding.target_port,
-        )
-
-    def ListPortForwardings(self, request, context):
-        with self.session_factory() as session:
-            fwds = session.execute(select(PortForwarding)).scalars().all()
-        return port_forwarding_pb2.ListPortForwardingsResponse(
-            port_forwardings=[
-                port_forwarding_pb2.PortForwarding(
-                    protocol=fwd.protocol,
-                    source_port=fwd.source_port,
-                    target_ip=fwd.target_ip,
-                    target_port=fwd.target_port,
-                )
-                for fwd in fwds
-            ]
-        )
-
-    def PutPortForwarding(self, request, context):
-        f = request.port_forwarding
-        route = PortForwarding(
-            protocol=f.protocol,
-            source_port=f.source_port,
-            target_ip=f.target_ip,
-            target_port=f.target_port,
-        )
-
-        with self.session_factory() as session:
-            session.merge(route)
-            session.commit()
-            self.sync_handler.handle_sync(session)
-
-        return f
-
-    def DeletePortForwarding(self, request, context):
-        with self.session_factory() as session:
-            session.execute(
-                delete(PortForwarding).where(
-                    PortForwarding.protocol == request.protocol,
-                    PortForwarding.source_port == request.source_port,
-                )
-            )
-            session.commit()
-            self.sync_handler.handle_sync(session)
-
-        return empty_pb2.Empty()
-
-    def sync(self):
-        with self.session_factory() as session:
-            self.sync_handler.handle_sync(session)
-
-
-class PortForwardingFacade(port_forwarding_pb2_grpc.PortForwardingServiceServicer):
-    def __init__(self, channel):
-        self.client = port_forwarding_pb2_grpc.PortForwardingServiceStub(channel)
-
-    def GetPortForwarding(self, request, context):
-        return self.client.GetPortForwarding(request)
-
-    def ListPortForwardings(self, request, context):
-        return self.client.ListPortForwardings(request)
-
-    def PutPortForwarding(self, request, context):
-        return self.client.PutPortForwarding(request)
-
-    def DeletePortForwarding(self, request, context):
-        return self.client.DeletePortForwarding(request)

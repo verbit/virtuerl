@@ -1,14 +1,9 @@
-import logging
-from concurrent import futures
-
 import grpc
 import pytest
 from dnslib import CLASS, QTYPE, RR, DNSQuestion, DNSRecord
-from sqlalchemy.orm import sessionmaker
 
 import dns_pb2
 import dns_pb2_grpc
-from dns import DNSController, DNSService
 
 
 class DNSClient:
@@ -23,12 +18,6 @@ class DNSClient:
 
 
 @pytest.fixture
-def dns_controller(engine):
-    session_factory = sessionmaker(engine, future=True)
-    return DNSController(session_factory)
-
-
-@pytest.fixture
 def dns_client(dns_controller):
     port = dns_controller.start(port=0)
     yield DNSClient(port=port)
@@ -36,16 +25,8 @@ def dns_client(dns_controller):
 
 
 @pytest.fixture
-def client(dns_controller):
-    logging.basicConfig()
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    dns_pb2_grpc.add_DNSServicer_to_server(DNSService(dns_controller), server)
-    port = server.add_insecure_port("localhost:0")
-    server.start()
-    channel = grpc.insecure_channel(f"localhost:{port}")
-    stub = dns_pb2_grpc.DNSStub(channel)
-    yield stub
-    server.stop(1)
+def client(controller_client_dummy):
+    return controller_client_dummy
 
 
 def test_dns_put(client: dns_pb2_grpc.DNSStub, dns_client):
