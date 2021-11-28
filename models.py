@@ -1,6 +1,7 @@
 from sqlalchemy import (
     Boolean,
     Column,
+    DateTime,
     ForeignKey,
     Integer,
     String,
@@ -48,6 +49,27 @@ class StringSet(TypeDecorator):
 
 mapper_registry = registry()
 Base = mapper_registry.generate_base()
+
+
+class BootstrapToken(Base):
+    __tablename__ = "bootstrap_tokens"
+
+    token = Column(String, primary_key=True)
+    expires_at = Column(DateTime)
+
+    def __repr__(self):
+        return f"BootstrapToken(token={self.token!r}, expires_at={self.expires_at!r})"
+
+
+class Host(Base):
+    __tablename__ = "hosts"
+
+    name = Column(String, primary_key=True)
+    address = Column(String)
+    last_heartbeat = Column(DateTime)
+
+    def __repr__(self):
+        return f"Host(name={self.name!r}, address={self.address!r})"
 
 
 class RouteTable(Base):
