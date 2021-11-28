@@ -3,19 +3,21 @@ from concurrent import futures
 
 import grpc
 import pytest
+from google.protobuf import empty_pb2
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import controller_pb2_grpc
-import daemon_pb2
 import daemon_pb2_grpc
+import host_pb2
+import host_pb2_grpc
 from controller import Controller
 from dns import DNSController
+from host import HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer
-from route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
 OPERATING_SYSTEMS = {"darwin", "linux", "windows"}
 
@@ -80,69 +82,78 @@ def dns_controller(session_factory):
 
 
 class DaemonDummy(daemon_pb2_grpc.DaemonServiceServicer):
-    pass
+    def SyncRoutes(self, request, context):
+        return empty_pb2.Empty()
 
 
 @pytest.fixture
-def controller_client_dummy(session_factory, dns_controller):
-    daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    daemon_port = daemon.add_insecure_port("localhost:0")
-    daemon_channel = grpc.insecure_channel(f"localhost:{daemon_port}")
-
+def controller_channel(session_factory, dns_controller):
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     port = server.add_insecure_port("localhost:0")
     channel = grpc.insecure_channel(f"localhost:{port}")
 
+    controller_pb2_grpc.add_ControllerServiceServicer_to_server(
+        Controller(session_factory, dns_controller),
+        server,
+    )
+    host_pb2_grpc.add_HostServiceServicer_to_server(HostService(session_factory), server)
+
+    server.start()
+    yield channel
+    server.stop(1)
+
+
+@pytest.fixture
+def host_client(controller_channel):
+    return host_pb2_grpc.HostServiceStub(controller_channel)
+
+
+@pytest.fixture
+def controller_client_dummy(controller_channel, host_client):
+    daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
+    daemon_port = daemon.add_insecure_port("localhost:0")
+
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(DaemonDummy(), daemon)
 
-    route_table_controller = GenericRouteTableController(session_factory)
-    route_controller = GenericRouteController(session_factory)
-    controller_pb2_grpc.add_ControllerServiceServicer_to_server(
-        Controller(daemon_channel, dns_controller, route_table_controller, route_controller), server
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name="default",
+                address=f"localhost:{daemon_port}",
+            ),
+        )
     )
 
     daemon.start()
-    server.start()
-
-    yield controller_pb2_grpc.ControllerServiceStub(channel)
-
-    server.stop(1)
+    yield controller_pb2_grpc.ControllerServiceStub(controller_channel)
     daemon.stop(1)
 
 
 @pytest.fixture
-def controller_client(session_factory, dns_controller):
+def controller_client(session_factory, controller_channel, host_client):
     from daemon import DaemonService
 
     daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     daemon_port = daemon.add_insecure_port("localhost:0")
-    daemon_channel = grpc.insecure_channel(f"localhost:{daemon_port}")
-
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    port = server.add_insecure_port("localhost:0")
-    channel = grpc.insecure_channel(f"localhost:{port}")
 
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(
-        DaemonService(session_factory, IPTablesPortForwardingSynchronizer(), channel), daemon
+        DaemonService(session_factory, IPTablesPortForwardingSynchronizer(), controller_channel),
+        daemon,
     )
 
-    daemon_client = daemon_pb2_grpc.DaemonServiceStub(daemon_channel)
-
-    class RouteSyncEventHandler(SyncEventHandler):
-        def handle_sync(self, session):
-            daemon_client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
-
-    sync_handler = RouteSyncEventHandler()
-    route_table_controller = GenericRouteTableController(session_factory, sync_handler)
-    route_controller = GenericRouteController(session_factory, sync_handler)
-    controller_pb2_grpc.add_ControllerServiceServicer_to_server(
-        Controller(daemon_channel, dns_controller, route_table_controller, route_controller), server
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name="default",
+                address=f"localhost:{daemon_port}",
+            ),
+        )
     )
 
     daemon.start()
-    server.start()
-
-    yield controller_pb2_grpc.ControllerServiceStub(channel)
-
-    server.stop(1)
+    yield controller_pb2_grpc.ControllerServiceStub(controller_channel)
     daemon.stop(1)

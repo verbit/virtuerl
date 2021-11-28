@@ -3,12 +3,23 @@ from google.protobuf import empty_pb2
 from grpc import StatusCode
 
 import controller_pb2_grpc
+import daemon_pb2
 import daemon_pb2_grpc
 import dns_pb2
 import dns_pb2_grpc
 import route_pb2
 import route_pb2_grpc
-from models import DNSRecord
+from models import DNSRecord, Host
+from route import GenericRouteController, GenericRouteTableController, SyncEventHandler
+
+
+class ControllerSyncHandler(SyncEventHandler):
+    def __init__(self, controller):
+        self.controller = controller
+
+    def handle_sync(self, session):
+        client = self.controller._get_daemon_client()
+        client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
 
 
 class Controller(
@@ -16,11 +27,25 @@ class Controller(
     dns_pb2_grpc.DNSServicer,
     route_pb2_grpc.RouteServiceServicer,
 ):
-    def __init__(self, channel, dns_controller, route_table_controller, route_controller):
-        self.client = daemon_pb2_grpc.DaemonServiceStub(channel)
+    def __init__(self, session_factory, dns_controller):
+        self.session_factory = session_factory
         self.dns_controller = dns_controller
-        self.route_table_controller = route_table_controller
-        self.route_controller = route_controller
+        sync_handler = ControllerSyncHandler(self)
+        self.route_table_controller = GenericRouteTableController(session_factory, sync_handler)
+        self.route_controller = GenericRouteController(session_factory, sync_handler)
+        self.channel_cache = {}
+
+    def _get_daemon_client(self, hostname="default"):
+        channel = self.channel_cache.get(hostname)
+        if channel is not None:
+            return channel
+        with self.session_factory.begin() as session:
+            host = session.get(Host, hostname)
+            if host is None:
+                raise Exception("No daemon found")
+            channel = daemon_pb2_grpc.DaemonServiceStub(grpc.insecure_channel(host.address))
+            self.channel_cache[hostname] = channel
+            return channel
 
     def GetDNSRecord(self, request, context):
         record = self.dns_controller.record(request.name, request.type)
@@ -128,149 +153,191 @@ class Controller(
         return empty_pb2.Empty()
 
     def GetNetwork(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.GetNetwork(request)
+            return client.GetNetwork(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def ListNetworks(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.ListNetworks(request)
+            return client.ListNetworks(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def CreateNetwork(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.CreateNetwork(request)
+            return client.CreateNetwork(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DeleteNetwork(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.DeleteNetwork(request)
+            return client.DeleteNetwork(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def GetDomain(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.GetDomain(request)
+            return client.GetDomain(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def ListDomains(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.ListDomains(request)
+            return client.ListDomains(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def CreateDomain(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.CreateDomain(request)
+            return client.CreateDomain(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DeleteDomain(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.DeleteDomain(request)
+            return client.DeleteDomain(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DownloadImage(self, request, context):
+        client = self._get_daemon_client()
         try:
-            for chunk in self.client.DownloadImage(request):
+            for chunk in client.DownloadImage(request):
                 yield chunk
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def GetVolume(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.GetVolume(request)
+            return client.GetVolume(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def ListVolumes(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.ListVolumes(request)
+            return client.ListVolumes(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def CreateVolume(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.CreateVolume(request)
+            return client.CreateVolume(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DeleteVolume(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.DeleteVolume(request)
+            return client.DeleteVolume(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def ListVolumeAttachments(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.ListVolumeAttachments(request)
+            return client.ListVolumeAttachments(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def GetVolumeAttachment(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.GetVolumeAttachment(request)
+            return client.GetVolumeAttachment(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def AttachVolume(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.AttachVolume(request)
+            return client.AttachVolume(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DetachVolume(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.DetachVolume(request)
+            return client.DetachVolume(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def GetPortForwarding(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.GetPortForwarding(request)
+            return client.GetPortForwarding(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def ListPortForwardings(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.ListPortForwardings(request)
+            return client.ListPortForwardings(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def PutPortForwarding(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.PutPortForwarding(request)
+            return client.PutPortForwarding(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
 
     def DeletePortForwarding(self, request, context):
+        client = self._get_daemon_client()
         try:
-            return self.client.DeletePortForwarding(request)
+            return client.DeletePortForwarding(request)
         except grpc.RpcError as e:
             context.set_code(e.code())
-            context.set_status(e.status())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
