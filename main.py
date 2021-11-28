@@ -11,25 +11,25 @@ from google.protobuf import empty_pb2
 from grpc_reflection.v1alpha import reflection
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import scoped_session, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 import controller_pb2_grpc
-import daemon_pb2
 import daemon_pb2_grpc
 import dns_pb2_grpc
 import domain_pb2
 import domain_pb2_grpc
+import host_pb2
+import host_pb2_grpc
 import port_forwarding_pb2_grpc
-import route
 import route_pb2_grpc
 import volume_pb2_grpc
 from controller import Controller
 from daemon import DaemonService
 from dns import DNSController
+from host import HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer
-from route import GenericRouteController, GenericRouteTableController
 
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
@@ -117,6 +117,37 @@ def ensure_rfc1918_rules():
         )
 
 
+def start_daemon(session_factory, controller_port):
+    daemon = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
+    )
+    daemon_port = daemon.add_insecure_port("localhost:0")
+    controller_channel = grpc.insecure_channel(f"localhost:{controller_port}")
+    daemon_service = DaemonService(
+        session_factory,
+        IPTablesPortForwardingSynchronizer(),
+        controller_channel,
+    )
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
+    daemon.start()
+    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
+    hosts = host_client.ListHosts(host_pb2.ListHostsRequest()).hosts
+    for host in hosts:
+        host_client.Deregister(host)
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name="default",
+                address=f"localhost:{daemon_port}",
+            ),
+        )
+    )
+    daemon_service.sync()
+    return daemon
+
+
 if __name__ == "__main__":
     logging.basicConfig(
         level=logging.DEBUG, format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
@@ -165,7 +196,7 @@ if __name__ == "__main__":
         future=True,
     )
     Base.metadata.create_all(engine)
-    session_factory = scoped_session(sessionmaker(engine, future=True))
+    session_factory = sessionmaker(engine, future=True)
 
     ensure_rfc1918_rules()
 
@@ -175,23 +206,10 @@ if __name__ == "__main__":
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
-    le_channel = grpc.insecure_channel("localhost:8095")
-    le_client = daemon_pb2_grpc.DaemonServiceStub(le_channel)
-
-    class RouteSyncEventHandler(route.SyncEventHandler):
-        def handle_sync(self, session):
-            le_client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
-
-    sync_handler = RouteSyncEventHandler()
-
-    route_table_controller = GenericRouteTableController(session_factory, sync_handler)
-    route_controller = GenericRouteController(session_factory, sync_handler)
 
     controller = Controller(
-        channel=le_channel,
+        session_factory=session_factory,
         dns_controller=dns_controller,
-        route_table_controller=route_table_controller,
-        route_controller=route_controller,
     )
     controller_pb2_grpc.add_ControllerServiceServicer_to_server(controller, server)
     dns_pb2_grpc.add_DNSServicer_to_server(controller, server)
@@ -199,6 +217,7 @@ if __name__ == "__main__":
     port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(controller, server)
     route_pb2_grpc.add_RouteServiceServicer_to_server(controller, server)
     volume_pb2_grpc.add_VolumeServiceServicer_to_server(controller, server)
+    host_pb2_grpc.add_HostServiceServicer_to_server(HostService(session_factory), server)
 
     server_key_pair_provided = args.server_cert is not None and args.server_key is not None
     assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
@@ -223,7 +242,7 @@ if __name__ == "__main__":
         server.add_secure_port(f"{host}:{port}", creds)
     else:
         server.add_insecure_port(f"{host}:{port}")
-    server.add_insecure_port("localhost:8094")
+    controller_port = server.add_insecure_port("localhost:8094")
     reflection.enable_server_reflection(
         [
             service_descriptor.full_name
@@ -235,18 +254,7 @@ if __name__ == "__main__":
     server.start()
 
     # Setup and start daemon server
-    daemon = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
-    )
-    daemon.add_insecure_port("localhost:8095")
-    daemon_service = DaemonService(
-        session_factory,
-        IPTablesPortForwardingSynchronizer(),
-        grpc.insecure_channel("localhost:8094"),
-    )
-    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
-    daemon.start()
-    daemon_service.sync()
+    daemon = start_daemon(session_factory, controller_port)
 
     server.wait_for_termination()
     daemon.wait_for_termination()
