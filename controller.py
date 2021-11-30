@@ -9,6 +9,7 @@ import dns_pb2
 import dns_pb2_grpc
 import route_pb2
 import route_pb2_grpc
+from host import HostController
 from models import DNSRecord, Host
 from route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
@@ -27,8 +28,9 @@ class Controller(
     dns_pb2_grpc.DNSServicer,
     route_pb2_grpc.RouteServiceServicer,
 ):
-    def __init__(self, session_factory, dns_controller):
+    def __init__(self, session_factory, host_controller: HostController, dns_controller):
         self.session_factory = session_factory
+        self.host_controller = host_controller
         self.dns_controller = dns_controller
         sync_handler = ControllerSyncHandler(self)
         self.route_table_controller = GenericRouteTableController(session_factory, sync_handler)
@@ -36,16 +38,7 @@ class Controller(
         self.channel_cache = {}
 
     def _get_daemon_client(self, hostname="default"):
-        channel = self.channel_cache.get(hostname)
-        if channel is not None:
-            return channel
-        with self.session_factory.begin() as session:
-            host = session.get(Host, hostname)
-            if host is None:
-                raise Exception("No daemon found")
-            channel = daemon_pb2_grpc.DaemonServiceStub(grpc.insecure_channel(host.address))
-            self.channel_cache[hostname] = channel
-            return channel
+        return daemon_pb2_grpc.DaemonServiceStub(self.host_controller.channel(hostname))
 
     def GetDNSRecord(self, request, context):
         record = self.dns_controller.record(request.name, request.type)

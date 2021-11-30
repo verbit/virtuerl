@@ -27,7 +27,7 @@ import volume_pb2_grpc
 from controller import Controller
 from daemon import DaemonService
 from dns import DNSController
-from host import HostService
+from host import HostController, HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer
 
@@ -207,8 +207,10 @@ if __name__ == "__main__":
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
 
+    host_controller = HostController(session_factory)
     controller = Controller(
         session_factory=session_factory,
+        host_controller=host_controller,
         dns_controller=dns_controller,
     )
     controller_pb2_grpc.add_ControllerServiceServicer_to_server(controller, server)
@@ -217,7 +219,9 @@ if __name__ == "__main__":
     port_forwarding_pb2_grpc.add_PortForwardingServiceServicer_to_server(controller, server)
     route_pb2_grpc.add_RouteServiceServicer_to_server(controller, server)
     volume_pb2_grpc.add_VolumeServiceServicer_to_server(controller, server)
-    host_pb2_grpc.add_HostServiceServicer_to_server(HostService(session_factory), server)
+    host_pb2_grpc.add_HostServiceServicer_to_server(
+        HostService(host_controller, session_factory), server
+    )
 
     server_key_pair_provided = args.server_cert is not None and args.server_key is not None
     assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
