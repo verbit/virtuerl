@@ -15,7 +15,7 @@ import host_pb2
 import host_pb2_grpc
 from controller import Controller
 from dns import DNSController
-from host import HostService
+from host import HostController, HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer
 
@@ -92,11 +92,14 @@ def controller_channel(session_factory, dns_controller):
     port = server.add_insecure_port("localhost:0")
     channel = grpc.insecure_channel(f"localhost:{port}")
 
+    host_controller = HostController(session_factory)
     controller_pb2_grpc.add_ControllerServiceServicer_to_server(
-        Controller(session_factory, dns_controller),
+        Controller(session_factory, host_controller, dns_controller),
         server,
     )
-    host_pb2_grpc.add_HostServiceServicer_to_server(HostService(session_factory), server)
+    host_pb2_grpc.add_HostServiceServicer_to_server(
+        HostService(host_controller, session_factory), server
+    )
 
     server.start()
     yield channel
