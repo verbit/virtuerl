@@ -23,7 +23,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0c\x64\x61\x65mon.proto\x12\x08internal\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x64omain.proto\x1a\x0cvolume.proto\x1a\x15port_forwarding.proto\"\x13\n\x11SyncRoutesRequest2\xf3\n\n\rDaemonService\x12,\n\nGetNetwork\x12\x12.GetNetworkRequest\x1a\x08.Network\"\x00\x12=\n\x0cListNetworks\x12\x14.ListNetworksRequest\x1a\x15.ListNetworksResponse\"\x00\x12\x32\n\rCreateNetwork\x12\x15.CreateNetworkRequest\x1a\x08.Network\"\x00\x12@\n\rDeleteNetwork\x12\x15.DeleteNetworkRequest\x1a\x16.google.protobuf.Empty\"\x00\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\rDownloadImage\x12\x15.DownloadImageRequest\x1a\x0b.ImageChunk\"\x00\x30\x01\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x43\n\nSyncRoutes\x12\x1b.internal.SyncRoutesRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x0c\x64\x61\x65mon.proto\x12\x08internal\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x64omain.proto\x1a\x0cvolume.proto\x1a\x15port_forwarding.proto\"\x13\n\x11SyncRoutesRequest\"\x15\n\x13SyncNetworksRequest2\xd9\t\n\rDaemonService\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\rDownloadImage\x12\x15.DownloadImageRequest\x1a\x0b.ImageChunk\"\x00\x30\x01\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x43\n\nSyncRoutes\x12\x1b.internal.SyncRoutesRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n\x0cSyncNetworks\x12\x1d.internal.SyncNetworksRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,domain__pb2.DESCRIPTOR,volume__pb2.DESCRIPTOR,port__forwarding__pb2.DESCRIPTOR,])
 
@@ -54,7 +54,33 @@ _SYNCROUTESREQUEST = _descriptor.Descriptor(
   serialized_end=125,
 )
 
+
+_SYNCNETWORKSREQUEST = _descriptor.Descriptor(
+  name='SyncNetworksRequest',
+  full_name='internal.SyncNetworksRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=127,
+  serialized_end=148,
+)
+
 DESCRIPTOR.message_types_by_name['SyncRoutesRequest'] = _SYNCROUTESREQUEST
+DESCRIPTOR.message_types_by_name['SyncNetworksRequest'] = _SYNCNETWORKSREQUEST
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 SyncRoutesRequest = _reflection.GeneratedProtocolMessageType('SyncRoutesRequest', (_message.Message,), {
@@ -63,6 +89,13 @@ SyncRoutesRequest = _reflection.GeneratedProtocolMessageType('SyncRoutesRequest'
   # @@protoc_insertion_point(class_scope:internal.SyncRoutesRequest)
   })
 _sym_db.RegisterMessage(SyncRoutesRequest)
+
+SyncNetworksRequest = _reflection.GeneratedProtocolMessageType('SyncNetworksRequest', (_message.Message,), {
+  'DESCRIPTOR' : _SYNCNETWORKSREQUEST,
+  '__module__' : 'daemon_pb2'
+  # @@protoc_insertion_point(class_scope:internal.SyncNetworksRequest)
+  })
+_sym_db.RegisterMessage(SyncNetworksRequest)
 
 
 DESCRIPTOR._options = None
@@ -74,53 +107,13 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=128,
-  serialized_end=1523,
+  serialized_start=151,
+  serialized_end=1392,
   methods=[
-  _descriptor.MethodDescriptor(
-    name='GetNetwork',
-    full_name='internal.DaemonService.GetNetwork',
-    index=0,
-    containing_service=None,
-    input_type=domain__pb2._GETNETWORKREQUEST,
-    output_type=domain__pb2._NETWORK,
-    serialized_options=None,
-    create_key=_descriptor._internal_create_key,
-  ),
-  _descriptor.MethodDescriptor(
-    name='ListNetworks',
-    full_name='internal.DaemonService.ListNetworks',
-    index=1,
-    containing_service=None,
-    input_type=domain__pb2._LISTNETWORKSREQUEST,
-    output_type=domain__pb2._LISTNETWORKSRESPONSE,
-    serialized_options=None,
-    create_key=_descriptor._internal_create_key,
-  ),
-  _descriptor.MethodDescriptor(
-    name='CreateNetwork',
-    full_name='internal.DaemonService.CreateNetwork',
-    index=2,
-    containing_service=None,
-    input_type=domain__pb2._CREATENETWORKREQUEST,
-    output_type=domain__pb2._NETWORK,
-    serialized_options=None,
-    create_key=_descriptor._internal_create_key,
-  ),
-  _descriptor.MethodDescriptor(
-    name='DeleteNetwork',
-    full_name='internal.DaemonService.DeleteNetwork',
-    index=3,
-    containing_service=None,
-    input_type=domain__pb2._DELETENETWORKREQUEST,
-    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    serialized_options=None,
-    create_key=_descriptor._internal_create_key,
-  ),
   _descriptor.MethodDescriptor(
     name='GetDomain',
     full_name='internal.DaemonService.GetDomain',
-    index=4,
+    index=0,
     containing_service=None,
     input_type=domain__pb2._GETDOMAINREQUEST,
     output_type=domain__pb2._DOMAIN,
@@ -130,7 +123,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListDomains',
     full_name='internal.DaemonService.ListDomains',
-    index=5,
+    index=1,
     containing_service=None,
     input_type=domain__pb2._LISTDOMAINSREQUEST,
     output_type=domain__pb2._LISTDOMAINSRESPONSE,
@@ -140,7 +133,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateDomain',
     full_name='internal.DaemonService.CreateDomain',
-    index=6,
+    index=2,
     containing_service=None,
     input_type=domain__pb2._CREATEDOMAINREQUEST,
     output_type=domain__pb2._DOMAIN,
@@ -150,7 +143,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteDomain',
     full_name='internal.DaemonService.DeleteDomain',
-    index=7,
+    index=3,
     containing_service=None,
     input_type=domain__pb2._DELETEDOMAINREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -160,7 +153,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DownloadImage',
     full_name='internal.DaemonService.DownloadImage',
-    index=8,
+    index=4,
     containing_service=None,
     input_type=domain__pb2._DOWNLOADIMAGEREQUEST,
     output_type=domain__pb2._IMAGECHUNK,
@@ -170,7 +163,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetVolume',
     full_name='internal.DaemonService.GetVolume',
-    index=9,
+    index=5,
     containing_service=None,
     input_type=volume__pb2._GETVOLUMEREQUEST,
     output_type=volume__pb2._VOLUME,
@@ -180,7 +173,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListVolumes',
     full_name='internal.DaemonService.ListVolumes',
-    index=10,
+    index=6,
     containing_service=None,
     input_type=volume__pb2._LISTVOLUMESREQUEST,
     output_type=volume__pb2._LISTVOLUMESRESPONSE,
@@ -190,7 +183,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateVolume',
     full_name='internal.DaemonService.CreateVolume',
-    index=11,
+    index=7,
     containing_service=None,
     input_type=volume__pb2._CREATEVOLUMEREQUEST,
     output_type=volume__pb2._VOLUME,
@@ -200,7 +193,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteVolume',
     full_name='internal.DaemonService.DeleteVolume',
-    index=12,
+    index=8,
     containing_service=None,
     input_type=volume__pb2._DELETEVOLUMEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -210,7 +203,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListVolumeAttachments',
     full_name='internal.DaemonService.ListVolumeAttachments',
-    index=13,
+    index=9,
     containing_service=None,
     input_type=volume__pb2._LISTVOLUMEATTACHMENTSREQUEST,
     output_type=volume__pb2._LISTVOLUMEATTACHMENTSRESPONSE,
@@ -220,7 +213,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetVolumeAttachment',
     full_name='internal.DaemonService.GetVolumeAttachment',
-    index=14,
+    index=10,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=volume__pb2._VOLUMEATTACHMENT,
@@ -230,7 +223,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AttachVolume',
     full_name='internal.DaemonService.AttachVolume',
-    index=15,
+    index=11,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=volume__pb2._VOLUMEATTACHMENT,
@@ -240,7 +233,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DetachVolume',
     full_name='internal.DaemonService.DetachVolume',
-    index=16,
+    index=12,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -250,7 +243,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetPortForwarding',
     full_name='internal.DaemonService.GetPortForwarding',
-    index=17,
+    index=13,
     containing_service=None,
     input_type=port__forwarding__pb2._PORTFORWARDINGIDENTIFIER,
     output_type=port__forwarding__pb2._PORTFORWARDING,
@@ -260,7 +253,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListPortForwardings',
     full_name='internal.DaemonService.ListPortForwardings',
-    index=18,
+    index=14,
     containing_service=None,
     input_type=port__forwarding__pb2._LISTPORTFORWARDINGSREQUEST,
     output_type=port__forwarding__pb2._LISTPORTFORWARDINGSRESPONSE,
@@ -270,7 +263,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='PutPortForwarding',
     full_name='internal.DaemonService.PutPortForwarding',
-    index=19,
+    index=15,
     containing_service=None,
     input_type=port__forwarding__pb2._PUTPORTFORWARDINGREQUEST,
     output_type=port__forwarding__pb2._PORTFORWARDING,
@@ -280,7 +273,7 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeletePortForwarding',
     full_name='internal.DaemonService.DeletePortForwarding',
-    index=20,
+    index=16,
     containing_service=None,
     input_type=port__forwarding__pb2._PORTFORWARDINGIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -290,9 +283,19 @@ _DAEMONSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='SyncRoutes',
     full_name='internal.DaemonService.SyncRoutes',
-    index=21,
+    index=17,
     containing_service=None,
     input_type=_SYNCROUTESREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='SyncNetworks',
+    full_name='internal.DaemonService.SyncNetworks',
+    index=18,
+    containing_service=None,
+    input_type=_SYNCNETWORKSREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     serialized_options=None,
     create_key=_descriptor._internal_create_key,

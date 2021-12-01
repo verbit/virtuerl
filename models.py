@@ -72,6 +72,16 @@ class Host(Base):
         return f"Host(name={self.name!r}, address={self.address!r})"
 
 
+class Network(Base):
+    __tablename__ = "networks"
+
+    id = Column(String, primary_key=True)
+    cidr = Column(String)
+
+    def __repr__(self):
+        return f"Network({self.id!r}: {self.cidr!r})"
+
+
 class RouteTable(Base):
     __tablename__ = "route_tables"
 

@@ -75,6 +75,7 @@ def test_create_domain_linux(client: domain_pb2_grpc.DomainServiceStub):
     )
     dom = client.CreateDomain(
         domain_pb2.CreateDomainRequest(
+            host="test",
             domain=domain_pb2.Domain(
                 name="test",
                 vcpu=1,
@@ -89,14 +90,14 @@ packages:
 runcmd:
   - service nginx restart
 """,
-            )
+            ),
         )
     )
 
     response = wait_for_http("http://192.168.69.69")
     assert "Welcome to nginx!" in response
 
-    client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
+    client.DeleteDomain(domain_pb2.DeleteDomainRequest(host="test", uuid=dom.uuid))
     client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
 
 

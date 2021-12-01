@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0cvolume.proto\x1a\x1bgoogle/protobuf/empty.proto\" \n\x10GetVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"0\n\x06Volume\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04size\x18\x03 \x01(\x04\"\x14\n\x12ListVolumesRequest\"/\n\x13ListVolumesResponse\x12\x18\n\x07volumes\x18\x01 \x03(\x0b\x32\x07.Volume\".\n\x13\x43reateVolumeRequest\x12\x17\n\x06volume\x18\x01 \x01(\x0b\x32\x07.Volume\"#\n\x13\x44\x65leteVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\"B\n\x1aVolumeAttachmentIdentifier\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\"N\n\x10VolumeAttachment\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x14\n\x0c\x64isk_address\x18\x03 \x01(\t\"1\n\x1cListVolumeAttachmentsRequest\x12\x11\n\tdomain_id\x18\x01 \x01(\t\"G\n\x1dListVolumeAttachmentsResponse\x12&\n\x0b\x61ttachments\x18\x01 \x03(\x0b\x32\x11.VolumeAttachment2\x93\x04\n\rVolumeService\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x0cvolume.proto\x1a\x1bgoogle/protobuf/empty.proto\".\n\x10GetVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"0\n\x06Volume\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04size\x18\x03 \x01(\x04\"\"\n\x12ListVolumesRequest\x12\x0c\n\x04host\x18\x01 \x01(\t\"/\n\x13ListVolumesResponse\x12\x18\n\x07volumes\x18\x01 \x03(\x0b\x32\x07.Volume\"<\n\x13\x43reateVolumeRequest\x12\x17\n\x06volume\x18\x01 \x01(\x0b\x32\x07.Volume\x12\x0c\n\x04host\x18\x02 \x01(\t\"1\n\x13\x44\x65leteVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"P\n\x1aVolumeAttachmentIdentifier\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x0c\n\x04host\x18\x03 \x01(\t\"N\n\x10VolumeAttachment\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x14\n\x0c\x64isk_address\x18\x03 \x01(\t\"?\n\x1cListVolumeAttachmentsRequest\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"G\n\x1dListVolumeAttachmentsResponse\x12&\n\x0b\x61ttachments\x18\x01 \x03(\x0b\x32\x11.VolumeAttachment2\x93\x04\n\rVolumeService\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -42,6 +42,13 @@ _GETVOLUMEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='GetVolumeRequest.host', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -55,7 +62,7 @@ _GETVOLUMEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=45,
-  serialized_end=77,
+  serialized_end=91,
 )
 
 
@@ -100,8 +107,8 @@ _VOLUME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=79,
-  serialized_end=127,
+  serialized_start=93,
+  serialized_end=141,
 )
 
 
@@ -113,6 +120,13 @@ _LISTVOLUMESREQUEST = _descriptor.Descriptor(
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='host', full_name='ListVolumesRequest.host', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -125,8 +139,8 @@ _LISTVOLUMESREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=129,
-  serialized_end=149,
+  serialized_start=143,
+  serialized_end=177,
 )
 
 
@@ -157,8 +171,8 @@ _LISTVOLUMESRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=151,
-  serialized_end=198,
+  serialized_start=179,
+  serialized_end=226,
 )
 
 
@@ -177,6 +191,13 @@ _CREATEVOLUMEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='CreateVolumeRequest.host', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -189,8 +210,8 @@ _CREATEVOLUMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=200,
-  serialized_end=246,
+  serialized_start=228,
+  serialized_end=288,
 )
 
 
@@ -209,6 +230,13 @@ _DELETEVOLUMEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='DeleteVolumeRequest.host', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -221,8 +249,8 @@ _DELETEVOLUMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=248,
-  serialized_end=283,
+  serialized_start=290,
+  serialized_end=339,
 )
 
 
@@ -248,6 +276,13 @@ _VOLUMEATTACHMENTIDENTIFIER = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='VolumeAttachmentIdentifier.host', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -260,8 +295,8 @@ _VOLUMEATTACHMENTIDENTIFIER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=285,
-  serialized_end=351,
+  serialized_start=341,
+  serialized_end=421,
 )
 
 
@@ -306,8 +341,8 @@ _VOLUMEATTACHMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=353,
-  serialized_end=431,
+  serialized_start=423,
+  serialized_end=501,
 )
 
 
@@ -326,6 +361,13 @@ _LISTVOLUMEATTACHMENTSREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='ListVolumeAttachmentsRequest.host', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -338,8 +380,8 @@ _LISTVOLUMEATTACHMENTSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=433,
-  serialized_end=482,
+  serialized_start=503,
+  serialized_end=566,
 )
 
 
@@ -370,8 +412,8 @@ _LISTVOLUMEATTACHMENTSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=484,
-  serialized_end=555,
+  serialized_start=568,
+  serialized_end=639,
 )
 
 _LISTVOLUMESRESPONSE.fields_by_name['volumes'].message_type = _VOLUME
@@ -469,8 +511,8 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=558,
-  serialized_end=1089,
+  serialized_start=642,
+  serialized_end=1173,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetVolume',

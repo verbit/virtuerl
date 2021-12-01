@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x15port_forwarding.proto\x1a\x1bgoogle/protobuf/empty.proto\"A\n\x18PortForwardingIdentifier\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\"_\n\x0ePortForwarding\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\x12\x11\n\ttarget_ip\x18\x04 \x01(\t\x12\x13\n\x0btarget_port\x18\x05 \x01(\r\"\x1c\n\x1aListPortForwardingsRequest\"H\n\x1bListPortForwardingsResponse\x12)\n\x10port_forwardings\x18\x01 \x03(\x0b\x32\x0f.PortForwarding\"D\n\x18PutPortForwardingRequest\x12(\n\x0fport_forwarding\x18\x01 \x01(\x0b\x32\x0f.PortForwarding2\xbe\x02\n\x15PortForwardingService\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x15port_forwarding.proto\x1a\x1bgoogle/protobuf/empty.proto\"O\n\x18PortForwardingIdentifier\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\"_\n\x0ePortForwarding\x12\x10\n\x08protocol\x18\x02 \x01(\t\x12\x13\n\x0bsource_port\x18\x03 \x01(\r\x12\x11\n\ttarget_ip\x18\x04 \x01(\t\x12\x13\n\x0btarget_port\x18\x05 \x01(\r\"*\n\x1aListPortForwardingsRequest\x12\x0c\n\x04host\x18\x01 \x01(\t\"H\n\x1bListPortForwardingsResponse\x12)\n\x10port_forwardings\x18\x01 \x03(\x0b\x32\x0f.PortForwarding\"R\n\x18PutPortForwardingRequest\x12(\n\x0fport_forwarding\x18\x01 \x01(\x0b\x32\x0f.PortForwarding\x12\x0c\n\x04host\x18\x02 \x01(\t2\xbe\x02\n\x15PortForwardingService\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -36,14 +36,21 @@ _PORTFORWARDINGIDENTIFIER = _descriptor.Descriptor(
   create_key=_descriptor._internal_create_key,
   fields=[
     _descriptor.FieldDescriptor(
-      name='protocol', full_name='PortForwardingIdentifier.protocol', index=0,
+      name='host', full_name='PortForwardingIdentifier.host', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='protocol', full_name='PortForwardingIdentifier.protocol', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=b"".decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
     _descriptor.FieldDescriptor(
-      name='source_port', full_name='PortForwardingIdentifier.source_port', index=1,
+      name='source_port', full_name='PortForwardingIdentifier.source_port', index=2,
       number=3, type=13, cpp_type=3, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -62,7 +69,7 @@ _PORTFORWARDINGIDENTIFIER = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=54,
-  serialized_end=119,
+  serialized_end=133,
 )
 
 
@@ -114,8 +121,8 @@ _PORTFORWARDING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=121,
-  serialized_end=216,
+  serialized_start=135,
+  serialized_end=230,
 )
 
 
@@ -127,6 +134,13 @@ _LISTPORTFORWARDINGSREQUEST = _descriptor.Descriptor(
   containing_type=None,
   create_key=_descriptor._internal_create_key,
   fields=[
+    _descriptor.FieldDescriptor(
+      name='host', full_name='ListPortForwardingsRequest.host', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -139,8 +153,8 @@ _LISTPORTFORWARDINGSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=218,
-  serialized_end=246,
+  serialized_start=232,
+  serialized_end=274,
 )
 
 
@@ -171,8 +185,8 @@ _LISTPORTFORWARDINGSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=248,
-  serialized_end=320,
+  serialized_start=276,
+  serialized_end=348,
 )
 
 
@@ -191,6 +205,13 @@ _PUTPORTFORWARDINGREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='host', full_name='PutPortForwardingRequest.host', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
   ],
   extensions=[
   ],
@@ -203,8 +224,8 @@ _PUTPORTFORWARDINGREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=322,
-  serialized_end=390,
+  serialized_start=350,
+  serialized_end=432,
 )
 
 _LISTPORTFORWARDINGSRESPONSE.fields_by_name['port_forwardings'].message_type = _PORTFORWARDING
@@ -261,8 +282,8 @@ _PORTFORWARDINGSERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=393,
-  serialized_end=711,
+  serialized_start=435,
+  serialized_end=753,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetPortForwarding',

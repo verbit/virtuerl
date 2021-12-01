@@ -123,7 +123,7 @@ def controller_client_dummy(controller_channel, host_client):
         host_pb2.RegisterHostRequest(
             token=token,
             host=host_pb2.Host(
-                name="default",
+                name="test",
                 address=f"localhost:{daemon_port}",
             ),
         )
@@ -151,7 +151,7 @@ def controller_client(session_factory, controller_channel, host_client):
         host_pb2.RegisterHostRequest(
             token=token,
             host=host_pb2.Host(
-                name="default",
+                name="test",
                 address=f"localhost:{daemon_port}",
             ),
         )

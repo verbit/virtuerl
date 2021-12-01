@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 
 message GetDomainRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 message Domain {
@@ -23,7 +24,9 @@ message Domain {
   string base_image = 12;
 }
 
-message ListDomainsRequest {}
+message ListDomainsRequest {
+  string host = 1;
+}
 
 message ListDomainsResponse {
   repeated Domain domains = 1;
@@ -31,14 +34,17 @@ message ListDomainsResponse {
 
 message CreateDomainRequest {
   Domain domain = 1;
+  string host = 2;
 }
 
 message DeleteDomainRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 message DownloadImageRequest {
   string domain_id = 1;
+  string host = 2;
 }
 
 message ImageChunk {
