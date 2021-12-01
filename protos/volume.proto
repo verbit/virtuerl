@@ -6,6 +6,7 @@ import "google/protobuf/empty.proto";
 
 message GetVolumeRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 message Volume {
@@ -14,7 +15,9 @@ message Volume {
   uint64 size = 3;
 }
 
-message ListVolumesRequest {}
+message ListVolumesRequest {
+  string host = 1;
+}
 
 message ListVolumesResponse {
   repeated Volume volumes = 1;
@@ -22,15 +25,18 @@ message ListVolumesResponse {
 
 message CreateVolumeRequest {
   Volume volume = 1;
+  string host = 2;
 }
 
 message DeleteVolumeRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 message VolumeAttachmentIdentifier {
   string domain_id = 1;
   string volume_id = 2;
+  string host = 3;
 }
 
 message VolumeAttachment {
@@ -41,6 +47,7 @@ message VolumeAttachment {
 
 message ListVolumeAttachmentsRequest {
   string domain_id = 1;
+  string host = 2;
 }
 
 message ListVolumeAttachmentsResponse {

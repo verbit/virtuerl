@@ -24,6 +24,7 @@ from image import (
     read_user_data_from_cloud_config_image,
 )
 from models import PortForwarding
+from network import NetworkSynchronizer
 
 
 def libvirt_state_to_string(state):
@@ -248,6 +249,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         self.routes_synchronizer = IPRouteSynchronizer()
 
         self.conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
+        self.network_synchronizer = NetworkSynchronizer(self.controller, self.conn)
+
         self.lock = threading.Lock()
         domains = self.conn.listAllDomains()
         self.ips = {self._get_domain(d.UUIDString())["private_ip"] for d in domains}
@@ -269,49 +272,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 pool.create()
             else:
                 raise e
-
-    def GetNetwork(self, request, context):
-        net = self.conn.networkLookupByUUIDString(request.uuid)
-        net_dict = xmltodict.parse(net.XMLDesc())["network"]
-        net_def = net_dict["ip"]
-        gateway = ipaddress.IPv4Address(net_def["@address"])
-        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
-
-        return domain_pb2.Network(
-            uuid=request.uuid,
-            name=net_dict["name"],
-            cidr=net.with_prefixlen,
-        )
-
-    def ListNetworks(self, request, context):
-        return super().ListNetworks(request, context)
-
-    def CreateNetwork(self, request, context):
-        network = request.network
-        net = ipaddress.IPv4Network(network.cidr)
-        lvnet = self.conn.networkDefineXML(
-            f"""<network>
-  <name>{network.name}</name>
-  <forward mode='open'/>
-  <bridge stp='on' delay='0'/>
-  <dns>
-    <forwarder domain='internal' addr='127.0.0.1'/>
-  </dns>
-  <ip address='{net[1]}' netmask='{net.netmask}'>
-  </ip>
-</network>
-"""
-        )
-        lvnet.create()
-        lvnet.setAutostart(True)
-        network.uuid = lvnet.UUIDString()
-        return network
-
-    def DeleteNetwork(self, request, context):
-        net = self.conn.networkLookupByUUIDString(request.uuid)
-        net.destroy()
-        net.undefine()
-        return empty_pb2.Empty()
 
     def _get_domain(self, uuid):
         domain = self.conn.lookupByUUIDString(uuid)
@@ -704,4 +664,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def SyncRoutes(self, request, context):
         self.tables_synchronizer.handle_sync(self.controller)
         self.routes_synchronizer.handle_sync(self.controller)
+        return empty_pb2.Empty()
+
+    def SyncNetworks(self, request, context):
+        self.network_synchronizer.sync()
         return empty_pb2.Empty()

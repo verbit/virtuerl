@@ -10,13 +10,9 @@ import "volume.proto";
 import "port_forwarding.proto";
 
 message SyncRoutesRequest {}
+message SyncNetworksRequest {}
 
 service DaemonService {
-  rpc GetNetwork(GetNetworkRequest) returns (Network) {}
-  rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {}
-  rpc CreateNetwork(CreateNetworkRequest) returns (Network) {}
-  rpc DeleteNetwork(DeleteNetworkRequest) returns (google.protobuf.Empty) {}
-
   rpc GetDomain(GetDomainRequest) returns (Domain) {}
   rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {}
   rpc CreateDomain(CreateDomainRequest) returns (Domain) {}
@@ -40,4 +36,5 @@ service DaemonService {
   rpc DeletePortForwarding(PortForwardingIdentifier) returns (google.protobuf.Empty) {}
 
   rpc SyncRoutes(internal.SyncRoutesRequest) returns (google.protobuf.Empty) {}
+  rpc SyncNetworks(internal.SyncNetworksRequest) returns (google.protobuf.Empty) {}
 }

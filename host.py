@@ -33,6 +33,10 @@ class HostController:
         with self.lock:
             return self.cache.get(hostname)
 
+    def channels(self):
+        with self.lock:
+            return list(self.cache.values())
+
     def register(self, token, hostname, address):
         with self.session_factory.begin() as session:
             token = session.get(BootstrapToken, token)

@@ -7,20 +7,36 @@ import daemon_pb2
 import daemon_pb2_grpc
 import dns_pb2
 import dns_pb2_grpc
+import domain_pb2
+import network
 import route_pb2
 import route_pb2_grpc
 from host import HostController
 from models import DNSRecord, Host
+from network import GenericNetworkController
 from route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
 
 class ControllerSyncHandler(SyncEventHandler):
-    def __init__(self, controller):
-        self.controller = controller
+    def __init__(self, host_controller):
+        self.host_controller = host_controller
 
     def handle_sync(self, session):
-        client = self.controller._get_daemon_client()
-        client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
+        channels = self.host_controller.channels()
+        for channel in channels:
+            client = daemon_pb2_grpc.DaemonServiceStub(channel)
+            client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
+
+
+class NetworkSyncHandler(network.SyncEventHandler):
+    def __init__(self, host_controller):
+        self.host_controller = host_controller
+
+    def handle_sync(self):
+        channels = self.host_controller.channels()
+        for channel in channels:
+            client = daemon_pb2_grpc.DaemonServiceStub(channel)
+            client.SyncNetworks(daemon_pb2.SyncNetworksRequest())
 
 
 class Controller(
@@ -32,12 +48,16 @@ class Controller(
         self.session_factory = session_factory
         self.host_controller = host_controller
         self.dns_controller = dns_controller
-        sync_handler = ControllerSyncHandler(self)
+        sync_handler = ControllerSyncHandler(host_controller)
+        network_sync_handler = NetworkSyncHandler(host_controller)
         self.route_table_controller = GenericRouteTableController(session_factory, sync_handler)
         self.route_controller = GenericRouteController(session_factory, sync_handler)
+        self.network_controller = GenericNetworkController(session_factory, network_sync_handler)
         self.channel_cache = {}
 
-    def _get_daemon_client(self, hostname="default"):
+    def _get_daemon_client(self, hostname=None):
+        if not hostname:
+            hostname = "default"
         return daemon_pb2_grpc.DaemonServiceStub(self.host_controller.channel(hostname))
 
     def GetDNSRecord(self, request, context):
@@ -146,43 +166,26 @@ class Controller(
         return empty_pb2.Empty()
 
     def GetNetwork(self, request, context):
-        client = self._get_daemon_client()
-        try:
-            return client.GetNetwork(request)
-        except grpc.RpcError as e:
-            context.set_code(e.code())
-            context.set_details(e.details())
-            return empty_pb2.Empty()
+        n = self.network_controller.network(request.uuid)
+        return domain_pb2.Network(uuid=n.id, name=n.id, cidr=n.cidr)
 
     def ListNetworks(self, request, context):
-        client = self._get_daemon_client()
-        try:
-            return client.ListNetworks(request)
-        except grpc.RpcError as e:
-            context.set_code(e.code())
-            context.set_details(e.details())
-            return empty_pb2.Empty()
+        networks = self.network_controller.networks()
+        return domain_pb2.ListNetworksResponse(
+            networks=[domain_pb2.Network(uuid=n.id, name=n.id, cidr=n.cidr) for n in networks]
+        )
 
     def CreateNetwork(self, request, context):
-        client = self._get_daemon_client()
-        try:
-            return client.CreateNetwork(request)
-        except grpc.RpcError as e:
-            context.set_code(e.code())
-            context.set_details(e.details())
-            return empty_pb2.Empty()
+        n = request.network
+        self.network_controller.put_network(n.name, n.cidr)
+        return domain_pb2.Network(uuid=n.name, name=n.name, cidr=n.cidr)
 
     def DeleteNetwork(self, request, context):
-        client = self._get_daemon_client()
-        try:
-            return client.DeleteNetwork(request)
-        except grpc.RpcError as e:
-            context.set_code(e.code())
-            context.set_details(e.details())
-            return empty_pb2.Empty()
+        self.network_controller.remove_network(request.uuid)
+        return empty_pb2.Empty()
 
     def GetDomain(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.GetDomain(request)
         except grpc.RpcError as e:
@@ -191,7 +194,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def ListDomains(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.ListDomains(request)
         except grpc.RpcError as e:
@@ -200,7 +203,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def CreateDomain(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.CreateDomain(request)
         except grpc.RpcError as e:
@@ -209,7 +212,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def DeleteDomain(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.DeleteDomain(request)
         except grpc.RpcError as e:
@@ -218,7 +221,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def DownloadImage(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             for chunk in client.DownloadImage(request):
                 yield chunk
@@ -228,7 +231,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def GetVolume(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.GetVolume(request)
         except grpc.RpcError as e:
@@ -237,7 +240,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def ListVolumes(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.ListVolumes(request)
         except grpc.RpcError as e:
@@ -246,7 +249,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def CreateVolume(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.CreateVolume(request)
         except grpc.RpcError as e:
@@ -255,7 +258,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def DeleteVolume(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.DeleteVolume(request)
         except grpc.RpcError as e:
@@ -264,7 +267,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def ListVolumeAttachments(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.ListVolumeAttachments(request)
         except grpc.RpcError as e:
@@ -273,7 +276,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def GetVolumeAttachment(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.GetVolumeAttachment(request)
         except grpc.RpcError as e:
@@ -282,7 +285,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def AttachVolume(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.AttachVolume(request)
         except grpc.RpcError as e:
@@ -291,7 +294,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def DetachVolume(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.DetachVolume(request)
         except grpc.RpcError as e:
@@ -300,7 +303,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def GetPortForwarding(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.GetPortForwarding(request)
         except grpc.RpcError as e:
@@ -309,7 +312,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def ListPortForwardings(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.ListPortForwardings(request)
         except grpc.RpcError as e:
@@ -318,7 +321,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def PutPortForwarding(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.PutPortForwarding(request)
         except grpc.RpcError as e:
@@ -327,7 +330,7 @@ class Controller(
             return empty_pb2.Empty()
 
     def DeletePortForwarding(self, request, context):
-        client = self._get_daemon_client()
+        client = self._get_daemon_client(request.host)
         try:
             return client.DeletePortForwarding(request)
         except grpc.RpcError as e:
