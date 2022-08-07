@@ -64,7 +64,7 @@ class Controller(
         record = self.dns_controller.record(request.name, request.type)
         if record is None:
             context.set_code(StatusCode.NOT_FOUND)
-            return
+            return empty_pb2.Empty()
         return dns_pb2.DNSRecord(
             name=record.name,
             type=record.type,
@@ -103,6 +103,9 @@ class Controller(
 
     def GetRouteTable(self, request, context):
         table = self.route_table_controller.route_table(request.id)
+        if table is None:
+            context.set_code(StatusCode.NOT_FOUND)
+            return empty_pb2.Empty()
 
         return route_pb2.RouteTable(
             id=table.id,
