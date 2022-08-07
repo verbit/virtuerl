@@ -66,7 +66,7 @@ def test_port_forwarding_put_linux(client: port_forwarding_pb2_grpc.PortForwardi
 
 
 def test_port_forwarding_linux(client: port_forwarding_pb2_grpc.PortForwardingServiceStub):
-    import iptc
+    import nftables
 
     fwd = port_forwarding_pb2.PortForwarding(
         protocol="tcp",
@@ -78,20 +78,64 @@ def test_port_forwarding_linux(client: port_forwarding_pb2_grpc.PortForwardingSe
         port_forwarding_pb2.PutPortForwardingRequest(host="test", port_forwarding=fwd)
     )
 
-    CHAIN_NAME = "RESTVIRT"
-    rules = iptc.easy.dump_chain("filter", CHAIN_NAME)
-    assert len(rules) == 1
-    rule = rules[0]
-    assert rule["protocol"] == "tcp"
-    assert rule["tcp"]["dport"] == "2021"
-    assert rule["dst"] == "192.168.1.69/32"
+    table_name = "restvirt"
+    nft = nftables.Nftables()
+    nft.set_json_output(True)
+    nft.set_stateless_output(True)
 
-    rules = iptc.easy.dump_chain("nat", CHAIN_NAME)
+    _, output, _ = nft.json_cmd(
+        {
+            "nftables": [
+                {
+                    "list": {
+                        "table": {
+                            "family": "inet",
+                            "name": table_name,
+                        }
+                    }
+                }
+            ]
+        }
+    )
+    output = output["nftables"]
+    all_rules = [rule["rule"] for rule in output if "rule" in rule]
+
+    rules = [rule for rule in all_rules if rule["chain"] == "forward"]
     assert len(rules) == 1
     rule = rules[0]
-    assert rule["protocol"] == "tcp"
-    assert rule["tcp"]["dport"] == "2020"
-    assert rule["target"]["DNAT"]["to-destination"] == "192.168.1.69:2021"
+    assert rule["expr"] == [
+        {
+            "match": {
+                "left": {"payload": {"field": "dport", "protocol": "tcp"}},
+                "op": "==",
+                "right": 2021,
+            }
+        },
+        {
+            "match": {
+                "left": {"payload": {"field": "daddr", "protocol": "ip"}},
+                "op": "==",
+                "right": "192.168.1.69",
+            }
+        },
+        {"counter": None},
+        {"accept": None},
+    ]
+
+    rules = [rule for rule in all_rules if rule["chain"] == "prerouting"]
+    assert len(rules) == 1
+    rule = rules[0]
+    assert rule["expr"] == [
+        {
+            "match": {
+                "left": {"payload": {"field": "dport", "protocol": "tcp"}},
+                "op": "==",
+                "right": 2020,
+            }
+        },
+        {"counter": None},
+        {"dnat": {"addr": "192.168.1.69", "family": "ip", "port": 2021}},
+    ]
 
     client.DeletePortForwarding(
         port_forwarding_pb2.PortForwardingIdentifier(host="test", protocol="tcp", source_port=2020)

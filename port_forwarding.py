@@ -1,5 +1,7 @@
+import ipaddress
 import threading
 
+import nftables
 from sqlalchemy import select
 
 from models import PortForwarding
@@ -10,85 +12,179 @@ class IPTablesPortForwardingSynchronizer:
         self.lock = threading.Lock()
 
     def handle_sync(self, session):
-        import iptc
-
         with self.lock:
             forwardings = session.execute(select(PortForwarding).filter()).scalars().all()
 
-            restvirt_chain = "RESTVIRT"
+            table_name = "restvirt"
 
-            # nat table
-            if not iptc.easy.has_chain("nat", restvirt_chain):
-                iptc.easy.add_chain("nat", restvirt_chain)
+            nft = nftables.Nftables()
+            nft.set_json_output(True)
 
-            nat_rule = {"target": restvirt_chain}
-            if not iptc.easy.has_rule("nat", "PREROUTING", nat_rule):
-                iptc.easy.insert_rule("nat", "PREROUTING", nat_rule)
-            if not iptc.easy.has_rule("nat", "OUTPUT", nat_rule):
-                iptc.easy.insert_rule("nat", "OUTPUT", nat_rule)
+            rfc1918_nets = [
+                {
+                    "prefix": {
+                        "addr": str(net.network_address),
+                        "len": net.prefixlen,
+                    }
+                }
+                for net in [
+                    ipaddress.ip_network(n)
+                    for n in ["192.168.0.0/16", "172.16.0.0/12", "10.0.0.0/8"]
+                ]
+            ]
+            commands = [
+                {"add": {"table": {"name": table_name, "family": "inet"}}},
+                {"delete": {"table": {"name": table_name, "family": "inet"}}},
+                {"add": {"table": {"name": table_name, "family": "inet"}}},
+                {
+                    "add": {
+                        "chain": {
+                            "table": table_name,
+                            "family": "inet",
+                            "name": "prerouting",
+                            "type": "nat",
+                            "hook": "prerouting",
+                            "prio": -105,
+                            "policy": "accept",
+                        }
+                    }
+                },
+                {
+                    "add": {
+                        "chain": {
+                            "table": table_name,
+                            "family": "inet",
+                            "name": "postrouting",
+                            "type": "nat",
+                            "hook": "postrouting",
+                            "prio": 95,
+                            "policy": "accept",
+                        }
+                    }
+                },
+                {
+                    "add": {
+                        "chain": {
+                            "table": table_name,
+                            "family": "inet",
+                            "name": "forward",
+                            "type": "filter",
+                            "hook": "forward",
+                            "prio": -5,
+                            "policy": "accept",
+                        }
+                    }
+                },
+                {
+                    "add": {  # ensure rfc1918 rules
+                        "rule": {
+                            "table": table_name,
+                            "family": "inet",
+                            "chain": "postrouting",
+                            "expr": [
+                                {
+                                    "match": {
+                                        "op": "in",
+                                        "left": {"payload": {"protocol": "ip", "field": "saddr"}},
+                                        "right": {"set": rfc1918_nets},
+                                    }
+                                },
+                                {
+                                    "match": {
+                                        "op": "!=",
+                                        "left": {"payload": {"protocol": "ip", "field": "daddr"}},
+                                        "right": {"set": rfc1918_nets},
+                                    }
+                                },
+                                {
+                                    "counter": None,
+                                },
+                                {"masquerade": None},
+                            ],
+                        }
+                    }
+                },
+            ]
 
-            state_rules = [_forwarding_to_nat_rule(f) for f in forwardings]
+            # FIXME: limit to eno2 src port
+            for f in forwardings:
+                commands.extend(
+                    [
+                        {
+                            "add": {
+                                "rule": {
+                                    "table": table_name,
+                                    "family": "inet",
+                                    "chain": "prerouting",
+                                    "expr": [
+                                        {
+                                            "match": {
+                                                "op": "==",
+                                                "left": {
+                                                    "payload": {
+                                                        "protocol": f.protocol,
+                                                        "field": "dport",
+                                                    }
+                                                },
+                                                "right": f.source_port,
+                                            }
+                                        },
+                                        {
+                                            "counter": None,
+                                        },
+                                        {
+                                            "dnat": {
+                                                "family": "ip",
+                                                "addr": f.target_ip,
+                                                "port": f.target_port,
+                                            }
+                                        },
+                                    ],
+                                }
+                            }
+                        },
+                        {
+                            "add": {
+                                "rule": {
+                                    "table": table_name,
+                                    "family": "inet",
+                                    "chain": "forward",
+                                    "expr": [
+                                        {
+                                            "match": {
+                                                "op": "==",
+                                                "left": {
+                                                    "payload": {
+                                                        "protocol": f.protocol,
+                                                        "field": "dport",
+                                                    }
+                                                },
+                                                "right": f.target_port,
+                                            }
+                                        },
+                                        {
+                                            "match": {
+                                                "op": "==",
+                                                "left": {
+                                                    "payload": {"protocol": "ip", "field": "daddr"}
+                                                },
+                                                "right": f.target_ip,
+                                            }
+                                        },
+                                        {
+                                            "counter": None,
+                                        },
+                                        {"accept": None},
+                                    ],
+                                }
+                            }
+                        },
+                    ]
+                )
 
-            # step 1: delete iptables rules that are not in the state
-            for rule in iptc.easy.dump_chain("nat", restvirt_chain):
-                if rule not in state_rules:
-                    iptc.easy.delete_rule("nat", restvirt_chain, rule)
-
-            # step 2: add iptables rule from state
-            for rule in state_rules:
-                if not iptc.easy.has_rule("nat", restvirt_chain, rule):
-                    iptc.easy.insert_rule("nat", restvirt_chain, rule)
-
-                    # nat rules
-            if not iptc.easy.has_chain("nat", restvirt_chain):
-                iptc.easy.add_chain("nat", restvirt_chain)
-
-            # filter table
-            if not iptc.easy.has_chain("filter", restvirt_chain):
-                iptc.easy.add_chain("filter", restvirt_chain)
-
-            nat_rule = {"target": restvirt_chain}
-            if not iptc.easy.has_rule("filter", "FORWARD", nat_rule):
-                iptc.easy.insert_rule("filter", "FORWARD", nat_rule)
-
-            state_rules = [_forwarding_to_fwd_rule(f) for f in forwardings]
-
-            # step 1: delete iptables rules that are not in the state
-            for rule in iptc.easy.dump_chain("filter", restvirt_chain):
-                if rule not in state_rules:
-                    iptc.easy.delete_rule("filter", restvirt_chain, rule)
-
-            # step 2: add iptables rule from state
-            for rule in state_rules:
-                if not iptc.easy.has_rule("filter", restvirt_chain, rule):
-                    iptc.easy.insert_rule("filter", restvirt_chain, rule)
-
-
-# FIXME: limit to eno2 src port
-def _forwarding_to_nat_rule(f):
-    prot = f.protocol
-    return {
-        "protocol": prot,
-        prot: {
-            "dport": str(f.source_port),
-        },
-        "target": {
-            "DNAT": {
-                "to_destination": f"{f.target_ip}:{f.target_port}",
-            }
-        },
-    }
-
-
-# FIXME: limit to eno2 src port
-def _forwarding_to_fwd_rule(f):
-    prot = f.protocol
-    return {
-        "protocol": prot,
-        "out-interface": "virbr0",
-        "dst": f.target_ip,
-        prot: {
-            "dport": str(f.target_port),
-        },
-        "target": "ACCEPT",
-    }
+            rc, output, error = nft.json_cmd({"nftables": commands})
+            # FIXME: replace with logging
+            print(rc)
+            print(output)
+            print(error)
+            assert rc == 0
