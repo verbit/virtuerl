@@ -605,7 +605,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             )
         if forwarding is None:
             context.set_code(StatusCode.NOT_FOUND)
-            return
+            return empty_pb2.Empty()
         return port_forwarding_pb2.PortForwarding(
             protocol=forwarding.protocol,
             source_port=forwarding.source_port,
