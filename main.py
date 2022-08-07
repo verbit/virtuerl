@@ -67,127 +67,19 @@ class UnaryUnaryInterceptor(grpc.ServerInterceptor):
         )
 
 
-def ensure_rfc1918_rules():
-    import iptc
-    from pyroute2 import IPSet
-
-    with IPSet() as ips:
-        try:
-            ipset = ips.list("restvirt")[0]
-        except:
-            ips.create("restvirt", "hash:net")
-            ipset = ips.list("restvirt")[0]
-
-        addrs = ipset.get_attr("IPSET_ATTR_ADT").get_attrs("IPSET_ATTR_DATA")
-        nets = set()
-        for addr in addrs:
-            ipv4 = addr.get_attr("IPSET_ATTR_IP_FROM").get_attr("IPSET_ATTR_IPADDR_IPV4")
-            netbits = addr.get_attr("IPSET_ATTR_CIDR")
-            nets.add(f"{ipv4}/{netbits}")
-
-        rfc1918_nets = {"192.168.0.0/16", "172.16.0.0/12", "10.0.0.0/8"}
-        for net in nets:
-            if str(net) not in rfc1918_nets:
-                ips.delete("restvirt", str(net), etype="net")
-        for addr in rfc1918_nets:
-            if addr not in nets:
-                ips.add("restvirt", addr, etype="net")
-
-    rule_exists = False
-    for rule in iptc.easy.dump_chain("nat", "POSTROUTING"):
-        if "set" in rule and rule["target"] == "MASQUERADE":
-            if rule["set"] == [
-                {"match-set": ["restvirt", "src"]},
-                {"match-set": ["!", "restvirt", "dst"]},
-            ]:
-                rule_exists = True
-                break
-
-    if not rule_exists:
-        iptc.easy.insert_rule(
-            "nat",
-            "POSTROUTING",
-            {
-                "set": [
-                    {"match-set": ["restvirt", "src"]},
-                    {"match-set": ["!", "restvirt", "dst"]},
-                ],
-                "target": "MASQUERADE",
-            },
-        )
+@event.listens_for(Engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
-def start_daemon(session_factory, controller_port):
-    daemon = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
-    )
-    daemon_port = daemon.add_insecure_port("localhost:0")
-    controller_channel = grpc.insecure_channel(f"localhost:{controller_port}")
-    daemon_service = DaemonService(
-        session_factory,
-        IPTablesPortForwardingSynchronizer(),
-        controller_channel,
-    )
-    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
-    daemon.start()
-    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
-    hosts = host_client.ListHosts(host_pb2.ListHostsRequest()).hosts
-    for host in hosts:
-        host_client.Deregister(host)
-    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
-    host_client.Register(
-        host_pb2.RegisterHostRequest(
-            token=token,
-            host=host_pb2.Host(
-                name="default",
-                address=f"localhost:{daemon_port}",
-            ),
-        )
-    )
-    daemon_service.sync()
-    return daemon
-
-
-if __name__ == "__main__":
-    logging.basicConfig(
-        level=logging.DEBUG, format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
-    )
-
-    p = re.compile(r"^(\S*):(\d+)$")
-
-    def bind_address(s):
-        match = p.match(s)
-        if not match:
-            raise argparse.ArgumentTypeError("invalid bind address: " + s)
-        res = match.group(1), int(match.group(2))
-        return res
-
-    parser = argparse.ArgumentParser(
-        description="restvirt", formatter_class=argparse.ArgumentDefaultsHelpFormatter
-    )
-    parser.add_argument("--debug", action="store_true", help="run in debug mode")
-    parser.add_argument(
-        "-b", "--bind", type=bind_address, default=":8090", help="server bind address"
-    )
-    parser.add_argument("-c", "--config", default="/etc/restvirt", help="configuration folder")
-    parser.add_argument("--server-cert")
-    parser.add_argument("--server-key")
-    parser.add_argument("--client-ca-cert")
-    args = parser.parse_args()
-
-    logging.debug(args)
-
+def start_controller(args):
     host, port = args.bind
     host = host or "0.0.0.0"
 
     if args.debug:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-
-    @event.listens_for(Engine, "connect")
-    def set_sqlite_pragma(dbapi_connection, connection_record):
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
 
     engine = create_engine(
         f"sqlite:///{os.path.join(args.config, 'controller.sqlite3')}",
@@ -197,8 +89,6 @@ if __name__ == "__main__":
     )
     Base.metadata.create_all(engine)
     session_factory = sessionmaker(engine, future=True)
-
-    ensure_rfc1918_rules()
 
     dns_controller = DNSController(session_factory)
     dns_controller.start()
@@ -246,7 +136,7 @@ if __name__ == "__main__":
         server.add_secure_port(f"{host}:{port}", creds)
     else:
         server.add_insecure_port(f"{host}:{port}")
-    controller_port = server.add_insecure_port("localhost:8094")
+    server.add_insecure_port("localhost:8094")
     reflection.enable_server_reflection(
         [
             service_descriptor.full_name
@@ -256,9 +146,105 @@ if __name__ == "__main__":
         server,
     )
     server.start()
-
-    # Setup and start daemon server
-    daemon = start_daemon(session_factory, controller_port)
-
     server.wait_for_termination()
+
+
+def start_daemon(args):
+    addr, port = args.bind
+    port = port or 0
+    addr = addr or "0.0.0.0"
+
+    if args.debug:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+    engine = create_engine(
+        f"sqlite:///{os.path.join(args.config, 'daemon.sqlite3')}",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(engine, future=True)
+
+    daemon = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
+    )
+    daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
+    controller_host, controller_port = args.controller
+    controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
+    daemon_service = DaemonService(
+        session_factory,
+        IPTablesPortForwardingSynchronizer(),
+        controller_channel,
+    )
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
+    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
+    hosts = host_client.ListHosts(host_pb2.ListHostsRequest()).hosts
+    for host in hosts:
+        host_client.Deregister(host)
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name="default",
+                address=f"{addr}:{daemon_port}",
+            ),
+        )
+    )
+    daemon_service.sync()
+    daemon.start()
     daemon.wait_for_termination()
+
+
+if __name__ == "__main__":
+    logging.basicConfig(
+        level=logging.DEBUG, format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
+    )
+
+    p = re.compile(r"^(\S*):(\d+)$")
+
+    def bind_address(s):
+        match = p.match(s)
+        if not match:
+            raise argparse.ArgumentTypeError("invalid bind address: " + s)
+        res = match.group(1), int(match.group(2))
+        return res
+
+    parser = argparse.ArgumentParser(
+        description="restvirt", formatter_class=argparse.ArgumentDefaultsHelpFormatter
+    )
+    subparsers = parser.add_subparsers()
+
+    controller_parser = subparsers.add_parser("controller")
+    controller_parser.add_argument("--debug", action="store_true", help="run in debug mode")
+    controller_parser.add_argument(
+        "-b", "--bind", type=bind_address, default=":8090", help="controller bind address"
+    )
+    controller_parser.add_argument(
+        "-c", "--config", default="/etc/restvirt", help="configuration folder"
+    )
+    controller_parser.add_argument("--server-cert")
+    controller_parser.add_argument("--server-key")
+    controller_parser.add_argument("--client-ca-cert")
+    controller_parser.set_defaults(func=start_controller)
+
+    daemon_parser = subparsers.add_parser("daemon")
+    daemon_parser.add_argument("--debug", action="store_true", help="run in debug mode")
+    daemon_parser.add_argument(
+        "-b", "--bind", type=bind_address, default="localhost:8099", help="daemon bind address"
+    )
+    daemon_parser.add_argument(
+        "-a", "--controller", type=bind_address, default="localhost:8094", help="controller address"
+    )
+    daemon_parser.add_argument(
+        "-c", "--config", default="/etc/restvirt", help="configuration folder"
+    )
+    daemon_parser.add_argument("--server-cert")
+    daemon_parser.add_argument("--server-key")
+    daemon_parser.add_argument("--client-ca-cert")
+    daemon_parser.set_defaults(func=start_daemon)
+
+    args = parser.parse_args()
+    logging.debug(args)
+    args.func(args)
