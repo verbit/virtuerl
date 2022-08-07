@@ -4,6 +4,7 @@ grpcio-reflection==1.41.1
 protobuf==3.19.1
 pycdlib==1.12.0
 pyroute2==0.7.2
+git+https://salsa.debian.org/pkg-netfilter-team/pkg-nftables.git@upstream/1.0.4#egg=nftables&subdirectory=py
 python-iptables==1.0.0
 SQLAlchemy==1.4.26
 xmltodict==0.12.0
