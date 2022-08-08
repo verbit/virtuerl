@@ -26,7 +26,7 @@ import route_pb2_grpc
 import volume_pb2_grpc
 from controller import Controller
 from daemon import DaemonService
-from dns import DNSController
+from dns_controller import DNSController
 from host import HostController, HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer

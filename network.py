@@ -98,6 +98,8 @@ class NetworkSynchronizer:
   <dns>
     <forwarder domain='internal' addr='127.0.0.1'/>
   </dns>
+  <dns enable='no'>
+  </dns>
   <ip address='{net[1]}' netmask='{net.netmask}'>
   </ip>
 </network>
