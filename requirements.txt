@@ -9,4 +9,5 @@ python-iptables==1.0.0
 SQLAlchemy==1.4.26
 xmltodict==0.12.0
 dnslib==0.9.16
+dnspython==2.2.1
 PyYAML==6.0
