@@ -95,8 +95,7 @@ class NetworkSynchronizer:
   <name>{network.name}</name>
   <forward mode='open'/>
   <bridge stp='on' delay='0'/>
-  <dns>
-    <forwarder domain='internal' addr='127.0.0.1'/>
+  <dns enable='no'>
   </dns>
   <ip address='{net[1]}' netmask='{net.netmask}'>
   </ip>

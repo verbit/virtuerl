@@ -1,3 +1,7 @@
+import socket
+
+import dnslib
+from dns import resolver
 from dnslib import QTYPE, RCODE, RR, copy
 from dnslib.server import DNSServer
 from sqlalchemy import delete, select
@@ -9,6 +13,9 @@ class DNSController:
     def __init__(self, session_factory):
         self.session_factory = session_factory
         self.server = None
+
+        r = resolver.Resolver()
+        self.upstream = r.nameservers[0]
 
     def records(self):
         with self.session_factory() as session:
@@ -70,8 +77,10 @@ class DNSController:
                             if a_name == rr.rdata.label and a_rtype in ["A", "AAAA"]:
                                 reply.add_answer(a_rr)
         if reply is None:
-            reply = request.reply()
-            reply.header.rcode = RCODE.NXDOMAIN
+            try:
+                reply = dnslib.DNSRecord.parse(request.send(self.upstream, 53, timeout=3))
+            except socket.timeout:
+                reply.header.rcode = RCODE.SERVFAIL
         return reply
 
     def start(self, port=53):
