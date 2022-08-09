@@ -35,6 +35,7 @@ ethernets:
   primary:
      match:
        macaddress: "{mac}"
+     set-name: "ens2"
      dhcp4: false
      # default libvirt network
      addresses:
