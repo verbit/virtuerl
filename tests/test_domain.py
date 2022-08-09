@@ -61,10 +61,6 @@ def test_network_linux(client: domain_pb2_grpc.DomainServiceStub):
 
 
 def test_create_domain_linux(client: domain_pb2_grpc.DomainServiceStub):
-    from main import ensure_rfc1918_rules
-
-    ensure_rfc1918_rules()
-
     network = client.CreateNetwork(
         domain_pb2.CreateNetworkRequest(
             network=domain_pb2.Network(
