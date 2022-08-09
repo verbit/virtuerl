@@ -24,6 +24,7 @@ FROM base as base_run
 RUN apt-get update && apt-get install -y --no-install-recommends \
         libvirt0 \
         iptables \
+        libnftables1 \
     && rm -rf /var/lib/apt/lists/*
 
 
