@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         libc-dev \
         pkg-config \
         libvirt-dev \
+        git \
     && rm -rf /var/lib/apt/lists/*
 COPY requirements.txt .
 RUN pip install --user -r requirements.txt
