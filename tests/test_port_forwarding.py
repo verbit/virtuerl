@@ -118,7 +118,7 @@ def test_port_forwarding_linux(client: port_forwarding_pb2_grpc.PortForwardingSe
                 "right": "192.168.1.69",
             }
         },
-        {"counter": {"bytes": 0, "packets": 0}},
+        {"counter": None},
         {"accept": None},
     ]
 
@@ -133,7 +133,7 @@ def test_port_forwarding_linux(client: port_forwarding_pb2_grpc.PortForwardingSe
                 "right": 2020,
             }
         },
-        {"counter": {"bytes": 0, "packets": 0}},
+        {"counter": None},
         {"dnat": {"addr": "192.168.1.69", "family": "ip", "port": 2021}},
     ]
 
