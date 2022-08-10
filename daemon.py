@@ -660,6 +660,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def sync(self):
         with self.session_factory() as session:
             self.port_fwd_sync_handler.handle_sync(session)
+        self.network_synchronizer.sync()
 
     def SyncRoutes(self, request, context):
         self.tables_synchronizer.handle_sync(self.controller)
