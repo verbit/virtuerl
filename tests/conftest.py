@@ -150,10 +150,14 @@ def controller_client(session_factory, controller_channel, host_client):
     )
     daemon_port = daemon.add_insecure_port("localhost:0")
 
+    daemon_service = DaemonService(
+        session_factory, IPTablesPortForwardingSynchronizer(), controller_channel
+    )
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(
-        DaemonService(session_factory, IPTablesPortForwardingSynchronizer(), controller_channel),
+        daemon_service,
         daemon,
     )
+    daemon_service.sync()
 
     token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
     host_client.Register(
