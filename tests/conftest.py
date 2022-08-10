@@ -101,9 +101,11 @@ def controller_channel(session_factory, dns_controller):
         HostService(host_controller, session_factory), server
     )
 
+    dns_controller.start()
     server.start()
     yield channel
     server.stop(1)
+    dns_controller.stop()
 
 
 @pytest.fixture
