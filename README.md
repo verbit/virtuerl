@@ -19,7 +19,11 @@ python main.py controller
 #start daemon
 apt install libvirt-daemon-system
 python main.py daemon
+```
 
+## Code Generation
+```shell
+python -m grpc_tools.protoc --python_out=. --grpc_python_out=. -Iprotos/ protos/*.proto
 ```
 
 ## Known Issues
