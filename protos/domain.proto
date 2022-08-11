@@ -3,6 +3,7 @@ syntax = "proto3";
 option go_package = ".;pb";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 message GetDomainRequest {
   string uuid = 1;
@@ -22,6 +23,7 @@ message Domain {
   string user_data = 10;
   bool nested_virtualization = 11;
   string base_image = 12;
+  google.protobuf.Timestamp created_at = 13;
 }
 
 message ListDomainsRequest {

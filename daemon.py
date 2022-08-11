@@ -3,10 +3,11 @@ import os
 import string
 import threading
 import uuid
+from datetime import datetime, timezone
 
 import libvirt
 import xmltodict
-from google.protobuf import empty_pb2
+from google.protobuf import empty_pb2, timestamp_pb2
 from grpc import StatusCode
 from pyroute2 import IPRoute
 from pyroute2.netlink.rtnl import rtypes
@@ -50,7 +51,7 @@ def libvirt_state_to_string(state):
 def domain_to_dict(domain):
     domain_dict = xmltodict.parse(domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
     d = domain_dict["domain"]
-    return {
+    res = {
         "uuid": d["uuid"],
         "name": d["name"],
         "vcpu": int(d["vcpu"]["#text"]),
@@ -58,6 +59,14 @@ def domain_to_dict(domain):
         "network": d["devices"]["interface"]["source"]["@network"],
         "nested_virtualization": d["cpu"]["@mode"] == "host-model",
     }
+    try:  # FIXME: once all have create metadata, remove this try/catch
+        dt = datetime.fromisoformat(d["metadata"]["restvirt:metadata"]["created"])
+        res["created_at"] = timestamp_pb2.Timestamp(
+            seconds=int(dt.timestamp())
+        )  # we don't need sub-second precision
+    except Exception as e:
+        print(e)
+    return res
 
 
 def _volume_to_dict(vol):
@@ -408,9 +417,15 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         stream.send(ccfg_raw)
         stream.finish()
 
+        creation_timestamp = datetime.now(timezone.utc)
         dom = self.conn.defineXML(
             f"""<domain type='kvm'>
   <uuid>{dom_uuid}</uuid>
+  <metadata>
+    <restvirt:metadata xmlns:restvirt="https://restvirt.io/xml">
+        <created>{creation_timestamp.isoformat()}</created>
+    </restvirt:metadata>
+  </metadata>
   <features>
     <acpi/>
   </features>
