@@ -9,7 +9,8 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Set up Python 3.10.6
-        uses: actions/setup-python@v2
+        id: python
+        uses: actions/setup-python@v4
         with:
           python-version: 3.10.6
       - name: Check out code
@@ -27,8 +28,8 @@ jobs:
         run: |
           tmp_dir=$(mktemp -d)
           chmod -R 0711 "${tmp_dir}"
-          iptables -P FORWARD ACCEPT
-          python3 -m pytest
+          sudo iptables -P FORWARD ACCEPT
+          sudo ${{ steps.python.outputs.python-path }} -m pytest
       - name: Build Snap
         uses: snapcore/action-build@v1
         id: snapcraft
