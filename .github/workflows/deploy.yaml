@@ -29,9 +29,21 @@ jobs:
           # it exits with exit code 1 and github actions aborts the build.
           grep "$PLACEHOLDER" "$VERSION_FILE"
           sed -i "s/$PLACEHOLDER/__version__ = \"${VERSION}\"/g" "$VERSION_FILE"
+
+          grep "version: 'git'" snap/snapcraft.yaml
+          sed -i "s/version: 'git'/version: ${VERSION}/g" snap/snapcraft.yaml
       - name: Deploy image
         run: |
           IMAGE_VERSION=${GITHUB_REF#refs/tags/}
           docker build -t restvirt:${IMAGE_VERSION} .
           docker tag restvirt:${IMAGE_VERSION} ghcr.io/verbit/restvirt:${IMAGE_VERSION}
           docker push ghcr.io/verbit/restvirt:${IMAGE_VERSION}
+      - name: Build Snap
+        uses: snapcore/action-build@v1
+        id: snapcraft
+      - name: Deploy Snap
+        uses: snapcore/action-publish@v1
+        with:
+          store_login: ${{ secrets.SNAP_CREDS }}
+          snap: ${{ steps.snapcraft.outputs.snap }}
+          release: release

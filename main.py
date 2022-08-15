@@ -197,7 +197,7 @@ def start_daemon(args):
     daemon.wait_for_termination()
 
 
-if __name__ == "__main__":
+def main():
     logging.basicConfig(
         level=logging.DEBUG, format="%(asctime)s %(levelname)s:%(name)s:%(message)s"
     )
@@ -248,3 +248,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     logging.debug(args)
     args.func(args)
+
+
+if __name__ == "__main__":
+    main()
