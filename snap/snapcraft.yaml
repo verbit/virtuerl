@@ -1,0 +1,46 @@
+name: minivirt # you probably want to 'snapcraft register <name>'
+base: core22 # the base snap is the execution environment for this snap
+version: 'git' # just for humans, typically '1.2+git' or '1.3.2'
+summary: Single-line elevator pitch for your amazing snap # 79 char long summary
+description: |
+  This is my-snap's description. You have a paragraph or two to tell the
+  most important story about your snap. Keep it under 100 words though,
+  we live in tweetspace and your description wants to look good in the snap
+  store.
+
+grade: stable # must be 'stable' to release into candidate/stable channels
+confinement: strict # use 'strict' once you have the right plugs and slots
+
+apps:
+  controller:
+    command: bin/restvirt controller --debug -c $SNAP_COMMON
+    daemon: simple
+    plugs:
+      - network
+      - network-bind
+  daemon:
+    command: bin/restvirt daemon --debug -c $SNAP_COMMON
+    daemon: simple
+    after:
+      - controller
+    restart-condition: always
+    restart-delay: 2s
+    plugs:
+      - libvirt
+      - network
+      - network-bind
+      - network-control
+      - firewall-control
+
+parts:
+  minivirt:
+    # See 'snapcraft plugins'
+    plugin: python
+    source: ./
+    build-packages:
+      - git
+      - libvirt-dev
+      - pkg-config
+    stage-packages:
+      - libvirt0
+      - libnftables1

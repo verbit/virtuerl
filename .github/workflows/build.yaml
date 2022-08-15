@@ -29,6 +29,9 @@ jobs:
           chmod -R 0711 "${tmp_dir}"
           iptables -P FORWARD ACCEPT
           python3 -m pytest
+      - name: Build Snap
+        uses: snapcore/action-build@v1
+        id: snapcraft
 #      - name: Build
 #        run: |
 #          docker build --target test -t restvirt-tests .
