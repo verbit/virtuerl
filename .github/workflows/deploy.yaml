@@ -43,7 +43,8 @@ jobs:
         id: snapcraft
       - name: Deploy Snap
         uses: snapcore/action-publish@v1
+        env:
+          SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_CREDS }}
         with:
-          store_login: ${{ secrets.SNAP_CREDS }}
           snap: ${{ steps.snapcraft.outputs.snap }}
-          release: release
+          release: stable
