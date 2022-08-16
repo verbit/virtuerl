@@ -41,7 +41,7 @@ setup(
     entry_points={"console_scripts": ["restvirt=main:main"]},
     install_requires=[
         "libvirt-python==8.0.0",
-        "grpcio==1.41.1",
+        "grpcio==1.47.0",
         "grpcio-reflection==1.41.1",
         "protobuf==3.19.1",
         "pycdlib==1.12.0",
