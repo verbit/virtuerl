@@ -32,6 +32,7 @@ setup(
         "volume_pb2_grpc",
         "route_pb2_grpc",
         "volume_pb2",
+        "utils",
     ],
     url="",
     license="Apache",
