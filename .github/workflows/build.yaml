@@ -24,12 +24,12 @@ jobs:
         run: |
           black --check --diff --color ./
           isort --check --diff --color ./
-      - name: Test
+      - name: Unit Tests
         run: |
           tmp_dir=$(mktemp -d)
           chmod -R 0711 "${tmp_dir}"
           sudo iptables -P FORWARD ACCEPT
-          sudo ${{ steps.python.outputs.python-path }} -m pytest
+          sudo ${{ steps.python.outputs.python-path }} -m pytest tests/unit
       - name: Build Snap
         uses: snapcore/action-build@v1
         id: snapcraft
