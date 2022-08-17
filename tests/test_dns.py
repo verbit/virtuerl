@@ -1,6 +1,6 @@
 import grpc
 import pytest
-from dnslib import CLASS, QTYPE, RR, DNSQuestion, DNSRecord
+from dnslib import CLASS, QTYPE, RCODE, RR, DNSQuestion, DNSRecord
 
 import dns_pb2
 import dns_pb2_grpc
@@ -81,6 +81,11 @@ def test_dns_get(client: dns_pb2_grpc.DNSStub):
     with pytest.raises(grpc.RpcError) as e:
         client.GetDNSRecord(dns_pb2.DNSRecordIdentifier(name="non-existing.internal", type="A"))
     assert e.value.code() == grpc.StatusCode.NOT_FOUND
+
+
+def test_dns_forward(dns_client):
+    assert dns_client.query("google.com", "A").header.rcode == RCODE.NOERROR
+    assert dns_client.query("non-existing.internal", "A").header.rcode == RCODE.NXDOMAIN
 
 
 def test_dns_delete(client: dns_pb2_grpc.DNSStub):

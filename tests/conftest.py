@@ -16,9 +16,7 @@ import host_pb2_grpc
 from controller import Controller
 from dns_controller import DNSController
 from host import HostController, HostService
-from main import UnaryUnaryInterceptor
 from models import Base
-from port_forwarding import IPTablesPortForwardingSynchronizer
 
 OPERATING_SYSTEMS = {"darwin", "linux", "windows"}
 
@@ -89,9 +87,7 @@ class DaemonDummy(daemon_pb2_grpc.DaemonServiceServicer):
 
 @pytest.fixture
 def controller_channel(session_factory, dns_controller):
-    server = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
-    )
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=[])
     port = server.add_insecure_port("localhost:0")
     channel = grpc.insecure_channel(f"localhost:{port}")
 
@@ -118,9 +114,7 @@ def host_client(controller_channel):
 
 @pytest.fixture
 def controller_client_dummy(controller_channel, host_client):
-    daemon = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
-    )
+    daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=[])
     daemon_port = daemon.add_insecure_port("localhost:0")
 
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(DaemonDummy(), daemon)
@@ -144,6 +138,8 @@ def controller_client_dummy(controller_channel, host_client):
 @pytest.fixture
 def controller_client(session_factory, controller_channel, host_client):
     from daemon import DaemonService
+    from port_forwarding import IPTablesPortForwardingSynchronizer
+    from utils import UnaryUnaryInterceptor
 
     daemon = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]

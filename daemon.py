@@ -25,7 +25,6 @@ from image import (
     read_user_data_from_cloud_config_image,
 )
 from models import PortForwarding
-from network import NetworkSynchronizer
 
 
 def libvirt_state_to_string(state):
@@ -244,6 +243,61 @@ class IPRouteSynchronizer:
             for dst, (tid, gws) in routes.items():
                 if dst not in filtered_routes or filtered_routes[dst][1] != gws:
                     self.put_ip_route(ip, tid, dst, gws)
+
+
+class NetworkSynchronizer:
+    import libvirt
+
+    def __init__(
+        self,
+        controller: controller_pb2_grpc.ControllerServiceStub,
+        libvirt_connection: libvirt.virConnect,
+    ):
+        self.controller = controller
+        self.libvirt_connection = libvirt_connection
+
+    def sync(self):
+        # net = self.conn.networkLookupByUUIDString(request.uuid)
+        # net_dict = xmltodict.parse(net.XMLDesc())["network"]
+        # net_def = net_dict["ip"]
+        # gateway = ipaddress.IPv4Address(net_def["@address"])
+        # net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
+        #
+        # return domain_pb2.Network(
+        #     uuid=request.uuid,
+        #     name=net_dict["name"],
+        #     cidr=net.with_prefixlen,
+        # )
+
+        lv_networks = self.libvirt_connection.listAllNetworks()
+        lv_network_names_map = {n.name(): n for n in lv_networks}
+        networks = self.controller.ListNetworks(domain_pb2.ListNetworksRequest()).networks
+        network_names_map = {n.name: n for n in networks}
+
+        for lv_network_name, lv_network in lv_network_names_map.items():
+            if lv_network_name not in network_names_map:
+                lv_network.destroy()
+                lv_network.undefine()
+
+        for network_name, network in network_names_map.items():
+            if network_name not in lv_network_names_map:
+                net = ipaddress.IPv4Network(network.cidr)
+                # TODO: forwarder domain addr should point to the controller
+                lvnet = self.libvirt_connection.networkDefineXML(
+                    f"""<network>
+  <name>{network.name}</name>
+  <forward mode='open'/>
+  <bridge stp='on' delay='0'/>
+  <dns enable='no'>
+  </dns>
+  <ip address='{net[1]}' netmask='{net.netmask}'>
+  </ip>
+</network>
+"""
+                )
+                lvnet.create()
+                lvnet.setAutostart(True)
+                # network.uuid = lvnet.UUIDString()
 
 
 class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
