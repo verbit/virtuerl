@@ -2,6 +2,16 @@
 
 Manage libvirt through a REST API.
 
+# Installation
+
+```shell
+apt install --no-install-recommends libvirt-daemon-system
+snap install minivirt
+sudo snap connect minivirt:network-control
+sudo snap connect minivirt:firewall-control
+sudo snap connect minivirt:libvirt
+```
+
 ## Getting Started
 
 ```shell
