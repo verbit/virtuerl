@@ -41,6 +41,19 @@ class IPTablesPortForwardingSynchronizer:
                         "chain": {
                             "table": table_name,
                             "family": "inet",
+                            "name": "output",
+                            "type": "nat",
+                            "hook": "output",
+                            "prio": -105,
+                            "policy": "accept",
+                        }
+                    }
+                },
+                {
+                    "add": {
+                        "chain": {
+                            "table": table_name,
+                            "family": "inet",
                             "name": "prerouting",
                             "type": "nat",
                             "hook": "prerouting",
@@ -110,6 +123,39 @@ class IPTablesPortForwardingSynchronizer:
             for f in forwardings:
                 commands.extend(
                     [
+                        {
+                            "add": {
+                                "rule": {
+                                    "table": table_name,
+                                    "family": "inet",
+                                    "chain": "output",
+                                    "expr": [
+                                        {
+                                            "match": {
+                                                "op": "==",
+                                                "left": {
+                                                    "payload": {
+                                                        "protocol": f.protocol,
+                                                        "field": "dport",
+                                                    }
+                                                },
+                                                "right": f.source_port,
+                                            }
+                                        },
+                                        {
+                                            "counter": None,
+                                        },
+                                        {
+                                            "dnat": {
+                                                "family": "ip",
+                                                "addr": f.target_ip,
+                                                "port": f.target_port,
+                                            }
+                                        },
+                                    ],
+                                }
+                            }
+                        },
                         {
                             "add": {
                                 "rule": {
