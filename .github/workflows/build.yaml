@@ -39,6 +39,48 @@ jobs:
           sudo snap connect minivirt:network-control
           sudo snap connect minivirt:firewall-control
           sudo snap connect minivirt:libvirt
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/ca.crt <<EOF
+          -----BEGIN CERTIFICATE-----
+          MIICBDCCAYqgAwIBAgIRAOfU+EvUkVhYLwFKwS1rp1kwCgYIKoZIzj0EAwMwQzEL
+          MAkGA1UEBhMCREUxDzANBgNVBAgTBkJlcmxpbjEPMA0GA1UEBxMGQmVybGluMRIw
+          EAYDVQQKEwlvc2FmdC5kZXYwHhcNMjIwODIxMTEwNjA2WhcNMzIxMTI2MTEwNjA2
+          WjBDMQswCQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJs
+          aW4xEjAQBgNVBAoTCW9zYWZ0LmRldjB2MBAGByqGSM49AgEGBSuBBAAiA2IABMSJ
+          ajmDRZT8lFk/mUh32cIpoa/0TmWOtyyP8ivEjerFpiTnX+o6Umu/66R5p52D9D0d
+          +3L8Hs4DR4xfbugECKdMBlBQUl3al1VZKLSM+S+sAiqQxgsP+ZvXRCjsM/DEsaNC
+          MEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFOEI
+          RRLKbTHzEmS6nKa2BkD1rrh3MAoGCCqGSM49BAMDA2gAMGUCMQDYfKvPNIkv3veR
+          tmr4InE2Nay07ePvRn4dIXIBOIAXqjzsaZeVBpNfV2K5qi+4kW4CMGxeiGH+4HA0
+          LclhLWjLmOZnTRAT8chHkNh8z+3EXt4cmJ3wpLTTkuhxmYQwS6mBrA==
+          -----END CERTIFICATE-----
+          EOF
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.crt <<EOF
+          -----BEGIN CERTIFICATE-----
+          MIICYjCCAeegAwIBAgIQbVv7tB/q2tQqDT3ZgWznCjAKBggqhkjOPQQDAzBDMQsw
+          CQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJsaW4xEjAQ
+          BgNVBAoTCW9zYWZ0LmRldjAeFw0yMjA4MjExMTA2MDZaFw0zMjExMjYxMTA2MDZa
+          MFcxCzAJBgNVBAYTAkRFMQ8wDQYDVQQIEwZCZXJsaW4xDzANBgNVBAcTBkJlcmxp
+          bjESMBAGA1UEChMJb3NhZnQuZGV2MRIwEAYDVQQDEwlvc2FmdC5kZXYwdjAQBgcq
+          hkjOPQIBBgUrgQQAIgNiAASxu/GUY+FihAR/EAf6o9tCVPMWUzAANMF+0+D0XHAH
+          k1SELZsg7ZQ9zwSJtclZHG3lB2e4r8uW4q/hJbKwauM4347F1sD1TdrQzsflQDHM
+          6S1UJmp8z6YblEacWgp970WjgYswgYgwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQM
+          MAoGCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAU4QhFEsptMfMS
+          ZLqcprYGQPWuuHcwMgYDVR0RBCswKYILcGF0Y2gucGxhY2WCCW9zYWZ0LmRldoIJ
+          bG9jYWxob3N0hwTAqHoBMAoGCCqGSM49BAMDA2kAMGYCMQCEpBNSt3rxydDMYxP5
+          by/8lxXAnlzj5giAv4MPuoX+nobc6IipEhtTXUydUnrkSPQCMQCkMiKObWQn6yk1
+          9XGIqdSQcS/unAilbrjf8J+BfZemdntXvIz8lReizV2pgyFGO1k=
+          -----END CERTIFICATE-----
+          EOF
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.key <<EOF
+          -----BEGIN EC PRIVATE KEY-----
+          MIGkAgEBBDCWM9jrmN8xhoA0nmXKvhuyPsnO+2zjVrN1hmfSqRjlHRokjFxW9Gmd
+          ehdVNofOkEWgBwYFK4EEACKhZANiAASxu/GUY+FihAR/EAf6o9tCVPMWUzAANMF+
+          0+D0XHAHk1SELZsg7ZQ9zwSJtclZHG3lB2e4r8uW4q/hJbKwauM4347F1sD1TdrQ
+          zsflQDHM6S1UJmp8z6YblEacWgp970U=
+          -----END EC PRIVATE KEY-----
+          EOF
+          sudo snap set minivirt controller.args='--debug -b :8093 -c $SNAP_COMMON --server-cert $SNAP_COMMON/server.crt --server-key $SNAP_COMMON/server.key --client-ca-cert $SNAP_COMMON/ca.crt'
+
           sleep 10
           sudo ${{ steps.python.outputs.python-path }} -m pytest tests/integration
 #          sleep 5

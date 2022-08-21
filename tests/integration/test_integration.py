@@ -12,8 +12,53 @@ import port_forwarding_pb2
 
 
 @pytest.fixture
-def client():
+def insecure_client():
     channel = grpc.insecure_channel("localhost:8094")
+    return controller_pb2_grpc.ControllerServiceStub(channel)
+
+
+def client():
+    channel = grpc.secure_channel(
+        "localhost:8093",
+        grpc.ssl_channel_credentials(
+            root_certificates=b"""-----BEGIN CERTIFICATE-----
+    MIICBDCCAYqgAwIBAgIRAOfU+EvUkVhYLwFKwS1rp1kwCgYIKoZIzj0EAwMwQzEL
+    MAkGA1UEBhMCREUxDzANBgNVBAgTBkJlcmxpbjEPMA0GA1UEBxMGQmVybGluMRIw
+    EAYDVQQKEwlvc2FmdC5kZXYwHhcNMjIwODIxMTEwNjA2WhcNMzIxMTI2MTEwNjA2
+    WjBDMQswCQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJs
+    aW4xEjAQBgNVBAoTCW9zYWZ0LmRldjB2MBAGByqGSM49AgEGBSuBBAAiA2IABMSJ
+    ajmDRZT8lFk/mUh32cIpoa/0TmWOtyyP8ivEjerFpiTnX+o6Umu/66R5p52D9D0d
+    +3L8Hs4DR4xfbugECKdMBlBQUl3al1VZKLSM+S+sAiqQxgsP+ZvXRCjsM/DEsaNC
+    MEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFOEI
+    RRLKbTHzEmS6nKa2BkD1rrh3MAoGCCqGSM49BAMDA2gAMGUCMQDYfKvPNIkv3veR
+    tmr4InE2Nay07ePvRn4dIXIBOIAXqjzsaZeVBpNfV2K5qi+4kW4CMGxeiGH+4HA0
+    LclhLWjLmOZnTRAT8chHkNh8z+3EXt4cmJ3wpLTTkuhxmYQwS6mBrA==
+    -----END CERTIFICATE-----
+    """,
+            certificate_chain=b"""-----BEGIN CERTIFICATE-----
+    MIICEjCCAZegAwIBAgIQEU/jyKE3flG6MjI9hGa02zAKBggqhkjOPQQDAzBDMQsw
+    CQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJsaW4xEjAQ
+    BgNVBAoTCW9zYWZ0LmRldjAeFw0yMjA4MjExMTA2MDZaFw0zMjExMjYxMTA2MDZa
+    MFIxCzAJBgNVBAYTAkRFMQ8wDQYDVQQIEwZCZXJsaW4xDzANBgNVBAcTBkJlcmxp
+    bjESMBAGA1UEChMJb3NhZnQuZGV2MQ0wCwYDVQQDEwRpbHlhMHYwEAYHKoZIzj0C
+    AQYFK4EEACIDYgAE7mFedSe/iD42OGn+npI0o6WaZEODuA2sgcHFZjaxwgQc3dPB
+    ZWAyjyhFny7f2ACImHeEe6HXEXG1oH5J+oVbNX672vLlZop9AtOKdbBWGvJRKlaJ
+    oOglPkH8atNbULpuo0EwPzAOBgNVHQ8BAf8EBAMCB4AwDAYDVR0TAQH/BAIwADAf
+    BgNVHSMEGDAWgBThCEUSym0x8xJkupymtgZA9a64dzAKBggqhkjOPQQDAwNpADBm
+    AjEAnnKXJnBPQRHO+JfkjnkLDHPkp1/dZUdRdSk+Frd2wWwZ9XzkbPckart2ebT7
+    yHxnAjEAuNjvKHsS4PMjioUIa0l9BU1Jg/jRGM+5sO19E0Ci0TrLUOO9cUX1+0yN
+    cPIi/hFA
+    -----END CERTIFICATE-----
+    """,
+            private_key=b"""-----BEGIN EC PRIVATE KEY-----
+    MIGkAgEBBDBwYW1GfUENxdgwxcf76pAlXBCf/e3PVvaWt/DRNmSJsLY1X7jnxoz4
+    /zL2+F6vQLWgBwYFK4EEACKhZANiAATuYV51J7+IPjY4af6ekjSjpZpkQ4O4DayB
+    wcVmNrHCBBzd08FlYDKPKEWfLt/YAIiYd4R7odcRcbWgfkn6hVs1frva8uVmin0C
+    04p1sFYa8lEqVomg6CU+Qfxq01tQum4=
+    -----END EC PRIVATE KEY-----
+    """,
+        ),
+    )
     return controller_pb2_grpc.ControllerServiceStub(channel)
 
 
