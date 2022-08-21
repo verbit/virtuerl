@@ -13,13 +13,13 @@ confinement: strict # use 'strict' once you have the right plugs and slots
 
 apps:
   controller:
-    command: bin/restvirt controller --debug -c $SNAP_COMMON
+    command: bin/restvirt-controller
     daemon: simple
     plugs:
       - network
       - network-bind
   daemon:
-    command: bin/restvirt daemon --debug -c $SNAP_COMMON
+    command: bin/restvirt-daemon
     daemon: simple
     after:
       - controller
@@ -33,6 +33,11 @@ apps:
       - firewall-control
 
 parts:
+  wrapper:
+    plugin: dump
+    source: snap/local/
+    stage-packages:
+      - gettext-base
   minivirt:
     # See 'snapcraft plugins'
     plugin: python

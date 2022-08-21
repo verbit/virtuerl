@@ -1,0 +1,13 @@
+#!/bin/sh -e
+
+controller_args="$(snapctl get controller.args)"
+if [ -z "$controller_args" ]; then
+  snapctl set controller.args='-c $SNAP_COMMON'
+fi
+
+daemon_args="$(snapctl get daemon.args)"
+if [ -z "$daemon_args" ]; then
+  snapctl set daemon.args='-c $SNAP_COMMON'
+fi
+
+snapctl restart minivirt

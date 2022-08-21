@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+exec restvirt controller $(snapctl get controller.args | envsubst)
