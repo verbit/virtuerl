@@ -1,3 +1,4 @@
+import contextlib
 import sys
 from concurrent import futures
 
@@ -169,3 +170,61 @@ def controller_client(session_factory, controller_channel, host_client):
     daemon.start()
     yield controller_pb2_grpc.ControllerServiceStub(controller_channel)
     daemon.stop(1)
+
+
+@contextlib.contextmanager
+def dummy_controller(dns_port=53):
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    session_factory = sessionmaker(engine)
+
+    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=[])
+    port = server.add_insecure_port("localhost:0")
+    controller_channel = grpc.insecure_channel(f"localhost:{port}")
+
+    dns_controller = DNSController(session_factory)
+
+    host_controller = HostController(session_factory)
+    controller_pb2_grpc.add_ControllerServiceServicer_to_server(
+        Controller(session_factory, host_controller, dns_controller),
+        server,
+    )
+    host_pb2_grpc.add_HostServiceServicer_to_server(
+        HostService(host_controller, session_factory), server
+    )
+
+    dns_controller.start(dns_port)
+    server.start()
+
+    daemon = grpc.server(futures.ThreadPoolExecutor(max_workers=10), interceptors=[])
+    daemon_port = daemon.add_insecure_port("localhost:0")
+
+    daemon_pb2_grpc.add_DaemonServiceServicer_to_server(DaemonDummy(), daemon)
+
+    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name="test",
+                address=f"localhost:{daemon_port}",
+            ),
+        )
+    )
+
+    daemon.start()
+
+    try:
+        yield controller_pb2_grpc.ControllerServiceStub(controller_channel)
+    finally:
+        daemon.stop(1)
+        server.stop(1)
+        dns_controller.stop()
+        Base.metadata.drop_all(engine)
