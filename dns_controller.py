@@ -76,6 +76,15 @@ class DNSController:
                         for a_name, a_rtype, a_rr in zone:
                             if a_name == rr.rdata.label and a_rtype in ["A", "AAAA"]:
                                 reply.add_answer(a_rr)
+
+        if reply is None:
+            # check for zone delegation
+            for name, rtype, rr in zone:
+                if rtype == "NS" and qname.matchSuffix(name):
+                    if reply is None:
+                        reply = request.reply()
+                    reply.add_auth(copy.copy(rr))
+
         if reply is None:
             try:
                 reply = dnslib.DNSRecord.parse(request.send(self.upstream, 53, timeout=3))
