@@ -1,9 +1,17 @@
 import grpc
 import pytest
 from dnslib import CLASS, QTYPE, RCODE, RR, DNSQuestion, DNSRecord
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 import dns_pb2
 import dns_pb2_grpc
+import models
+from dns_controller import DNSController
+from models import Base
+
+from .conftest import dummy_controller
 
 
 class DNSClient:
@@ -101,3 +109,44 @@ def test_dns_delete(client: dns_pb2_grpc.DNSStub):
     client.DeleteDNSRecord(dns_pb2.DNSRecordIdentifier(name="mydomain.internal", type="A"))
     records = client.ListDNSRecords(dns_pb2.ListDNSRecordsRequest()).dns_records
     assert len(records) == 0
+
+
+def test_dns_delegation():
+    engine = create_engine(
+        "sqlite:///:memory:",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        echo=False,
+        future=True,
+    )
+    Base.metadata.create_all(engine)
+    sessfact = sessionmaker(engine)
+    upstream_dns = DNSController(sessfact)
+    with sessfact() as session:
+        session.merge(
+            models.DNSRecord(name="test.delegated.internal", type="A", records=["192.168.11.11"])
+        )
+        session.commit()
+    upstream_dns.start()
+
+    with dummy_controller(dns_port=30053) as client:
+        client.PutDNSRecord(
+            dns_pb2.PutDNSRecordRequest(
+                dns_record=dns_pb2.DNSRecord(
+                    name="delegated.internal",
+                    type="NS",
+                    ttl=120,
+                    records=["127.0.0.1"],
+                )
+            )
+        )
+
+        dns_client = DNSClient(port=30053)
+        resp = dns_client.query("test.delegated.internal", "A")
+        assert len(resp.ar) == 0
+        assert len(resp.auth) == 1
+        assert resp.auth[0].rtype == QTYPE.NS
+        assert resp.auth[0].rname == "delegated.internal"
+        assert str(resp.auth[0].rdata) == "127.0.0.1."
+
+    upstream_dns.stop()
