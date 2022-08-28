@@ -19,9 +19,7 @@ class DNSClient:
 
 @pytest.fixture
 def dns_client(dns_controller):
-    port = dns_controller.start(port=0)
-    yield DNSClient(port=port)
-    dns_controller.stop()
+    yield DNSClient()
 
 
 @pytest.fixture
@@ -83,7 +81,7 @@ def test_dns_get(client: dns_pb2_grpc.DNSStub):
     assert e.value.code() == grpc.StatusCode.NOT_FOUND
 
 
-def test_dns_forward(dns_client):
+def test_dns_forward(client: dns_pb2_grpc.DNSStub, dns_client):
     assert dns_client.query("google.com", "A").header.rcode == RCODE.NOERROR
     assert dns_client.query("non-existing.internal", "A").header.rcode == RCODE.NXDOMAIN
 
