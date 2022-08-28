@@ -100,4 +100,5 @@ class DNSController:
     def stop(self):
         if self.server is not None:
             self.server.stop()
+            self.server.server.server_close()
             self.server = None
