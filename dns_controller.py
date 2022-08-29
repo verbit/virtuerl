@@ -90,6 +90,7 @@ class DNSController:
                 reply = dnslib.DNSRecord.parse(request.send(self.upstream, 53, timeout=3))
             except socket.timeout:
                 reply.header.rcode = RCODE.SERVFAIL
+        reply.header.ra = False  # we don't support recursion
         return reply
 
     def start(self, port=53):
