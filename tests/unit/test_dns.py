@@ -148,5 +148,6 @@ def test_dns_delegation():
         assert resp.auth[0].rtype == QTYPE.NS
         assert resp.auth[0].rname == "delegated.internal"
         assert str(resp.auth[0].rdata) == "127.0.0.1."
+        assert not resp.header.ra
 
     upstream_dns.stop()
