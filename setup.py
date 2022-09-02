@@ -43,7 +43,7 @@ setup(
     install_requires=[
         "libvirt-python==8.0.0",
         "grpcio==1.41.1",
-        "grpcio-reflection==1.41.1",
+        "grpcio-reflection==1.48.1",
         "protobuf==3.19.1",
         "pycdlib==1.12.0",
         "pyroute2==0.7.2",
