@@ -57,7 +57,7 @@ def start_controller(args):
     session_factory = sessionmaker(engine, future=True)
 
     dns_controller = DNSController(session_factory)
-    dns_controller.start()
+    dns_controller.start(port=5353)
 
     server = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
