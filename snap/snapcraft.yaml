@@ -19,7 +19,7 @@ apps:
       - network
       - network-bind
   unbound:
-    command: /usr/sbin/unbound -d -p -c $SNAP/etc/unbound/minivirt.conf
+    command: bin/unbound-wrapper
     daemon: simple
     after:
       - controller
