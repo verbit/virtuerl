@@ -18,6 +18,14 @@ apps:
     plugs:
       - network
       - network-bind
+  unbound:
+    command: /usr/sbin/unbound -d -p -c $SNAP/etc/unbound/minivirt.conf
+    daemon: simple
+    after:
+      - controller
+    plugs:
+      - network
+      - network-bind
   daemon:
     command: bin/restvirt-daemon
     daemon: simple
@@ -49,3 +57,4 @@ parts:
     stage-packages:
       - libvirt0
       - libnftables1
+      - unbound
