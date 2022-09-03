@@ -86,10 +86,12 @@ class DNSController:
                     reply.add_auth(copy.copy(rr))
 
         if reply is None:
-            try:
-                reply = dnslib.DNSRecord.parse(request.send(self.upstream, 53, timeout=3))
-            except socket.timeout:
-                reply.header.rcode = RCODE.SERVFAIL
+            # try:
+            #    reply = dnslib.DNSRecord.parse(request.send(self.upstream, 53, timeout=3))
+            # except socket.timeout:
+            #    reply.header.rcode = RCODE.SERVFAIL
+            reply = request.reply()
+            reply.header.rcode = RCODE.NXDOMAIN
         reply.header.ra = False  # we don't support recursion
         return reply
 

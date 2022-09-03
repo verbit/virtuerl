@@ -89,9 +89,9 @@ def test_dns_get(client: dns_pb2_grpc.DNSStub):
     assert e.value.code() == grpc.StatusCode.NOT_FOUND
 
 
-def test_dns_forward(client: dns_pb2_grpc.DNSStub, dns_client):
-    assert dns_client.query("google.com", "A").header.rcode == RCODE.NOERROR
-    assert dns_client.query("non-existing.internal", "A").header.rcode == RCODE.NXDOMAIN
+# def test_dns_forward(client: dns_pb2_grpc.DNSStub, dns_client):
+#     assert dns_client.query("google.com", "A").header.rcode == RCODE.NOERROR
+#     assert dns_client.query("non-existing.internal", "A").header.rcode == RCODE.NXDOMAIN
 
 
 def test_dns_delete(client: dns_pb2_grpc.DNSStub):
