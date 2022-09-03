@@ -63,8 +63,8 @@ def client():
     return controller_pb2_grpc.ControllerServiceStub(channel)
 
 
-def test_create_domain_linux(client: controller_pb2_grpc.ControllerServiceStub):
-    network = client.CreateNetwork(
+def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServiceStub):
+    network = insecure_client.CreateNetwork(
         domain_pb2.CreateNetworkRequest(
             network=domain_pb2.Network(
                 name="restvirt",
@@ -72,7 +72,7 @@ def test_create_domain_linux(client: controller_pb2_grpc.ControllerServiceStub):
             )
         )
     )
-    dom = client.CreateDomain(
+    dom = insecure_client.CreateDomain(
         domain_pb2.CreateDomainRequest(
             domain=domain_pb2.Domain(
                 name="test",
@@ -98,16 +98,18 @@ runcmd:
         target_ip="192.168.69.69",
         target_port=80,
     )
-    client.PutPortForwarding(port_forwarding_pb2.PutPortForwardingRequest(port_forwarding=fwd))
+    insecure_client.PutPortForwarding(
+        port_forwarding_pb2.PutPortForwardingRequest(port_forwarding=fwd)
+    )
 
     response = wait_for_http("http://192.168.69.1:8080")
     assert "Welcome to nginx!" in response
 
-    client.DeletePortForwarding(
+    insecure_client.DeletePortForwarding(
         port_forwarding_pb2.PortForwardingIdentifier(protocol="tcp", source_port=8080)
     )
-    client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
-    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
+    insecure_client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
+    insecure_client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
 
 
 def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=180)):
