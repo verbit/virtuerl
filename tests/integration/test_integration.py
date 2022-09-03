@@ -17,6 +17,7 @@ def insecure_client():
     return controller_pb2_grpc.ControllerServiceStub(channel)
 
 
+@pytest.fixture
 def client():
     channel = grpc.secure_channel(
         "localhost:8093",
@@ -69,8 +70,7 @@ def test_create_domain_linux(client: controller_pb2_grpc.ControllerServiceStub):
                 name="restvirt",
                 cidr="192.168.69.0/24",
             )
-        ),
-        wait_for_ready=True,
+        )
     )
     dom = client.CreateDomain(
         domain_pb2.CreateDomainRequest(
