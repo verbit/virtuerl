@@ -33,13 +33,13 @@ jobs:
       - name: Build Snap
         uses: snapcore/action-build@v1
         id: snapcraft
-      - name: Integraion Tests
+      - name: Integration Tests
         run: |
           sudo snap install --dangerous minivirt*.snap
           sudo snap connect minivirt:network-control
           sudo snap connect minivirt:firewall-control
           sudo snap connect minivirt:libvirt
-          cat << EOF | sudo tee -a /var/snap/minivirt/common/ca.crt <<EOF
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/ca.crt
           -----BEGIN CERTIFICATE-----
           MIICBDCCAYqgAwIBAgIRAOfU+EvUkVhYLwFKwS1rp1kwCgYIKoZIzj0EAwMwQzEL
           MAkGA1UEBhMCREUxDzANBgNVBAgTBkJlcmxpbjEPMA0GA1UEBxMGQmVybGluMRIw
@@ -54,7 +54,7 @@ jobs:
           LclhLWjLmOZnTRAT8chHkNh8z+3EXt4cmJ3wpLTTkuhxmYQwS6mBrA==
           -----END CERTIFICATE-----
           EOF
-          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.crt <<EOF
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.crt
           -----BEGIN CERTIFICATE-----
           MIICYjCCAeegAwIBAgIQbVv7tB/q2tQqDT3ZgWznCjAKBggqhkjOPQQDAzBDMQsw
           CQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJsaW4xEjAQ
@@ -71,7 +71,7 @@ jobs:
           9XGIqdSQcS/unAilbrjf8J+BfZemdntXvIz8lReizV2pgyFGO1k=
           -----END CERTIFICATE-----
           EOF
-          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.key <<EOF
+          cat << EOF | sudo tee -a /var/snap/minivirt/common/server.key
           -----BEGIN EC PRIVATE KEY-----
           MIGkAgEBBDCWM9jrmN8xhoA0nmXKvhuyPsnO+2zjVrN1hmfSqRjlHRokjFxW9Gmd
           ehdVNofOkEWgBwYFK4EEACKhZANiAASxu/GUY+FihAR/EAf6o9tCVPMWUzAANMF+
