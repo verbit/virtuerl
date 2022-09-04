@@ -148,7 +148,11 @@ def controller_client(session_factory, controller_channel, host_client):
     daemon_port = daemon.add_insecure_port("localhost:0")
 
     daemon_service = DaemonService(
-        session_factory, IPTablesPortForwardingSynchronizer(), controller_channel
+        session_factory,
+        IPTablesPortForwardingSynchronizer(
+            controller_pb2_grpc.ControllerServiceStub(controller_channel)
+        ),
+        controller_channel,
     )
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(
         daemon_service,
