@@ -140,7 +140,9 @@ def start_daemon(args):
     controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
     daemon_service = DaemonService(
         session_factory,
-        IPTablesPortForwardingSynchronizer(),
+        IPTablesPortForwardingSynchronizer(
+            controller_pb2_grpc.ControllerServiceStub(controller_channel)
+        ),
         controller_channel,
     )
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)

@@ -4,11 +4,13 @@ import threading
 import nftables
 from sqlalchemy import select
 
+import domain_pb2
 from models import PortForwarding
 
 
 class IPTablesPortForwardingSynchronizer:
-    def __init__(self):
+    def __init__(self, controller):
+        self.controller = controller
         self.lock = threading.Lock()
 
     def handle_sync(self, session):
@@ -227,6 +229,63 @@ class IPTablesPortForwardingSynchronizer:
                         },
                     ]
                 )
+
+            networks = self.controller.ListNetworks(domain_pb2.ListNetworksRequest()).networks
+            for network in networks:
+                net = ipaddress.IPv4Network(network.cidr)
+                for chain in ["output", "prerouting"]:
+                    for protocol in ["udp", "tcp"]:
+                        commands.extend(
+                            [
+                                {
+                                    "add": {  # FIXME: use configurable target IP:port
+                                        "rule": {
+                                            "table": table_name,
+                                            "family": "inet",
+                                            "chain": chain,
+                                            "expr": [
+                                                {
+                                                    "match": {
+                                                        "op": "==",
+                                                        "left": {
+                                                            "payload": {
+                                                                "protocol": protocol,
+                                                                "field": "dport",
+                                                            }
+                                                        },
+                                                        "right": 53,
+                                                    }
+                                                },
+                                                {
+                                                    "match": {
+                                                        "op": "==",
+                                                        "left": {
+                                                            "payload": {
+                                                                "protocol": "ip",
+                                                                "field": "daddr",
+                                                            }
+                                                        },
+                                                        "right": str(net[1]),
+                                                    }
+                                                },
+                                                {
+                                                    "counter": None,
+                                                },
+                                                {
+                                                    "dnat": {
+                                                        "family": "ip",
+                                                        "addr": str(
+                                                            net[1]
+                                                        ),  # TODO: only works in the single-host case
+                                                        "port": 5354,
+                                                    }
+                                                },
+                                            ],
+                                        }
+                                    }
+                                },
+                            ]
+                        )
 
             rc, output, error = nft.json_cmd({"nftables": commands})
             # FIXME: replace with logging
