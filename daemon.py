@@ -300,6 +300,25 @@ class NetworkSynchronizer:
                 # network.uuid = lvnet.UUIDString()
 
 
+def create_storage_pool(conn, name, pool_dir):
+    try:
+        conn.storagePoolLookupByName(name)
+    except libvirt.libvirtError as e:
+        if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_POOL:
+            pool = conn.storagePoolDefineXML(
+                f"""<pool type="dir">
+              <name>{name}</name>
+              <target>
+                <path>{os.path.join(pool_dir, 'images')}</path>
+              </target>
+            </pool>"""
+            )
+            pool.build()
+            pool.create()
+        else:
+            raise e
+
+
 class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def __init__(
         self, session_factory, port_fwd_sync_handler, controller_channel, pool_dir="/data/restvirt"
@@ -318,23 +337,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         domains = self.conn.listAllDomains()
         self.ips = {self._get_domain(d.UUIDString())["private_ip"] for d in domains}
 
-        try:
-            self.conn.storagePoolLookupByName("restvirtimages")
-        except libvirt.libvirtError as e:
-            print(e.get_error_code())
-            if e.get_error_code() == libvirt.VIR_ERR_NO_STORAGE_POOL:
-                pool = self.conn.storagePoolDefineXML(
-                    f"""<pool type="dir">
-      <name>restvirtimages</name>
-      <target>
-        <path>{os.path.join(pool_dir, 'images')}</path>
-      </target>
-    </pool>"""
-                )
-                pool.build()
-                pool.create()
-            else:
-                raise e
+        create_storage_pool(self.conn, "restvirtimages", pool_dir)
+        create_storage_pool(self.conn, "volumes", pool_dir)
 
     def _get_domain(self, uuid):
         domain = self.conn.lookupByUUIDString(uuid)
