@@ -563,7 +563,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
     def GetVolume(self, request, context):
         pool = self.conn.storagePoolLookupByName("volumes")
-        vol = pool.storageVolLookupByName(id)
+        vol = pool.storageVolLookupByName(request.uuid)
         return volume_pb2.Volume(**_volume_to_dict(vol))
 
     def ListVolumes(self, request, context):
@@ -591,7 +591,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
     def DeleteVolume(self, request, context):
         pool = self.conn.storagePoolLookupByName("volumes")
-        vol = pool.storageVolLookupByName(id)
+        vol = pool.storageVolLookupByName(request.uuid)
         if _get_all_attachments(self.conn.listAllDomains(), vol):
             raise Exception("volume is attached z")
         vol.delete()
