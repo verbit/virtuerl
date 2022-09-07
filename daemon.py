@@ -300,7 +300,10 @@ class NetworkSynchronizer:
                 # network.uuid = lvnet.UUIDString()
 
 
-def create_storage_pool(conn, name, pool_dir):
+def create_storage_pool(conn, name, pool_dir, location=None):
+    if location is None:
+        location = name
+
     try:
         conn.storagePoolLookupByName(name)
     except libvirt.libvirtError as e:
@@ -309,7 +312,7 @@ def create_storage_pool(conn, name, pool_dir):
                 f"""<pool type="dir">
               <name>{name}</name>
               <target>
-                <path>{os.path.join(pool_dir, 'images')}</path>
+                <path>{os.path.join(pool_dir, location)}</path>
               </target>
             </pool>"""
             )
@@ -337,7 +340,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         domains = self.conn.listAllDomains()
         self.ips = {self._get_domain(d.UUIDString())["private_ip"] for d in domains}
 
-        create_storage_pool(self.conn, "restvirtimages", pool_dir)
+        create_storage_pool(self.conn, "restvirtimages", pool_dir, "images")
         create_storage_pool(self.conn, "volumes", pool_dir)
 
     def _get_domain(self, uuid):
