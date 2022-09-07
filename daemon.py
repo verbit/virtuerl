@@ -595,6 +595,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         if _get_all_attachments(self.conn.listAllDomains(), vol):
             raise Exception("volume is attached z")
         vol.delete()
+        return empty_pb2.Empty()
 
     def ListVolumeAttachments(self, request, context):
         domain = self.conn.lookupByUUIDString(request.domain_id)
@@ -658,14 +659,16 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
     def DetachVolume(self, request, context):
         domain = self.conn.lookupByUUIDString(request.domain_id)
+        alias = f"ua-{request.volume_id}"
         try:
             domain.detachDeviceAlias(
-                f"ua-{request.volume_id}",
+                alias,
                 libvirt.VIR_DOMAIN_AFFECT_LIVE | libvirt.VIR_DOMAIN_AFFECT_CONFIG,
             )
-        except:
-            # TODO: check for string "no device found with alias"
-            pass
+        except libvirt.libvirtError as e:
+            if f"no device found with alias {alias}" not in e.get_error_message():
+                raise e
+        return empty_pb2.Empty()
 
     def GetPortForwarding(self, request, context):
         with self.session_factory() as session:
