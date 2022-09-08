@@ -3,6 +3,8 @@ on:
   push:
     tags:
       - v*
+    branches:
+      - main
 jobs:
   deploy:
     name: Deploy
@@ -12,7 +14,9 @@ jobs:
       DOCKER_BUILDKIT: 1
     steps:
       - name: Check out code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
       - name: Login to GHCR
         uses: docker/login-action@v1
         with:
@@ -22,7 +26,7 @@ jobs:
       - name: Set version
         run: |
           # from refs/tags/v1.2.3 get 1.2.3
-          VERSION=${GITHUB_REF#refs/tags/v}
+          VERSION=$(git describe --tags)
           PLACEHOLDER='__version__ = "unknown"'
           VERSION_FILE='version.py'
           # ensure the placeholder is there. If grep doesn't find the placeholder
@@ -34,17 +38,25 @@ jobs:
           sed -i "s/version: 'git'/version: ${VERSION}/g" snap/snapcraft.yaml
       - name: Deploy image
         run: |
-          IMAGE_VERSION=${GITHUB_REF#refs/tags/}
+          IMAGE_VERSION=$(git describe --tags)
           docker build -t restvirt:${IMAGE_VERSION} .
           docker tag restvirt:${IMAGE_VERSION} ghcr.io/verbit/restvirt:${IMAGE_VERSION}
           docker push ghcr.io/verbit/restvirt:${IMAGE_VERSION}
       - name: Build Snap
         uses: snapcore/action-build@v1
         id: snapcraft
+      - name: Determine Snap Channel
+        id: snap_channel
+        run: |
+          if (git describe --tags --exact-match); then
+            echo '::set-output name=SNAP_CHANNEL::stable'
+          else
+            echo '::set-output name=SNAP_CHANNEL::edge'
+          fi
       - name: Deploy Snap
         uses: snapcore/action-publish@v1
         env:
           SNAPCRAFT_STORE_CREDENTIALS: ${{ secrets.SNAP_CREDS }}
         with:
           snap: ${{ steps.snapcraft.outputs.snap }}
-          release: stable
+          release: ${{ steps.snap_channel.outputs.SNAP_CHANNEL }}
