@@ -32,6 +32,7 @@ service ControllerService {
   rpc GetVolume(GetVolumeRequest) returns (Volume) {}
   rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {}
   rpc CreateVolume(CreateVolumeRequest) returns (Volume) {}
+  rpc UpdateVolume(UpdateVolumeRequest) returns (Volume) {}
   rpc DeleteVolume(DeleteVolumeRequest) returns (google.protobuf.Empty) {}
 
   rpc ListVolumeAttachments(ListVolumeAttachmentsRequest) returns (ListVolumeAttachmentsResponse) {}

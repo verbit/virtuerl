@@ -260,6 +260,15 @@ class Controller(
             context.set_details(e.details())
             return empty_pb2.Empty()
 
+    def UpdateVolume(self, request, context):
+        client = self._get_daemon_client(request.host)
+        try:
+            return client.UpdateVolume(request)
+        except grpc.RpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
+
     def DeleteVolume(self, request, context):
         client = self._get_daemon_client(request.host)
         try:

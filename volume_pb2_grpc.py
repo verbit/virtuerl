@@ -30,6 +30,11 @@ class VolumeServiceStub(object):
                 request_serializer=volume__pb2.CreateVolumeRequest.SerializeToString,
                 response_deserializer=volume__pb2.Volume.FromString,
                 )
+        self.UpdateVolume = channel.unary_unary(
+                '/VolumeService/UpdateVolume',
+                request_serializer=volume__pb2.UpdateVolumeRequest.SerializeToString,
+                response_deserializer=volume__pb2.Volume.FromString,
+                )
         self.DeleteVolume = channel.unary_unary(
                 '/VolumeService/DeleteVolume',
                 request_serializer=volume__pb2.DeleteVolumeRequest.SerializeToString,
@@ -73,6 +78,12 @@ class VolumeServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def CreateVolume(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def UpdateVolume(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -124,6 +135,11 @@ def add_VolumeServiceServicer_to_server(servicer, server):
             'CreateVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateVolume,
                     request_deserializer=volume__pb2.CreateVolumeRequest.FromString,
+                    response_serializer=volume__pb2.Volume.SerializeToString,
+            ),
+            'UpdateVolume': grpc.unary_unary_rpc_method_handler(
+                    servicer.UpdateVolume,
+                    request_deserializer=volume__pb2.UpdateVolumeRequest.FromString,
                     response_serializer=volume__pb2.Volume.SerializeToString,
             ),
             'DeleteVolume': grpc.unary_unary_rpc_method_handler(
@@ -208,6 +224,23 @@ class VolumeService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/CreateVolume',
             volume__pb2.CreateVolumeRequest.SerializeToString,
+            volume__pb2.Volume.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def UpdateVolume(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/VolumeService/UpdateVolume',
+            volume__pb2.UpdateVolumeRequest.SerializeToString,
             volume__pb2.Volume.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

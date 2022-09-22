@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x0cvolume.proto\x1a\x1bgoogle/protobuf/empty.proto\".\n\x10GetVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"0\n\x06Volume\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04size\x18\x03 \x01(\x04\"\"\n\x12ListVolumesRequest\x12\x0c\n\x04host\x18\x01 \x01(\t\"/\n\x13ListVolumesResponse\x12\x18\n\x07volumes\x18\x01 \x03(\x0b\x32\x07.Volume\"<\n\x13\x43reateVolumeRequest\x12\x17\n\x06volume\x18\x01 \x01(\x0b\x32\x07.Volume\x12\x0c\n\x04host\x18\x02 \x01(\t\"1\n\x13\x44\x65leteVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"P\n\x1aVolumeAttachmentIdentifier\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x0c\n\x04host\x18\x03 \x01(\t\"N\n\x10VolumeAttachment\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x14\n\x0c\x64isk_address\x18\x03 \x01(\t\"?\n\x1cListVolumeAttachmentsRequest\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"G\n\x1dListVolumeAttachmentsResponse\x12&\n\x0b\x61ttachments\x18\x01 \x03(\x0b\x32\x11.VolumeAttachment2\x93\x04\n\rVolumeService\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x0cvolume.proto\x1a\x1bgoogle/protobuf/empty.proto\".\n\x10GetVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"0\n\x06Volume\x12\n\n\x02id\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0c\n\x04size\x18\x03 \x01(\x04\"\"\n\x12ListVolumesRequest\x12\x0c\n\x04host\x18\x01 \x01(\t\"/\n\x13ListVolumesResponse\x12\x18\n\x07volumes\x18\x01 \x03(\x0b\x32\x07.Volume\"<\n\x13\x43reateVolumeRequest\x12\x17\n\x06volume\x18\x01 \x01(\x0b\x32\x07.Volume\x12\x0c\n\x04host\x18\x02 \x01(\t\"<\n\x13UpdateVolumeRequest\x12\x0c\n\x04host\x18\x01 \x01(\t\x12\x17\n\x06volume\x18\x02 \x01(\x0b\x32\x07.Volume\"1\n\x13\x44\x65leteVolumeRequest\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"P\n\x1aVolumeAttachmentIdentifier\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x0c\n\x04host\x18\x03 \x01(\t\"N\n\x10VolumeAttachment\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x11\n\tvolume_id\x18\x02 \x01(\t\x12\x14\n\x0c\x64isk_address\x18\x03 \x01(\t\"?\n\x1cListVolumeAttachmentsRequest\x12\x11\n\tdomain_id\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\"G\n\x1dListVolumeAttachmentsResponse\x12&\n\x0b\x61ttachments\x18\x01 \x03(\x0b\x32\x11.VolumeAttachment2\xc4\x04\n\rVolumeService\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12/\n\x0cUpdateVolume\x12\x14.UpdateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -215,6 +215,45 @@ _CREATEVOLUMEREQUEST = _descriptor.Descriptor(
 )
 
 
+_UPDATEVOLUMEREQUEST = _descriptor.Descriptor(
+  name='UpdateVolumeRequest',
+  full_name='UpdateVolumeRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  create_key=_descriptor._internal_create_key,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='host', full_name='UpdateVolumeRequest.host', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=b"".decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+    _descriptor.FieldDescriptor(
+      name='volume', full_name='UpdateVolumeRequest.volume', index=1,
+      number=2, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR,  create_key=_descriptor._internal_create_key),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=290,
+  serialized_end=350,
+)
+
+
 _DELETEVOLUMEREQUEST = _descriptor.Descriptor(
   name='DeleteVolumeRequest',
   full_name='DeleteVolumeRequest',
@@ -249,8 +288,8 @@ _DELETEVOLUMEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=290,
-  serialized_end=339,
+  serialized_start=352,
+  serialized_end=401,
 )
 
 
@@ -295,8 +334,8 @@ _VOLUMEATTACHMENTIDENTIFIER = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=341,
-  serialized_end=421,
+  serialized_start=403,
+  serialized_end=483,
 )
 
 
@@ -341,8 +380,8 @@ _VOLUMEATTACHMENT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=423,
-  serialized_end=501,
+  serialized_start=485,
+  serialized_end=563,
 )
 
 
@@ -380,8 +419,8 @@ _LISTVOLUMEATTACHMENTSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=503,
-  serialized_end=566,
+  serialized_start=565,
+  serialized_end=628,
 )
 
 
@@ -412,18 +451,20 @@ _LISTVOLUMEATTACHMENTSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=568,
-  serialized_end=639,
+  serialized_start=630,
+  serialized_end=701,
 )
 
 _LISTVOLUMESRESPONSE.fields_by_name['volumes'].message_type = _VOLUME
 _CREATEVOLUMEREQUEST.fields_by_name['volume'].message_type = _VOLUME
+_UPDATEVOLUMEREQUEST.fields_by_name['volume'].message_type = _VOLUME
 _LISTVOLUMEATTACHMENTSRESPONSE.fields_by_name['attachments'].message_type = _VOLUMEATTACHMENT
 DESCRIPTOR.message_types_by_name['GetVolumeRequest'] = _GETVOLUMEREQUEST
 DESCRIPTOR.message_types_by_name['Volume'] = _VOLUME
 DESCRIPTOR.message_types_by_name['ListVolumesRequest'] = _LISTVOLUMESREQUEST
 DESCRIPTOR.message_types_by_name['ListVolumesResponse'] = _LISTVOLUMESRESPONSE
 DESCRIPTOR.message_types_by_name['CreateVolumeRequest'] = _CREATEVOLUMEREQUEST
+DESCRIPTOR.message_types_by_name['UpdateVolumeRequest'] = _UPDATEVOLUMEREQUEST
 DESCRIPTOR.message_types_by_name['DeleteVolumeRequest'] = _DELETEVOLUMEREQUEST
 DESCRIPTOR.message_types_by_name['VolumeAttachmentIdentifier'] = _VOLUMEATTACHMENTIDENTIFIER
 DESCRIPTOR.message_types_by_name['VolumeAttachment'] = _VOLUMEATTACHMENT
@@ -465,6 +506,13 @@ CreateVolumeRequest = _reflection.GeneratedProtocolMessageType('CreateVolumeRequ
   # @@protoc_insertion_point(class_scope:CreateVolumeRequest)
   })
 _sym_db.RegisterMessage(CreateVolumeRequest)
+
+UpdateVolumeRequest = _reflection.GeneratedProtocolMessageType('UpdateVolumeRequest', (_message.Message,), {
+  'DESCRIPTOR' : _UPDATEVOLUMEREQUEST,
+  '__module__' : 'volume_pb2'
+  # @@protoc_insertion_point(class_scope:UpdateVolumeRequest)
+  })
+_sym_db.RegisterMessage(UpdateVolumeRequest)
 
 DeleteVolumeRequest = _reflection.GeneratedProtocolMessageType('DeleteVolumeRequest', (_message.Message,), {
   'DESCRIPTOR' : _DELETEVOLUMEREQUEST,
@@ -511,8 +559,8 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   index=0,
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
-  serialized_start=642,
-  serialized_end=1173,
+  serialized_start=704,
+  serialized_end=1284,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetVolume',
@@ -545,9 +593,19 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
+    name='UpdateVolume',
+    full_name='VolumeService.UpdateVolume',
+    index=3,
+    containing_service=None,
+    input_type=_UPDATEVOLUMEREQUEST,
+    output_type=_VOLUME,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
     name='DeleteVolume',
     full_name='VolumeService.DeleteVolume',
-    index=3,
+    index=4,
     containing_service=None,
     input_type=_DELETEVOLUMEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -557,7 +615,7 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListVolumeAttachments',
     full_name='VolumeService.ListVolumeAttachments',
-    index=4,
+    index=5,
     containing_service=None,
     input_type=_LISTVOLUMEATTACHMENTSREQUEST,
     output_type=_LISTVOLUMEATTACHMENTSRESPONSE,
@@ -567,7 +625,7 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetVolumeAttachment',
     full_name='VolumeService.GetVolumeAttachment',
-    index=5,
+    index=6,
     containing_service=None,
     input_type=_VOLUMEATTACHMENTIDENTIFIER,
     output_type=_VOLUMEATTACHMENT,
@@ -577,7 +635,7 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AttachVolume',
     full_name='VolumeService.AttachVolume',
-    index=6,
+    index=7,
     containing_service=None,
     input_type=_VOLUMEATTACHMENTIDENTIFIER,
     output_type=_VOLUMEATTACHMENT,
@@ -587,7 +645,7 @@ _VOLUMESERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DetachVolume',
     full_name='VolumeService.DetachVolume',
-    index=7,
+    index=8,
     containing_service=None,
     input_type=_VOLUMEATTACHMENTIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,

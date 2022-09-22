@@ -28,6 +28,11 @@ message CreateVolumeRequest {
   string host = 2;
 }
 
+message UpdateVolumeRequest {
+  string host = 1;
+  Volume volume = 2;
+}
+
 message DeleteVolumeRequest {
   string uuid = 1;
   string host = 2;
@@ -58,6 +63,7 @@ service VolumeService {
   rpc GetVolume(GetVolumeRequest) returns (Volume) {}
   rpc ListVolumes(ListVolumesRequest) returns (ListVolumesResponse) {}
   rpc CreateVolume(CreateVolumeRequest) returns (Volume) {}
+  rpc UpdateVolume(UpdateVolumeRequest) returns (Volume) {}
   rpc DeleteVolume(DeleteVolumeRequest) returns (google.protobuf.Empty) {}
 
   rpc ListVolumeAttachments(ListVolumeAttachmentsRequest) returns (ListVolumeAttachmentsResponse) {}
