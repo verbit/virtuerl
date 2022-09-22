@@ -1,14 +1,18 @@
 import datetime
+import io
 from time import sleep
 from urllib.parse import urljoin
 from urllib.request import urlopen
 
 import grpc
 import pytest
+from fabric import Connection
+from paramiko.ed25519key import Ed25519Key
 
 import controller_pb2_grpc
 import domain_pb2
 import port_forwarding_pb2
+import volume_pb2
 
 
 @pytest.fixture
@@ -82,6 +86,13 @@ def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServ
                 network=network.name,
                 user_data="""#cloud-config
 
+users:
+  - name: tester
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIBDCT3LrJenezXzP9T6519IgpVCP1uv6f5iQwZ+IDdFc
+
 packages:
   - nginx
 
@@ -104,6 +115,35 @@ runcmd:
 
     response = wait_for_http("http://192.168.69.1:8080")
     assert "Welcome to nginx!" in response
+
+    private_ssh_key = """-----BEGIN OPENSSH PRIVATE KEY-----
+b3BlbnNzaC1rZXktdjEAAAAABG5vbmUAAAAEbm9uZQAAAAAAAAABAAAAMwAAAAtzc2gtZW
+QyNTUxOQAAACAQwk9y6yXp3s18z/U+udfSIKVQj9br+n+YkMGfiA3RXAAAAJhEeSndRHkp
+3QAAAAtzc2gtZWQyNTUxOQAAACAQwk9y6yXp3s18z/U+udfSIKVQj9br+n+YkMGfiA3RXA
+AAAEC9jx0pxfKwyPq3RpOsCef7UA2pqBzAj2+bqVTix2f0fRDCT3LrJenezXzP9T6519Ig
+pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
+-----END OPENSSH PRIVATE KEY-----
+"""
+    with io.StringIO(private_ssh_key) as f:
+        pkey = Ed25519Key.from_private_key(f)
+    conn = Connection("192.168.69.69", "tester", connect_kwargs={"pkey": pkey})
+    conn.config.run.in_stream = False
+
+    old_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)
+    assert old_root_vol_size == 20 * 1024**3
+
+    volumes = insecure_client.ListVolumes(volume_pb2.ListVolumesRequest())
+    volumes = {v.name: v for v in volumes.volumes}
+    root_vol_name = f"{dom.name}-root.qcow2"
+    assert root_vol_name in volumes
+    insecure_client.UpdateVolume(
+        volume_pb2.UpdateVolumeRequest(
+            volume=volume_pb2.Volume(id=root_vol_name, size=30 * 1024**3)
+        )
+    )
+
+    new_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)
+    assert new_root_vol_size == 30 * 1024**3
 
     insecure_client.DeletePortForwarding(
         port_forwarding_pb2.PortForwardingIdentifier(protocol="tcp", source_port=8080)
