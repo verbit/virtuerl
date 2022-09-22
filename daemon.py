@@ -589,6 +589,16 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             size=request.volume.size,
         )
 
+    def UpdateVolume(self, request, context):
+        pool = self.conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(request.volume.id)
+        _, current_capacity, _ = vol.info()
+        desired_capacity = request.volume.size
+        if desired_capacity < current_capacity:
+            raise Exception("shrinking volumes is not supported")
+        vol.resize(desired_capacity)
+        return volume_pb2.Volume(**_volume_to_dict(vol))
+
     def DeleteVolume(self, request, context):
         pool = self.conn.storagePoolLookupByName("volumes")
         vol = pool.storageVolLookupByName(request.uuid)
