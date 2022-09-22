@@ -322,6 +322,17 @@ def create_storage_pool(conn, name, pool_dir, location=None):
             raise e
 
 
+def get_root_volume(conn, domain_name):
+    try:
+        pool = conn.storagePoolLookupByName("volumes")
+        vol = pool.storageVolLookupByName(f"{domain_name}-root.qcow2")
+    except:
+        # FIXME: can be removed once not in use
+        pool = conn.storagePoolLookupByName("restvirtimages")
+        vol = pool.storageVolLookupByName(f"{domain_name}-root.qcow2")
+    return vol
+
+
 class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def __init__(
         self, session_factory, port_fwd_sync_handler, controller_channel, pool_dir="/data/restvirt"
@@ -403,11 +414,11 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         ip = ipaddress.ip_address(private_ip)
 
-        pool = self.conn.storagePoolLookupByName("restvirtimages")
+        img_pool = self.conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
             base_img_name = "jammy-amd64-20220808.qcow2"
             try:
-                base_img = pool.storageVolLookupByName(base_img_name)
+                base_img = img_pool.storageVolLookupByName(base_img_name)
             except:
                 from urllib.request import urlopen
 
@@ -415,7 +426,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                     f"https://cloud-images.ubuntu.com/releases/22.04/release-20220808/ubuntu-22.04-server-cloudimg-amd64.img"
                 )
                 size = int(res.getheader("Content-length"))
-                base_img = pool.createXML(
+                base_img = img_pool.createXML(
                     f"""<volume type='file'>
   <name>{base_img_name}</name>
   <capacity unit='B'>{size}</capacity>
@@ -433,9 +444,10 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                     stream.send(chunk)
                 stream.finish()
         else:
-            base_img = pool.storageVolLookupByName(domreq.base_image)
+            base_img = img_pool.storageVolLookupByName(domreq.base_image)
 
-        vol = pool.createXML(
+        vol_pool = self.conn.storagePoolLookupByName("volumes")
+        vol = vol_pool.createXML(
             f"""<volume type='file'>
   <name>{domreq.name}-root.qcow2</name>
   <capacity unit='GiB'>{20}</capacity>
@@ -465,7 +477,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             name=domreq.name,
         )
         stream = self.conn.newStream()
-        ccfg_vol = pool.createXML(
+        ccfg_vol = img_pool.createXML(
             f"""<volume type='file'>
   <name>{domreq.name}-cloud-init.img</name>
   <capacity unit='B'>{len(ccfg_raw)}</capacity>
@@ -540,7 +552,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             self.ips.remove(ip)
 
         pool = self.conn.storagePoolLookupByName("restvirtimages")
-        vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
+        vol = get_root_volume(self.conn, name)
         vol.delete()
         vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
         vol.delete()
@@ -550,8 +562,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def DownloadImage(self, request, context):
         dom = self.conn.lookupByUUIDString(request.domain_id)
         name = dom.name()
-        pool = self.conn.storagePoolLookupByName("restvirtimages")
-        vol = pool.storageVolLookupByName(f"{name}-root.qcow2")
+        vol = get_root_volume(self.conn, name)
         stream = self.conn.newStream()
         vol.download(stream, 0, 0)
         while True:
