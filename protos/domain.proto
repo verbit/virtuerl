@@ -5,6 +5,16 @@ option go_package = ".;pb";
 import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
+message StartDomainRequest {
+  string host = 1;
+  string uuid = 2;
+}
+
+message StopDomainRequest {
+  string host = 1;
+  string uuid = 2;
+}
+
 message GetDomainRequest {
   string uuid = 1;
   string host = 2;
