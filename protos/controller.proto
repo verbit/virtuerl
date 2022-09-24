@@ -22,6 +22,8 @@ service ControllerService {
   rpc CreateNetwork(CreateNetworkRequest) returns (Network) {}
   rpc DeleteNetwork(DeleteNetworkRequest) returns (google.protobuf.Empty) {}
 
+  rpc StartDomain(StartDomainRequest) returns (google.protobuf.Empty) {}
+  rpc StopDomain(StopDomainRequest) returns (google.protobuf.Empty) {}
   rpc GetDomain(GetDomainRequest) returns (Domain) {}
   rpc ListDomains(ListDomainsRequest) returns (ListDomainsResponse) {}
   rpc CreateDomain(CreateDomainRequest) returns (Domain) {}

@@ -136,11 +136,17 @@ pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
     volumes = {v.name: v for v in volumes.volumes}
     root_vol_name = f"{dom.name}-root.qcow2"
     assert root_vol_name in volumes
+
+    wait_until_stopped(insecure_client, dom.uuid)
     insecure_client.UpdateVolume(
         volume_pb2.UpdateVolumeRequest(
             volume=volume_pb2.Volume(id=root_vol_name, size=30 * 1024**3)
         )
     )
+
+    insecure_client.StartDomain(domain_pb2.StartDomainRequest(uuid=dom.uuid))
+    response = wait_for_http("http://192.168.69.1:8080")
+    assert "Welcome to nginx!" in response
 
     new_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)
     assert new_root_vol_size == 30 * 1024**3
@@ -163,3 +169,17 @@ def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=180)):
             if now >= end_time:
                 raise Exception("Timed out")
             sleep(min((end_time - now).total_seconds(), 10))
+
+
+def wait_until_stopped(client, domain_uuid, timeout=datetime.timedelta(seconds=180)):
+    end_time = datetime.datetime.now() + timeout
+    while True:
+        dom = client.GetDomain(domain_pb2.GetDomainRequest(uuid=domain_uuid))
+        if dom.state == "SHUTOFF":
+            break
+
+        client.StopDomain(domain_pb2.StopDomainRequest(uuid=domain_uuid))
+        now = datetime.datetime.now()
+        if now >= end_time:
+            raise Exception("Timed out")
+        sleep(min((end_time - now).total_seconds(), 10))

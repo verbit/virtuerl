@@ -187,6 +187,24 @@ class Controller(
         self.network_controller.remove_network(request.uuid)
         return empty_pb2.Empty()
 
+    def StartDomain(self, request, context):
+        client = self._get_daemon_client(request.host)
+        try:
+            return client.StartDomain(request)
+        except grpc.RpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
+
+    def StopDomain(self, request, context):
+        client = self._get_daemon_client(request.host)
+        try:
+            return client.StopDomain(request)
+        except grpc.RpcError as e:
+            context.set_code(e.code())
+            context.set_details(e.details())
+            return empty_pb2.Empty()
+
     def GetDomain(self, request, context):
         client = self._get_daemon_client(request.host)
         try:

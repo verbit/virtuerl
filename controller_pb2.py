@@ -25,7 +25,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   syntax='proto3',
   serialized_options=b'Z\004.;pb',
   create_key=_descriptor._internal_create_key,
-  serialized_pb=b'\n\x10\x63ontroller.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x64omain.proto\x1a\x0cvolume.proto\x1a\x15port_forwarding.proto\x1a\tdns.proto\x1a\x0broute.proto\"\x13\n\x11SyncRoutesRequest2\xd4\x10\n\x11\x43ontrollerService\x12\x32\n\x0cGetDNSRecord\x12\x14.DNSRecordIdentifier\x1a\n.DNSRecord\"\x00\x12\x43\n\x0eListDNSRecords\x12\x16.ListDNSRecordsRequest\x1a\x17.ListDNSRecordsResponse\"\x00\x12\x32\n\x0cPutDNSRecord\x12\x14.PutDNSRecordRequest\x1a\n.DNSRecord\"\x00\x12\x41\n\x0f\x44\x65leteDNSRecord\x12\x14.DNSRecordIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12,\n\nGetNetwork\x12\x12.GetNetworkRequest\x1a\x08.Network\"\x00\x12=\n\x0cListNetworks\x12\x14.ListNetworksRequest\x1a\x15.ListNetworksResponse\"\x00\x12\x32\n\rCreateNetwork\x12\x15.CreateNetworkRequest\x1a\x08.Network\"\x00\x12@\n\rDeleteNetwork\x12\x15.DeleteNetworkRequest\x1a\x16.google.protobuf.Empty\"\x00\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\rDownloadImage\x12\x15.DownloadImageRequest\x1a\x0b.ImageChunk\"\x00\x30\x01\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12/\n\x0cUpdateVolume\x12\x14.UpdateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x35\n\rGetRouteTable\x12\x15.RouteTableIdentifier\x1a\x0b.RouteTable\"\x00\x12\x46\n\x0fListRouteTables\x12\x17.ListRouteTablesRequest\x1a\x18.ListRouteTablesResponse\"\x00\x12;\n\x10\x43reateRouteTable\x12\x18.CreateRouteTableRequest\x1a\x0b.RouteTable\"\x00\x12\x43\n\x10\x44\x65leteRouteTable\x12\x15.RouteTableIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12&\n\x08GetRoute\x12\x10.RouteIdentifier\x1a\x06.Route\"\x00\x12\x37\n\nListRoutes\x12\x12.ListRoutesRequest\x1a\x13.ListRoutesResponse\"\x00\x12&\n\x08PutRoute\x12\x10.PutRouteRequest\x1a\x06.Route\"\x00\x12\x39\n\x0b\x44\x65leteRoute\x12\x10.RouteIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12:\n\nSyncRoutes\x12\x12.SyncRoutesRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
+  serialized_pb=b'\n\x10\x63ontroller.proto\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x64omain.proto\x1a\x0cvolume.proto\x1a\x15port_forwarding.proto\x1a\tdns.proto\x1a\x0broute.proto\"\x13\n\x11SyncRoutesRequest2\xce\x11\n\x11\x43ontrollerService\x12\x32\n\x0cGetDNSRecord\x12\x14.DNSRecordIdentifier\x1a\n.DNSRecord\"\x00\x12\x43\n\x0eListDNSRecords\x12\x16.ListDNSRecordsRequest\x1a\x17.ListDNSRecordsResponse\"\x00\x12\x32\n\x0cPutDNSRecord\x12\x14.PutDNSRecordRequest\x1a\n.DNSRecord\"\x00\x12\x41\n\x0f\x44\x65leteDNSRecord\x12\x14.DNSRecordIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12,\n\nGetNetwork\x12\x12.GetNetworkRequest\x1a\x08.Network\"\x00\x12=\n\x0cListNetworks\x12\x14.ListNetworksRequest\x1a\x15.ListNetworksResponse\"\x00\x12\x32\n\rCreateNetwork\x12\x15.CreateNetworkRequest\x1a\x08.Network\"\x00\x12@\n\rDeleteNetwork\x12\x15.DeleteNetworkRequest\x1a\x16.google.protobuf.Empty\"\x00\x12<\n\x0bStartDomain\x12\x13.StartDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12:\n\nStopDomain\x12\x12.StopDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12)\n\tGetDomain\x12\x11.GetDomainRequest\x1a\x07.Domain\"\x00\x12:\n\x0bListDomains\x12\x13.ListDomainsRequest\x1a\x14.ListDomainsResponse\"\x00\x12/\n\x0c\x43reateDomain\x12\x14.CreateDomainRequest\x1a\x07.Domain\"\x00\x12>\n\x0c\x44\x65leteDomain\x12\x14.DeleteDomainRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\rDownloadImage\x12\x15.DownloadImageRequest\x1a\x0b.ImageChunk\"\x00\x30\x01\x12)\n\tGetVolume\x12\x11.GetVolumeRequest\x1a\x07.Volume\"\x00\x12:\n\x0bListVolumes\x12\x13.ListVolumesRequest\x1a\x14.ListVolumesResponse\"\x00\x12/\n\x0c\x43reateVolume\x12\x14.CreateVolumeRequest\x1a\x07.Volume\"\x00\x12/\n\x0cUpdateVolume\x12\x14.UpdateVolumeRequest\x1a\x07.Volume\"\x00\x12>\n\x0c\x44\x65leteVolume\x12\x14.DeleteVolumeRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15ListVolumeAttachments\x12\x1d.ListVolumeAttachmentsRequest\x1a\x1e.ListVolumeAttachmentsResponse\"\x00\x12G\n\x13GetVolumeAttachment\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12@\n\x0c\x41ttachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x11.VolumeAttachment\"\x00\x12\x45\n\x0c\x44\x65tachVolume\x12\x1b.VolumeAttachmentIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x11GetPortForwarding\x12\x19.PortForwardingIdentifier\x1a\x0f.PortForwarding\"\x00\x12R\n\x13ListPortForwardings\x12\x1b.ListPortForwardingsRequest\x1a\x1c.ListPortForwardingsResponse\"\x00\x12\x41\n\x11PutPortForwarding\x12\x19.PutPortForwardingRequest\x1a\x0f.PortForwarding\"\x00\x12K\n\x14\x44\x65letePortForwarding\x12\x19.PortForwardingIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12\x35\n\rGetRouteTable\x12\x15.RouteTableIdentifier\x1a\x0b.RouteTable\"\x00\x12\x46\n\x0fListRouteTables\x12\x17.ListRouteTablesRequest\x1a\x18.ListRouteTablesResponse\"\x00\x12;\n\x10\x43reateRouteTable\x12\x18.CreateRouteTableRequest\x1a\x0b.RouteTable\"\x00\x12\x43\n\x10\x44\x65leteRouteTable\x12\x15.RouteTableIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12&\n\x08GetRoute\x12\x10.RouteIdentifier\x1a\x06.Route\"\x00\x12\x37\n\nListRoutes\x12\x12.ListRoutesRequest\x1a\x13.ListRoutesResponse\"\x00\x12&\n\x08PutRoute\x12\x10.PutRouteRequest\x1a\x06.Route\"\x00\x12\x39\n\x0b\x44\x65leteRoute\x12\x10.RouteIdentifier\x1a\x16.google.protobuf.Empty\"\x00\x12:\n\nSyncRoutes\x12\x12.SyncRoutesRequest\x1a\x16.google.protobuf.Empty\"\x00\x42\x06Z\x04.;pbb\x06proto3'
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,domain__pb2.DESCRIPTOR,volume__pb2.DESCRIPTOR,port__forwarding__pb2.DESCRIPTOR,dns__pb2.DESCRIPTOR,route__pb2.DESCRIPTOR,])
 
@@ -77,7 +77,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   serialized_options=None,
   create_key=_descriptor._internal_create_key,
   serialized_start=146,
-  serialized_end=2278,
+  serialized_end=2400,
   methods=[
   _descriptor.MethodDescriptor(
     name='GetDNSRecord',
@@ -160,9 +160,29 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
     create_key=_descriptor._internal_create_key,
   ),
   _descriptor.MethodDescriptor(
+    name='StartDomain',
+    full_name='ControllerService.StartDomain',
+    index=8,
+    containing_service=None,
+    input_type=domain__pb2._STARTDOMAINREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
+    name='StopDomain',
+    full_name='ControllerService.StopDomain',
+    index=9,
+    containing_service=None,
+    input_type=domain__pb2._STOPDOMAINREQUEST,
+    output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    serialized_options=None,
+    create_key=_descriptor._internal_create_key,
+  ),
+  _descriptor.MethodDescriptor(
     name='GetDomain',
     full_name='ControllerService.GetDomain',
-    index=8,
+    index=10,
     containing_service=None,
     input_type=domain__pb2._GETDOMAINREQUEST,
     output_type=domain__pb2._DOMAIN,
@@ -172,7 +192,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListDomains',
     full_name='ControllerService.ListDomains',
-    index=9,
+    index=11,
     containing_service=None,
     input_type=domain__pb2._LISTDOMAINSREQUEST,
     output_type=domain__pb2._LISTDOMAINSRESPONSE,
@@ -182,7 +202,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateDomain',
     full_name='ControllerService.CreateDomain',
-    index=10,
+    index=12,
     containing_service=None,
     input_type=domain__pb2._CREATEDOMAINREQUEST,
     output_type=domain__pb2._DOMAIN,
@@ -192,7 +212,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteDomain',
     full_name='ControllerService.DeleteDomain',
-    index=11,
+    index=13,
     containing_service=None,
     input_type=domain__pb2._DELETEDOMAINREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -202,7 +222,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DownloadImage',
     full_name='ControllerService.DownloadImage',
-    index=12,
+    index=14,
     containing_service=None,
     input_type=domain__pb2._DOWNLOADIMAGEREQUEST,
     output_type=domain__pb2._IMAGECHUNK,
@@ -212,7 +232,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetVolume',
     full_name='ControllerService.GetVolume',
-    index=13,
+    index=15,
     containing_service=None,
     input_type=volume__pb2._GETVOLUMEREQUEST,
     output_type=volume__pb2._VOLUME,
@@ -222,7 +242,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListVolumes',
     full_name='ControllerService.ListVolumes',
-    index=14,
+    index=16,
     containing_service=None,
     input_type=volume__pb2._LISTVOLUMESREQUEST,
     output_type=volume__pb2._LISTVOLUMESRESPONSE,
@@ -232,7 +252,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateVolume',
     full_name='ControllerService.CreateVolume',
-    index=15,
+    index=17,
     containing_service=None,
     input_type=volume__pb2._CREATEVOLUMEREQUEST,
     output_type=volume__pb2._VOLUME,
@@ -242,7 +262,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='UpdateVolume',
     full_name='ControllerService.UpdateVolume',
-    index=16,
+    index=18,
     containing_service=None,
     input_type=volume__pb2._UPDATEVOLUMEREQUEST,
     output_type=volume__pb2._VOLUME,
@@ -252,7 +272,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteVolume',
     full_name='ControllerService.DeleteVolume',
-    index=17,
+    index=19,
     containing_service=None,
     input_type=volume__pb2._DELETEVOLUMEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -262,7 +282,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListVolumeAttachments',
     full_name='ControllerService.ListVolumeAttachments',
-    index=18,
+    index=20,
     containing_service=None,
     input_type=volume__pb2._LISTVOLUMEATTACHMENTSREQUEST,
     output_type=volume__pb2._LISTVOLUMEATTACHMENTSRESPONSE,
@@ -272,7 +292,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetVolumeAttachment',
     full_name='ControllerService.GetVolumeAttachment',
-    index=19,
+    index=21,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=volume__pb2._VOLUMEATTACHMENT,
@@ -282,7 +302,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='AttachVolume',
     full_name='ControllerService.AttachVolume',
-    index=20,
+    index=22,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=volume__pb2._VOLUMEATTACHMENT,
@@ -292,7 +312,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DetachVolume',
     full_name='ControllerService.DetachVolume',
-    index=21,
+    index=23,
     containing_service=None,
     input_type=volume__pb2._VOLUMEATTACHMENTIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -302,7 +322,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetPortForwarding',
     full_name='ControllerService.GetPortForwarding',
-    index=22,
+    index=24,
     containing_service=None,
     input_type=port__forwarding__pb2._PORTFORWARDINGIDENTIFIER,
     output_type=port__forwarding__pb2._PORTFORWARDING,
@@ -312,7 +332,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListPortForwardings',
     full_name='ControllerService.ListPortForwardings',
-    index=23,
+    index=25,
     containing_service=None,
     input_type=port__forwarding__pb2._LISTPORTFORWARDINGSREQUEST,
     output_type=port__forwarding__pb2._LISTPORTFORWARDINGSRESPONSE,
@@ -322,7 +342,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='PutPortForwarding',
     full_name='ControllerService.PutPortForwarding',
-    index=24,
+    index=26,
     containing_service=None,
     input_type=port__forwarding__pb2._PUTPORTFORWARDINGREQUEST,
     output_type=port__forwarding__pb2._PORTFORWARDING,
@@ -332,7 +352,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeletePortForwarding',
     full_name='ControllerService.DeletePortForwarding',
-    index=25,
+    index=27,
     containing_service=None,
     input_type=port__forwarding__pb2._PORTFORWARDINGIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -342,7 +362,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetRouteTable',
     full_name='ControllerService.GetRouteTable',
-    index=26,
+    index=28,
     containing_service=None,
     input_type=route__pb2._ROUTETABLEIDENTIFIER,
     output_type=route__pb2._ROUTETABLE,
@@ -352,7 +372,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListRouteTables',
     full_name='ControllerService.ListRouteTables',
-    index=27,
+    index=29,
     containing_service=None,
     input_type=route__pb2._LISTROUTETABLESREQUEST,
     output_type=route__pb2._LISTROUTETABLESRESPONSE,
@@ -362,7 +382,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='CreateRouteTable',
     full_name='ControllerService.CreateRouteTable',
-    index=28,
+    index=30,
     containing_service=None,
     input_type=route__pb2._CREATEROUTETABLEREQUEST,
     output_type=route__pb2._ROUTETABLE,
@@ -372,7 +392,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteRouteTable',
     full_name='ControllerService.DeleteRouteTable',
-    index=29,
+    index=31,
     containing_service=None,
     input_type=route__pb2._ROUTETABLEIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -382,7 +402,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='GetRoute',
     full_name='ControllerService.GetRoute',
-    index=30,
+    index=32,
     containing_service=None,
     input_type=route__pb2._ROUTEIDENTIFIER,
     output_type=route__pb2._ROUTE,
@@ -392,7 +412,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ListRoutes',
     full_name='ControllerService.ListRoutes',
-    index=31,
+    index=33,
     containing_service=None,
     input_type=route__pb2._LISTROUTESREQUEST,
     output_type=route__pb2._LISTROUTESRESPONSE,
@@ -402,7 +422,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='PutRoute',
     full_name='ControllerService.PutRoute',
-    index=32,
+    index=34,
     containing_service=None,
     input_type=route__pb2._PUTROUTEREQUEST,
     output_type=route__pb2._ROUTE,
@@ -412,7 +432,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DeleteRoute',
     full_name='ControllerService.DeleteRoute',
-    index=33,
+    index=35,
     containing_service=None,
     input_type=route__pb2._ROUTEIDENTIFIER,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -422,7 +442,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='SyncRoutes',
     full_name='ControllerService.SyncRoutes',
-    index=34,
+    index=36,
     containing_service=None,
     input_type=_SYNCROUTESREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
