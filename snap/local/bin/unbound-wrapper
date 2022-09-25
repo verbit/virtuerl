@@ -1,3 +1,3 @@
 #!/bin/sh -e
 
-unbound -d -p -c "$SNAP/etc/unbound/minivirt.conf" 
+exec unbound -d -p -c "$SNAP/etc/unbound/minivirt.conf"
