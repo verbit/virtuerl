@@ -420,6 +420,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 print(self.ips)
         else:
             with self.lock:
+                assert private_ip not in self.ips
                 self.ips.add(private_ip)
 
         ip = ipaddress.ip_address(private_ip)
