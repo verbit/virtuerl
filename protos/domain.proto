@@ -13,6 +13,7 @@ message StartDomainRequest {
 message StopDomainRequest {
   string host = 1;
   string uuid = 2;
+  bool force = 3;
 }
 
 message GetDomainRequest {

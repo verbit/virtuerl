@@ -361,7 +361,10 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
     def StopDomain(self, request, context):
         domain = self.conn.lookupByUUIDString(request.uuid)
-        domain.shutdown()
+        if request.force:
+            domain.destroy()
+        else:
+            domain.shutdown()
         return empty_pb2.Empty()
 
     def _get_domain(self, uuid):
