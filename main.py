@@ -29,6 +29,7 @@ from host import HostController, HostService
 from models import Base
 from port_forwarding import IPTablesPortForwardingSynchronizer
 from utils import UnaryUnaryInterceptor
+from version import __version__
 
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
@@ -111,6 +112,8 @@ def start_controller(args):
         + [reflection.SERVICE_NAME],
         server,
     )
+
+    logging.info(f"Starting Controller ({__version__})")
     server.start()
     server.wait_for_termination()
 
@@ -161,6 +164,8 @@ def start_daemon(args):
         )
     )
     daemon_service.sync()
+
+    logging.info(f"Starting Daemon ({__version__})")
     daemon.start()
     daemon.wait_for_termination()
 
