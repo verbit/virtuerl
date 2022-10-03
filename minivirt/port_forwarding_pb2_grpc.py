@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import port_forwarding_pb2 as port__forwarding__pb2
+from minivirt import port_forwarding_pb2 as minivirt_dot_port__forwarding__pb2
 
 
 class PortForwardingServiceStub(object):
@@ -17,22 +17,22 @@ class PortForwardingServiceStub(object):
         """
         self.GetPortForwarding = channel.unary_unary(
                 '/PortForwardingService/GetPortForwarding',
-                request_serializer=port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
-                response_deserializer=port__forwarding__pb2.PortForwarding.FromString,
+                request_serializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.ListPortForwardings = channel.unary_unary(
                 '/PortForwardingService/ListPortForwardings',
-                request_serializer=port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
-                response_deserializer=port__forwarding__pb2.ListPortForwardingsResponse.FromString,
+                request_serializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
+                response_deserializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsResponse.FromString,
                 )
         self.PutPortForwarding = channel.unary_unary(
                 '/PortForwardingService/PutPortForwarding',
-                request_serializer=port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
-                response_deserializer=port__forwarding__pb2.PortForwarding.FromString,
+                request_serializer=minivirt_dot_port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
+                response_deserializer=minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.DeletePortForwarding = channel.unary_unary(
                 '/PortForwardingService/DeletePortForwarding',
-                request_serializer=port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
+                request_serializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -69,22 +69,22 @@ def add_PortForwardingServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetPortForwarding': grpc.unary_unary_rpc_method_handler(
                     servicer.GetPortForwarding,
-                    request_deserializer=port__forwarding__pb2.PortForwardingIdentifier.FromString,
-                    response_serializer=port__forwarding__pb2.PortForwarding.SerializeToString,
+                    request_deserializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.FromString,
+                    response_serializer=minivirt_dot_port__forwarding__pb2.PortForwarding.SerializeToString,
             ),
             'ListPortForwardings': grpc.unary_unary_rpc_method_handler(
                     servicer.ListPortForwardings,
-                    request_deserializer=port__forwarding__pb2.ListPortForwardingsRequest.FromString,
-                    response_serializer=port__forwarding__pb2.ListPortForwardingsResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsRequest.FromString,
+                    response_serializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsResponse.SerializeToString,
             ),
             'PutPortForwarding': grpc.unary_unary_rpc_method_handler(
                     servicer.PutPortForwarding,
-                    request_deserializer=port__forwarding__pb2.PutPortForwardingRequest.FromString,
-                    response_serializer=port__forwarding__pb2.PortForwarding.SerializeToString,
+                    request_deserializer=minivirt_dot_port__forwarding__pb2.PutPortForwardingRequest.FromString,
+                    response_serializer=minivirt_dot_port__forwarding__pb2.PortForwarding.SerializeToString,
             ),
             'DeletePortForwarding': grpc.unary_unary_rpc_method_handler(
                     servicer.DeletePortForwarding,
-                    request_deserializer=port__forwarding__pb2.PortForwardingIdentifier.FromString,
+                    request_deserializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -109,8 +109,8 @@ class PortForwardingService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/PortForwardingService/GetPortForwarding',
-            port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
-            port__forwarding__pb2.PortForwarding.FromString,
+            minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
+            minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -126,8 +126,8 @@ class PortForwardingService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/PortForwardingService/ListPortForwardings',
-            port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
-            port__forwarding__pb2.ListPortForwardingsResponse.FromString,
+            minivirt_dot_port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
+            minivirt_dot_port__forwarding__pb2.ListPortForwardingsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -143,8 +143,8 @@ class PortForwardingService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/PortForwardingService/PutPortForwarding',
-            port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
-            port__forwarding__pb2.PortForwarding.FromString,
+            minivirt_dot_port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
+            minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -160,7 +160,7 @@ class PortForwardingService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/PortForwardingService/DeletePortForwarding',
-            port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
+            minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

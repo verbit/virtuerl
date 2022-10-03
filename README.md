@@ -33,7 +33,7 @@ python main.py daemon
 
 ## Code Generation
 ```shell
-python -m grpc_tools.protoc --python_out=. --grpc_python_out=. -Iprotos/ protos/*.proto
+python -m grpc_tools.protoc --python_out=. --grpc_python_out=. -Iprotos/ protos/minivirt/*.proto
 ```
 
 ## Known Issues

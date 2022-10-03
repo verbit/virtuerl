@@ -1,4 +1,3 @@
-import ipaddress
 from io import BytesIO
 
 import pycdlib

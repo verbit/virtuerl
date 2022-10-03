@@ -1,12 +1,9 @@
-import socket
-
-import dnslib
 from dns import resolver
 from dnslib import QTYPE, RCODE, RR, copy
 from dnslib.server import DNSServer
 from sqlalchemy import delete, select
 
-from models import DNSRecord
+from minivirt.models import DNSRecord
 
 
 class DNSController:

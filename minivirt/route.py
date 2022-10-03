@@ -3,8 +3,8 @@ from typing import Dict, Set
 
 from sqlalchemy import delete, select
 
-import route_pb2
-from models import Route, RouteTable
+from minivirt import route_pb2
+from minivirt.models import Route, RouteTable
 
 
 class SyncEventHandler:

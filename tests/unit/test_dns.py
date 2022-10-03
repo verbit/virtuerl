@@ -5,11 +5,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import dns_pb2
-import dns_pb2_grpc
-import models
-from dns_controller import DNSController
-from models import Base
+from minivirt import dns_pb2, dns_pb2_grpc, models
+from minivirt.dns_controller import DNSController
+from minivirt.models import Base
 
 from .conftest import dummy_controller
 

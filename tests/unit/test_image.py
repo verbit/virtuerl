@@ -2,7 +2,7 @@ from ipaddress import ip_address, ip_network
 
 import pytest
 
-from image import (
+from minivirt.image import (
     create_cloud_config_image,
     read_ip_from_cloud_config_image,
     read_user_data_from_cloud_config_image,

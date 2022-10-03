@@ -9,10 +9,7 @@ import pytest
 from fabric import Connection
 from paramiko.ed25519key import Ed25519Key
 
-import controller_pb2_grpc
-import domain_pb2
-import port_forwarding_pb2
-import volume_pb2
+from minivirt import controller_pb2_grpc, domain_pb2, port_forwarding_pb2, volume_pb2
 
 
 @pytest.fixture

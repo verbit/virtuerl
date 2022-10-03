@@ -13,18 +13,20 @@ from pyroute2 import IPRoute
 from pyroute2.netlink.rtnl import rtypes
 from sqlalchemy import delete, select
 
-import controller_pb2_grpc
-import daemon_pb2_grpc
-import domain_pb2
-import port_forwarding_pb2
-import route_pb2
-import volume_pb2
-from image import (
+from minivirt import (
+    controller_pb2_grpc,
+    daemon_pb2_grpc,
+    domain_pb2,
+    port_forwarding_pb2,
+    route_pb2,
+    volume_pb2,
+)
+from minivirt.image import (
     create_cloud_config_image,
     read_ip_from_cloud_config_image,
     read_user_data_from_cloud_config_image,
 )
-from models import PortForwarding
+from minivirt.models import PortForwarding
 
 
 def libvirt_state_to_string(state):

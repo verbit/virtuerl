@@ -2,8 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import domain_pb2 as domain__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from minivirt import domain_pb2 as minivirt_dot_domain__pb2
 
 
 class DomainServiceStub(object):
@@ -17,47 +17,47 @@ class DomainServiceStub(object):
         """
         self.GetDomain = channel.unary_unary(
                 '/DomainService/GetDomain',
-                request_serializer=domain__pb2.GetDomainRequest.SerializeToString,
-                response_deserializer=domain__pb2.Domain.FromString,
+                request_serializer=minivirt_dot_domain__pb2.GetDomainRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Domain.FromString,
                 )
         self.ListDomains = channel.unary_unary(
                 '/DomainService/ListDomains',
-                request_serializer=domain__pb2.ListDomainsRequest.SerializeToString,
-                response_deserializer=domain__pb2.ListDomainsResponse.FromString,
+                request_serializer=minivirt_dot_domain__pb2.ListDomainsRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.ListDomainsResponse.FromString,
                 )
         self.CreateDomain = channel.unary_unary(
                 '/DomainService/CreateDomain',
-                request_serializer=domain__pb2.CreateDomainRequest.SerializeToString,
-                response_deserializer=domain__pb2.Domain.FromString,
+                request_serializer=minivirt_dot_domain__pb2.CreateDomainRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Domain.FromString,
                 )
         self.DeleteDomain = channel.unary_unary(
                 '/DomainService/DeleteDomain',
-                request_serializer=domain__pb2.DeleteDomainRequest.SerializeToString,
+                request_serializer=minivirt_dot_domain__pb2.DeleteDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.DownloadImage = channel.unary_stream(
                 '/DomainService/DownloadImage',
-                request_serializer=domain__pb2.DownloadImageRequest.SerializeToString,
-                response_deserializer=domain__pb2.ImageChunk.FromString,
+                request_serializer=minivirt_dot_domain__pb2.DownloadImageRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.ImageChunk.FromString,
                 )
         self.GetNetwork = channel.unary_unary(
                 '/DomainService/GetNetwork',
-                request_serializer=domain__pb2.GetNetworkRequest.SerializeToString,
-                response_deserializer=domain__pb2.Network.FromString,
+                request_serializer=minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
                 )
         self.ListNetworks = channel.unary_unary(
                 '/DomainService/ListNetworks',
-                request_serializer=domain__pb2.ListNetworksRequest.SerializeToString,
-                response_deserializer=domain__pb2.ListNetworksResponse.FromString,
+                request_serializer=minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
                 )
         self.CreateNetwork = channel.unary_unary(
                 '/DomainService/CreateNetwork',
-                request_serializer=domain__pb2.CreateNetworkRequest.SerializeToString,
-                response_deserializer=domain__pb2.Network.FromString,
+                request_serializer=minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
                 )
         self.DeleteNetwork = channel.unary_unary(
                 '/DomainService/DeleteNetwork',
-                request_serializer=domain__pb2.DeleteNetworkRequest.SerializeToString,
+                request_serializer=minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -124,47 +124,47 @@ def add_DomainServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetDomain': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDomain,
-                    request_deserializer=domain__pb2.GetDomainRequest.FromString,
-                    response_serializer=domain__pb2.Domain.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.GetDomainRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Domain.SerializeToString,
             ),
             'ListDomains': grpc.unary_unary_rpc_method_handler(
                     servicer.ListDomains,
-                    request_deserializer=domain__pb2.ListDomainsRequest.FromString,
-                    response_serializer=domain__pb2.ListDomainsResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.ListDomainsRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.ListDomainsResponse.SerializeToString,
             ),
             'CreateDomain': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateDomain,
-                    request_deserializer=domain__pb2.CreateDomainRequest.FromString,
-                    response_serializer=domain__pb2.Domain.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.CreateDomainRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Domain.SerializeToString,
             ),
             'DeleteDomain': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteDomain,
-                    request_deserializer=domain__pb2.DeleteDomainRequest.FromString,
+                    request_deserializer=minivirt_dot_domain__pb2.DeleteDomainRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'DownloadImage': grpc.unary_stream_rpc_method_handler(
                     servicer.DownloadImage,
-                    request_deserializer=domain__pb2.DownloadImageRequest.FromString,
-                    response_serializer=domain__pb2.ImageChunk.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.DownloadImageRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.ImageChunk.SerializeToString,
             ),
             'GetNetwork': grpc.unary_unary_rpc_method_handler(
                     servicer.GetNetwork,
-                    request_deserializer=domain__pb2.GetNetworkRequest.FromString,
-                    response_serializer=domain__pb2.Network.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.GetNetworkRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Network.SerializeToString,
             ),
             'ListNetworks': grpc.unary_unary_rpc_method_handler(
                     servicer.ListNetworks,
-                    request_deserializer=domain__pb2.ListNetworksRequest.FromString,
-                    response_serializer=domain__pb2.ListNetworksResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.ListNetworksRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.ListNetworksResponse.SerializeToString,
             ),
             'CreateNetwork': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateNetwork,
-                    request_deserializer=domain__pb2.CreateNetworkRequest.FromString,
-                    response_serializer=domain__pb2.Network.SerializeToString,
+                    request_deserializer=minivirt_dot_domain__pb2.CreateNetworkRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Network.SerializeToString,
             ),
             'DeleteNetwork': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteNetwork,
-                    request_deserializer=domain__pb2.DeleteNetworkRequest.FromString,
+                    request_deserializer=minivirt_dot_domain__pb2.DeleteNetworkRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -189,8 +189,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/GetDomain',
-            domain__pb2.GetDomainRequest.SerializeToString,
-            domain__pb2.Domain.FromString,
+            minivirt_dot_domain__pb2.GetDomainRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Domain.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -206,8 +206,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/ListDomains',
-            domain__pb2.ListDomainsRequest.SerializeToString,
-            domain__pb2.ListDomainsResponse.FromString,
+            minivirt_dot_domain__pb2.ListDomainsRequest.SerializeToString,
+            minivirt_dot_domain__pb2.ListDomainsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -223,8 +223,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/CreateDomain',
-            domain__pb2.CreateDomainRequest.SerializeToString,
-            domain__pb2.Domain.FromString,
+            minivirt_dot_domain__pb2.CreateDomainRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Domain.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -240,7 +240,7 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/DeleteDomain',
-            domain__pb2.DeleteDomainRequest.SerializeToString,
+            minivirt_dot_domain__pb2.DeleteDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -257,8 +257,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_stream(request, target, '/DomainService/DownloadImage',
-            domain__pb2.DownloadImageRequest.SerializeToString,
-            domain__pb2.ImageChunk.FromString,
+            minivirt_dot_domain__pb2.DownloadImageRequest.SerializeToString,
+            minivirt_dot_domain__pb2.ImageChunk.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -274,8 +274,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/GetNetwork',
-            domain__pb2.GetNetworkRequest.SerializeToString,
-            domain__pb2.Network.FromString,
+            minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Network.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -291,8 +291,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/ListNetworks',
-            domain__pb2.ListNetworksRequest.SerializeToString,
-            domain__pb2.ListNetworksResponse.FromString,
+            minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
+            minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -308,8 +308,8 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/CreateNetwork',
-            domain__pb2.CreateNetworkRequest.SerializeToString,
-            domain__pb2.Network.FromString,
+            minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Network.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -325,7 +325,7 @@ class DomainService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DomainService/DeleteNetwork',
-            domain__pb2.DeleteNetworkRequest.SerializeToString,
+            minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

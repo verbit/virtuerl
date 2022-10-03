@@ -2,19 +2,21 @@ import grpc
 from google.protobuf import empty_pb2
 from grpc import StatusCode
 
-import controller_pb2_grpc
-import daemon_pb2
-import daemon_pb2_grpc
-import dns_pb2
-import dns_pb2_grpc
-import domain_pb2
-import network
-import route_pb2
-import route_pb2_grpc
-from host import HostController
-from models import DNSRecord, Host
-from network import GenericNetworkController
-from route import GenericRouteController, GenericRouteTableController, SyncEventHandler
+from minivirt import (
+    controller_pb2_grpc,
+    daemon_pb2,
+    daemon_pb2_grpc,
+    dns_pb2,
+    dns_pb2_grpc,
+    domain_pb2,
+    network,
+    route_pb2,
+    route_pb2_grpc,
+)
+from minivirt.host import HostController
+from minivirt.models import DNSRecord, Host
+from minivirt.network import GenericNetworkController
+from minivirt.route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
 
 class ControllerSyncHandler(SyncEventHandler):

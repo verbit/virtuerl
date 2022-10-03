@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import route_pb2 as route__pb2
+from minivirt import route_pb2 as minivirt_dot_route__pb2
 
 
 class RouteServiceStub(object):
@@ -17,47 +17,47 @@ class RouteServiceStub(object):
         """
         self.GetRouteTable = channel.unary_unary(
                 '/RouteService/GetRouteTable',
-                request_serializer=route__pb2.RouteTableIdentifier.SerializeToString,
-                response_deserializer=route__pb2.RouteTable.FromString,
+                request_serializer=minivirt_dot_route__pb2.RouteTableIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.RouteTable.FromString,
                 )
         self.ListRouteTables = channel.unary_unary(
                 '/RouteService/ListRouteTables',
-                request_serializer=route__pb2.ListRouteTablesRequest.SerializeToString,
-                response_deserializer=route__pb2.ListRouteTablesResponse.FromString,
+                request_serializer=minivirt_dot_route__pb2.ListRouteTablesRequest.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.ListRouteTablesResponse.FromString,
                 )
         self.CreateRouteTable = channel.unary_unary(
                 '/RouteService/CreateRouteTable',
-                request_serializer=route__pb2.CreateRouteTableRequest.SerializeToString,
-                response_deserializer=route__pb2.RouteTable.FromString,
+                request_serializer=minivirt_dot_route__pb2.CreateRouteTableRequest.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.RouteTable.FromString,
                 )
         self.DeleteRouteTable = channel.unary_unary(
                 '/RouteService/DeleteRouteTable',
-                request_serializer=route__pb2.RouteTableIdentifier.SerializeToString,
+                request_serializer=minivirt_dot_route__pb2.RouteTableIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetRoute = channel.unary_unary(
                 '/RouteService/GetRoute',
-                request_serializer=route__pb2.RouteIdentifier.SerializeToString,
-                response_deserializer=route__pb2.Route.FromString,
+                request_serializer=minivirt_dot_route__pb2.RouteIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.Route.FromString,
                 )
         self.ListRoutes = channel.unary_unary(
                 '/RouteService/ListRoutes',
-                request_serializer=route__pb2.ListRoutesRequest.SerializeToString,
-                response_deserializer=route__pb2.ListRoutesResponse.FromString,
+                request_serializer=minivirt_dot_route__pb2.ListRoutesRequest.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.ListRoutesResponse.FromString,
                 )
         self.PutRoute = channel.unary_unary(
                 '/RouteService/PutRoute',
-                request_serializer=route__pb2.PutRouteRequest.SerializeToString,
-                response_deserializer=route__pb2.Route.FromString,
+                request_serializer=minivirt_dot_route__pb2.PutRouteRequest.SerializeToString,
+                response_deserializer=minivirt_dot_route__pb2.Route.FromString,
                 )
         self.DeleteRoute = channel.unary_unary(
                 '/RouteService/DeleteRoute',
-                request_serializer=route__pb2.RouteIdentifier.SerializeToString,
+                request_serializer=minivirt_dot_route__pb2.RouteIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.Sync = channel.unary_unary(
                 '/RouteService/Sync',
-                request_serializer=route__pb2.SyncRequest.SerializeToString,
+                request_serializer=minivirt_dot_route__pb2.SyncRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -124,47 +124,47 @@ def add_RouteServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetRouteTable': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRouteTable,
-                    request_deserializer=route__pb2.RouteTableIdentifier.FromString,
-                    response_serializer=route__pb2.RouteTable.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.RouteTableIdentifier.FromString,
+                    response_serializer=minivirt_dot_route__pb2.RouteTable.SerializeToString,
             ),
             'ListRouteTables': grpc.unary_unary_rpc_method_handler(
                     servicer.ListRouteTables,
-                    request_deserializer=route__pb2.ListRouteTablesRequest.FromString,
-                    response_serializer=route__pb2.ListRouteTablesResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.ListRouteTablesRequest.FromString,
+                    response_serializer=minivirt_dot_route__pb2.ListRouteTablesResponse.SerializeToString,
             ),
             'CreateRouteTable': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateRouteTable,
-                    request_deserializer=route__pb2.CreateRouteTableRequest.FromString,
-                    response_serializer=route__pb2.RouteTable.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.CreateRouteTableRequest.FromString,
+                    response_serializer=minivirt_dot_route__pb2.RouteTable.SerializeToString,
             ),
             'DeleteRouteTable': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteRouteTable,
-                    request_deserializer=route__pb2.RouteTableIdentifier.FromString,
+                    request_deserializer=minivirt_dot_route__pb2.RouteTableIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'GetRoute': grpc.unary_unary_rpc_method_handler(
                     servicer.GetRoute,
-                    request_deserializer=route__pb2.RouteIdentifier.FromString,
-                    response_serializer=route__pb2.Route.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.RouteIdentifier.FromString,
+                    response_serializer=minivirt_dot_route__pb2.Route.SerializeToString,
             ),
             'ListRoutes': grpc.unary_unary_rpc_method_handler(
                     servicer.ListRoutes,
-                    request_deserializer=route__pb2.ListRoutesRequest.FromString,
-                    response_serializer=route__pb2.ListRoutesResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.ListRoutesRequest.FromString,
+                    response_serializer=minivirt_dot_route__pb2.ListRoutesResponse.SerializeToString,
             ),
             'PutRoute': grpc.unary_unary_rpc_method_handler(
                     servicer.PutRoute,
-                    request_deserializer=route__pb2.PutRouteRequest.FromString,
-                    response_serializer=route__pb2.Route.SerializeToString,
+                    request_deserializer=minivirt_dot_route__pb2.PutRouteRequest.FromString,
+                    response_serializer=minivirt_dot_route__pb2.Route.SerializeToString,
             ),
             'DeleteRoute': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteRoute,
-                    request_deserializer=route__pb2.RouteIdentifier.FromString,
+                    request_deserializer=minivirt_dot_route__pb2.RouteIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Sync': grpc.unary_unary_rpc_method_handler(
                     servicer.Sync,
-                    request_deserializer=route__pb2.SyncRequest.FromString,
+                    request_deserializer=minivirt_dot_route__pb2.SyncRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -189,8 +189,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/GetRouteTable',
-            route__pb2.RouteTableIdentifier.SerializeToString,
-            route__pb2.RouteTable.FromString,
+            minivirt_dot_route__pb2.RouteTableIdentifier.SerializeToString,
+            minivirt_dot_route__pb2.RouteTable.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -206,8 +206,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/ListRouteTables',
-            route__pb2.ListRouteTablesRequest.SerializeToString,
-            route__pb2.ListRouteTablesResponse.FromString,
+            minivirt_dot_route__pb2.ListRouteTablesRequest.SerializeToString,
+            minivirt_dot_route__pb2.ListRouteTablesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -223,8 +223,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/CreateRouteTable',
-            route__pb2.CreateRouteTableRequest.SerializeToString,
-            route__pb2.RouteTable.FromString,
+            minivirt_dot_route__pb2.CreateRouteTableRequest.SerializeToString,
+            minivirt_dot_route__pb2.RouteTable.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -240,7 +240,7 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/DeleteRouteTable',
-            route__pb2.RouteTableIdentifier.SerializeToString,
+            minivirt_dot_route__pb2.RouteTableIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -257,8 +257,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/GetRoute',
-            route__pb2.RouteIdentifier.SerializeToString,
-            route__pb2.Route.FromString,
+            minivirt_dot_route__pb2.RouteIdentifier.SerializeToString,
+            minivirt_dot_route__pb2.Route.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -274,8 +274,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/ListRoutes',
-            route__pb2.ListRoutesRequest.SerializeToString,
-            route__pb2.ListRoutesResponse.FromString,
+            minivirt_dot_route__pb2.ListRoutesRequest.SerializeToString,
+            minivirt_dot_route__pb2.ListRoutesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -291,8 +291,8 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/PutRoute',
-            route__pb2.PutRouteRequest.SerializeToString,
-            route__pb2.Route.FromString,
+            minivirt_dot_route__pb2.PutRouteRequest.SerializeToString,
+            minivirt_dot_route__pb2.Route.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -308,7 +308,7 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/DeleteRoute',
-            route__pb2.RouteIdentifier.SerializeToString,
+            minivirt_dot_route__pb2.RouteIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -325,7 +325,7 @@ class RouteService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/RouteService/Sync',
-            route__pb2.SyncRequest.SerializeToString,
+            minivirt_dot_route__pb2.SyncRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

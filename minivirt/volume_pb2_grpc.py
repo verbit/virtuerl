@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import volume_pb2 as volume__pb2
+from minivirt import volume_pb2 as minivirt_dot_volume__pb2
 
 
 class VolumeServiceStub(object):
@@ -17,47 +17,47 @@ class VolumeServiceStub(object):
         """
         self.GetVolume = channel.unary_unary(
                 '/VolumeService/GetVolume',
-                request_serializer=volume__pb2.GetVolumeRequest.SerializeToString,
-                response_deserializer=volume__pb2.Volume.FromString,
+                request_serializer=minivirt_dot_volume__pb2.GetVolumeRequest.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.ListVolumes = channel.unary_unary(
                 '/VolumeService/ListVolumes',
-                request_serializer=volume__pb2.ListVolumesRequest.SerializeToString,
-                response_deserializer=volume__pb2.ListVolumesResponse.FromString,
+                request_serializer=minivirt_dot_volume__pb2.ListVolumesRequest.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.ListVolumesResponse.FromString,
                 )
         self.CreateVolume = channel.unary_unary(
                 '/VolumeService/CreateVolume',
-                request_serializer=volume__pb2.CreateVolumeRequest.SerializeToString,
-                response_deserializer=volume__pb2.Volume.FromString,
+                request_serializer=minivirt_dot_volume__pb2.CreateVolumeRequest.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.UpdateVolume = channel.unary_unary(
                 '/VolumeService/UpdateVolume',
-                request_serializer=volume__pb2.UpdateVolumeRequest.SerializeToString,
-                response_deserializer=volume__pb2.Volume.FromString,
+                request_serializer=minivirt_dot_volume__pb2.UpdateVolumeRequest.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.DeleteVolume = channel.unary_unary(
                 '/VolumeService/DeleteVolume',
-                request_serializer=volume__pb2.DeleteVolumeRequest.SerializeToString,
+                request_serializer=minivirt_dot_volume__pb2.DeleteVolumeRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.ListVolumeAttachments = channel.unary_unary(
                 '/VolumeService/ListVolumeAttachments',
-                request_serializer=volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
-                response_deserializer=volume__pb2.ListVolumeAttachmentsResponse.FromString,
+                request_serializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsResponse.FromString,
                 )
         self.GetVolumeAttachment = channel.unary_unary(
                 '/VolumeService/GetVolumeAttachment',
-                request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
-                response_deserializer=volume__pb2.VolumeAttachment.FromString,
+                request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.VolumeAttachment.FromString,
                 )
         self.AttachVolume = channel.unary_unary(
                 '/VolumeService/AttachVolume',
-                request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
-                response_deserializer=volume__pb2.VolumeAttachment.FromString,
+                request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_volume__pb2.VolumeAttachment.FromString,
                 )
         self.DetachVolume = channel.unary_unary(
                 '/VolumeService/DetachVolume',
-                request_serializer=volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+                request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -124,47 +124,47 @@ def add_VolumeServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.GetVolume,
-                    request_deserializer=volume__pb2.GetVolumeRequest.FromString,
-                    response_serializer=volume__pb2.Volume.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.GetVolumeRequest.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.Volume.SerializeToString,
             ),
             'ListVolumes': grpc.unary_unary_rpc_method_handler(
                     servicer.ListVolumes,
-                    request_deserializer=volume__pb2.ListVolumesRequest.FromString,
-                    response_serializer=volume__pb2.ListVolumesResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.ListVolumesRequest.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.ListVolumesResponse.SerializeToString,
             ),
             'CreateVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateVolume,
-                    request_deserializer=volume__pb2.CreateVolumeRequest.FromString,
-                    response_serializer=volume__pb2.Volume.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.CreateVolumeRequest.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.Volume.SerializeToString,
             ),
             'UpdateVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.UpdateVolume,
-                    request_deserializer=volume__pb2.UpdateVolumeRequest.FromString,
-                    response_serializer=volume__pb2.Volume.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.UpdateVolumeRequest.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.Volume.SerializeToString,
             ),
             'DeleteVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteVolume,
-                    request_deserializer=volume__pb2.DeleteVolumeRequest.FromString,
+                    request_deserializer=minivirt_dot_volume__pb2.DeleteVolumeRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'ListVolumeAttachments': grpc.unary_unary_rpc_method_handler(
                     servicer.ListVolumeAttachments,
-                    request_deserializer=volume__pb2.ListVolumeAttachmentsRequest.FromString,
-                    response_serializer=volume__pb2.ListVolumeAttachmentsResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsRequest.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsResponse.SerializeToString,
             ),
             'GetVolumeAttachment': grpc.unary_unary_rpc_method_handler(
                     servicer.GetVolumeAttachment,
-                    request_deserializer=volume__pb2.VolumeAttachmentIdentifier.FromString,
-                    response_serializer=volume__pb2.VolumeAttachment.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.VolumeAttachment.SerializeToString,
             ),
             'AttachVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.AttachVolume,
-                    request_deserializer=volume__pb2.VolumeAttachmentIdentifier.FromString,
-                    response_serializer=volume__pb2.VolumeAttachment.SerializeToString,
+                    request_deserializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.FromString,
+                    response_serializer=minivirt_dot_volume__pb2.VolumeAttachment.SerializeToString,
             ),
             'DetachVolume': grpc.unary_unary_rpc_method_handler(
                     servicer.DetachVolume,
-                    request_deserializer=volume__pb2.VolumeAttachmentIdentifier.FromString,
+                    request_deserializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -189,8 +189,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/GetVolume',
-            volume__pb2.GetVolumeRequest.SerializeToString,
-            volume__pb2.Volume.FromString,
+            minivirt_dot_volume__pb2.GetVolumeRequest.SerializeToString,
+            minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -206,8 +206,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/ListVolumes',
-            volume__pb2.ListVolumesRequest.SerializeToString,
-            volume__pb2.ListVolumesResponse.FromString,
+            minivirt_dot_volume__pb2.ListVolumesRequest.SerializeToString,
+            minivirt_dot_volume__pb2.ListVolumesResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -223,8 +223,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/CreateVolume',
-            volume__pb2.CreateVolumeRequest.SerializeToString,
-            volume__pb2.Volume.FromString,
+            minivirt_dot_volume__pb2.CreateVolumeRequest.SerializeToString,
+            minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -240,8 +240,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/UpdateVolume',
-            volume__pb2.UpdateVolumeRequest.SerializeToString,
-            volume__pb2.Volume.FromString,
+            minivirt_dot_volume__pb2.UpdateVolumeRequest.SerializeToString,
+            minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -257,7 +257,7 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/DeleteVolume',
-            volume__pb2.DeleteVolumeRequest.SerializeToString,
+            minivirt_dot_volume__pb2.DeleteVolumeRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -274,8 +274,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/ListVolumeAttachments',
-            volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
-            volume__pb2.ListVolumeAttachmentsResponse.FromString,
+            minivirt_dot_volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
+            minivirt_dot_volume__pb2.ListVolumeAttachmentsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -291,8 +291,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/GetVolumeAttachment',
-            volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
-            volume__pb2.VolumeAttachment.FromString,
+            minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+            minivirt_dot_volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -308,8 +308,8 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/AttachVolume',
-            volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
-            volume__pb2.VolumeAttachment.FromString,
+            minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+            minivirt_dot_volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -325,7 +325,7 @@ class VolumeService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/VolumeService/DetachVolume',
-            volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
+            minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

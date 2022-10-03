@@ -10,14 +10,11 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import controller_pb2_grpc
-import daemon_pb2_grpc
-import host_pb2
-import host_pb2_grpc
-from controller import Controller
-from dns_controller import DNSController
-from host import HostController, HostService
-from models import Base
+from minivirt import controller_pb2_grpc, daemon_pb2_grpc, host_pb2, host_pb2_grpc
+from minivirt.controller import Controller
+from minivirt.dns_controller import DNSController
+from minivirt.host import HostController, HostService
+from minivirt.models import Base
 
 OPERATING_SYSTEMS = {"darwin", "linux", "windows"}
 
@@ -138,9 +135,9 @@ def controller_client_dummy(controller_channel, host_client):
 
 @pytest.fixture
 def controller_client(session_factory, controller_channel, host_client):
-    from daemon import DaemonService
-    from port_forwarding import IPTablesPortForwardingSynchronizer
-    from utils import UnaryUnaryInterceptor
+    from minivirt.daemon import DaemonService
+    from minivirt.port_forwarding import IPTablesPortForwardingSynchronizer
+    from minivirt.utils import UnaryUnaryInterceptor
 
     daemon = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]

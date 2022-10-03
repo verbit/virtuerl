@@ -1,8 +1,7 @@
 import grpc
 import pytest
 
-import port_forwarding_pb2
-import port_forwarding_pb2_grpc
+from minivirt import port_forwarding_pb2, port_forwarding_pb2_grpc
 
 
 @pytest.fixture

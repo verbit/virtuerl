@@ -3,8 +3,7 @@ from datetime import datetime, timedelta
 import grpc
 import pytest
 
-import host_pb2
-import host_pb2_grpc
+from minivirt import host_pb2, host_pb2_grpc
 
 
 @pytest.fixture

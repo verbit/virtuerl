@@ -5,8 +5,7 @@ from urllib.request import urlopen
 
 import pytest
 
-import domain_pb2
-import domain_pb2_grpc
+from minivirt import domain_pb2, domain_pb2_grpc
 
 
 @pytest.fixture
