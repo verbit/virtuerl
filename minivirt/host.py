@@ -7,9 +7,8 @@ from google.protobuf import empty_pb2
 from grpc import StatusCode
 from sqlalchemy import select
 
-import host_pb2
-import host_pb2_grpc
-from models import BootstrapToken, Host
+from minivirt import host_pb2, host_pb2_grpc
+from minivirt.models import BootstrapToken, Host
 
 
 class HostController:

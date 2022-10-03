@@ -1,8 +1,7 @@
 import pytest
 from pyroute2 import IPRoute
 
-import controller_pb2_grpc
-import route_pb2
+from minivirt import controller_pb2_grpc, route_pb2
 
 
 @pytest.fixture

@@ -2,8 +2,8 @@
 """Client and server classes corresponding to protobuf-defined services."""
 import grpc
 
-import dns_pb2 as dns__pb2
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
+from minivirt import dns_pb2 as minivirt_dot_dns__pb2
 
 
 class DNSStub(object):
@@ -17,22 +17,22 @@ class DNSStub(object):
         """
         self.GetDNSRecord = channel.unary_unary(
                 '/DNS/GetDNSRecord',
-                request_serializer=dns__pb2.DNSRecordIdentifier.SerializeToString,
-                response_deserializer=dns__pb2.DNSRecord.FromString,
+                request_serializer=minivirt_dot_dns__pb2.DNSRecordIdentifier.SerializeToString,
+                response_deserializer=minivirt_dot_dns__pb2.DNSRecord.FromString,
                 )
         self.ListDNSRecords = channel.unary_unary(
                 '/DNS/ListDNSRecords',
-                request_serializer=dns__pb2.ListDNSRecordsRequest.SerializeToString,
-                response_deserializer=dns__pb2.ListDNSRecordsResponse.FromString,
+                request_serializer=minivirt_dot_dns__pb2.ListDNSRecordsRequest.SerializeToString,
+                response_deserializer=minivirt_dot_dns__pb2.ListDNSRecordsResponse.FromString,
                 )
         self.PutDNSRecord = channel.unary_unary(
                 '/DNS/PutDNSRecord',
-                request_serializer=dns__pb2.PutDNSRecordRequest.SerializeToString,
-                response_deserializer=dns__pb2.DNSRecord.FromString,
+                request_serializer=minivirt_dot_dns__pb2.PutDNSRecordRequest.SerializeToString,
+                response_deserializer=minivirt_dot_dns__pb2.DNSRecord.FromString,
                 )
         self.DeleteDNSRecord = channel.unary_unary(
                 '/DNS/DeleteDNSRecord',
-                request_serializer=dns__pb2.DNSRecordIdentifier.SerializeToString,
+                request_serializer=minivirt_dot_dns__pb2.DNSRecordIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -69,22 +69,22 @@ def add_DNSServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'GetDNSRecord': grpc.unary_unary_rpc_method_handler(
                     servicer.GetDNSRecord,
-                    request_deserializer=dns__pb2.DNSRecordIdentifier.FromString,
-                    response_serializer=dns__pb2.DNSRecord.SerializeToString,
+                    request_deserializer=minivirt_dot_dns__pb2.DNSRecordIdentifier.FromString,
+                    response_serializer=minivirt_dot_dns__pb2.DNSRecord.SerializeToString,
             ),
             'ListDNSRecords': grpc.unary_unary_rpc_method_handler(
                     servicer.ListDNSRecords,
-                    request_deserializer=dns__pb2.ListDNSRecordsRequest.FromString,
-                    response_serializer=dns__pb2.ListDNSRecordsResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_dns__pb2.ListDNSRecordsRequest.FromString,
+                    response_serializer=minivirt_dot_dns__pb2.ListDNSRecordsResponse.SerializeToString,
             ),
             'PutDNSRecord': grpc.unary_unary_rpc_method_handler(
                     servicer.PutDNSRecord,
-                    request_deserializer=dns__pb2.PutDNSRecordRequest.FromString,
-                    response_serializer=dns__pb2.DNSRecord.SerializeToString,
+                    request_deserializer=minivirt_dot_dns__pb2.PutDNSRecordRequest.FromString,
+                    response_serializer=minivirt_dot_dns__pb2.DNSRecord.SerializeToString,
             ),
             'DeleteDNSRecord': grpc.unary_unary_rpc_method_handler(
                     servicer.DeleteDNSRecord,
-                    request_deserializer=dns__pb2.DNSRecordIdentifier.FromString,
+                    request_deserializer=minivirt_dot_dns__pb2.DNSRecordIdentifier.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -109,8 +109,8 @@ class DNS(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DNS/GetDNSRecord',
-            dns__pb2.DNSRecordIdentifier.SerializeToString,
-            dns__pb2.DNSRecord.FromString,
+            minivirt_dot_dns__pb2.DNSRecordIdentifier.SerializeToString,
+            minivirt_dot_dns__pb2.DNSRecord.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -126,8 +126,8 @@ class DNS(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DNS/ListDNSRecords',
-            dns__pb2.ListDNSRecordsRequest.SerializeToString,
-            dns__pb2.ListDNSRecordsResponse.FromString,
+            minivirt_dot_dns__pb2.ListDNSRecordsRequest.SerializeToString,
+            minivirt_dot_dns__pb2.ListDNSRecordsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -143,8 +143,8 @@ class DNS(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DNS/PutDNSRecord',
-            dns__pb2.PutDNSRecordRequest.SerializeToString,
-            dns__pb2.DNSRecord.FromString,
+            minivirt_dot_dns__pb2.PutDNSRecordRequest.SerializeToString,
+            minivirt_dot_dns__pb2.DNSRecord.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -160,7 +160,7 @@ class DNS(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/DNS/DeleteDNSRecord',
-            dns__pb2.DNSRecordIdentifier.SerializeToString,
+            minivirt_dot_dns__pb2.DNSRecordIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

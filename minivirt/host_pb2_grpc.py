@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import host_pb2 as host__pb2
+from minivirt import host_pb2 as minivirt_dot_host__pb2
 
 
 class HostServiceStub(object):
@@ -17,33 +17,33 @@ class HostServiceStub(object):
         """
         self.CreateBootstrapToken = channel.unary_unary(
                 '/HostService/CreateBootstrapToken',
-                request_serializer=host__pb2.CreateBootstrapTokenRequest.SerializeToString,
-                response_deserializer=host__pb2.CreateBootstrapTokenResponse.FromString,
+                request_serializer=minivirt_dot_host__pb2.CreateBootstrapTokenRequest.SerializeToString,
+                response_deserializer=minivirt_dot_host__pb2.CreateBootstrapTokenResponse.FromString,
                 )
         self.GetHost = channel.unary_unary(
                 '/HostService/GetHost',
-                request_serializer=host__pb2.Host.SerializeToString,
-                response_deserializer=host__pb2.Host.FromString,
+                request_serializer=minivirt_dot_host__pb2.Host.SerializeToString,
+                response_deserializer=minivirt_dot_host__pb2.Host.FromString,
                 )
         self.ListHosts = channel.unary_unary(
                 '/HostService/ListHosts',
-                request_serializer=host__pb2.ListHostsRequest.SerializeToString,
-                response_deserializer=host__pb2.ListHostsResponse.FromString,
+                request_serializer=minivirt_dot_host__pb2.ListHostsRequest.SerializeToString,
+                response_deserializer=minivirt_dot_host__pb2.ListHostsResponse.FromString,
                 )
         self.Register = channel.unary_unary(
                 '/HostService/Register',
-                request_serializer=host__pb2.RegisterHostRequest.SerializeToString,
-                response_deserializer=host__pb2.Host.FromString,
+                request_serializer=minivirt_dot_host__pb2.RegisterHostRequest.SerializeToString,
+                response_deserializer=minivirt_dot_host__pb2.Host.FromString,
                 )
         self.Deregister = channel.unary_unary(
                 '/HostService/Deregister',
-                request_serializer=host__pb2.Host.SerializeToString,
+                request_serializer=minivirt_dot_host__pb2.Host.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.Heartbeat = channel.unary_unary(
                 '/HostService/Heartbeat',
-                request_serializer=host__pb2.HeartbeatRequest.SerializeToString,
-                response_deserializer=host__pb2.HeartbeatResponse.FromString,
+                request_serializer=minivirt_dot_host__pb2.HeartbeatRequest.SerializeToString,
+                response_deserializer=minivirt_dot_host__pb2.HeartbeatResponse.FromString,
                 )
 
 
@@ -91,33 +91,33 @@ def add_HostServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
             'CreateBootstrapToken': grpc.unary_unary_rpc_method_handler(
                     servicer.CreateBootstrapToken,
-                    request_deserializer=host__pb2.CreateBootstrapTokenRequest.FromString,
-                    response_serializer=host__pb2.CreateBootstrapTokenResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_host__pb2.CreateBootstrapTokenRequest.FromString,
+                    response_serializer=minivirt_dot_host__pb2.CreateBootstrapTokenResponse.SerializeToString,
             ),
             'GetHost': grpc.unary_unary_rpc_method_handler(
                     servicer.GetHost,
-                    request_deserializer=host__pb2.Host.FromString,
-                    response_serializer=host__pb2.Host.SerializeToString,
+                    request_deserializer=minivirt_dot_host__pb2.Host.FromString,
+                    response_serializer=minivirt_dot_host__pb2.Host.SerializeToString,
             ),
             'ListHosts': grpc.unary_unary_rpc_method_handler(
                     servicer.ListHosts,
-                    request_deserializer=host__pb2.ListHostsRequest.FromString,
-                    response_serializer=host__pb2.ListHostsResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_host__pb2.ListHostsRequest.FromString,
+                    response_serializer=minivirt_dot_host__pb2.ListHostsResponse.SerializeToString,
             ),
             'Register': grpc.unary_unary_rpc_method_handler(
                     servicer.Register,
-                    request_deserializer=host__pb2.RegisterHostRequest.FromString,
-                    response_serializer=host__pb2.Host.SerializeToString,
+                    request_deserializer=minivirt_dot_host__pb2.RegisterHostRequest.FromString,
+                    response_serializer=minivirt_dot_host__pb2.Host.SerializeToString,
             ),
             'Deregister': grpc.unary_unary_rpc_method_handler(
                     servicer.Deregister,
-                    request_deserializer=host__pb2.Host.FromString,
+                    request_deserializer=minivirt_dot_host__pb2.Host.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
             'Heartbeat': grpc.unary_unary_rpc_method_handler(
                     servicer.Heartbeat,
-                    request_deserializer=host__pb2.HeartbeatRequest.FromString,
-                    response_serializer=host__pb2.HeartbeatResponse.SerializeToString,
+                    request_deserializer=minivirt_dot_host__pb2.HeartbeatRequest.FromString,
+                    response_serializer=minivirt_dot_host__pb2.HeartbeatResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -141,8 +141,8 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/CreateBootstrapToken',
-            host__pb2.CreateBootstrapTokenRequest.SerializeToString,
-            host__pb2.CreateBootstrapTokenResponse.FromString,
+            minivirt_dot_host__pb2.CreateBootstrapTokenRequest.SerializeToString,
+            minivirt_dot_host__pb2.CreateBootstrapTokenResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -158,8 +158,8 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/GetHost',
-            host__pb2.Host.SerializeToString,
-            host__pb2.Host.FromString,
+            minivirt_dot_host__pb2.Host.SerializeToString,
+            minivirt_dot_host__pb2.Host.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -175,8 +175,8 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/ListHosts',
-            host__pb2.ListHostsRequest.SerializeToString,
-            host__pb2.ListHostsResponse.FromString,
+            minivirt_dot_host__pb2.ListHostsRequest.SerializeToString,
+            minivirt_dot_host__pb2.ListHostsResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -192,8 +192,8 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/Register',
-            host__pb2.RegisterHostRequest.SerializeToString,
-            host__pb2.Host.FromString,
+            minivirt_dot_host__pb2.RegisterHostRequest.SerializeToString,
+            minivirt_dot_host__pb2.Host.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
@@ -209,7 +209,7 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/Deregister',
-            host__pb2.Host.SerializeToString,
+            minivirt_dot_host__pb2.Host.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
@@ -226,7 +226,7 @@ class HostService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/HostService/Heartbeat',
-            host__pb2.HeartbeatRequest.SerializeToString,
-            host__pb2.HeartbeatResponse.FromString,
+            minivirt_dot_host__pb2.HeartbeatRequest.SerializeToString,
+            minivirt_dot_host__pb2.HeartbeatResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

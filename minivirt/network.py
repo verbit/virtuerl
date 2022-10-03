@@ -1,10 +1,6 @@
-import ipaddress
-
 from sqlalchemy import delete, select
 
-import controller_pb2_grpc
-import domain_pb2
-from models import Network
+from minivirt.models import Network
 
 
 class SyncEventHandler:

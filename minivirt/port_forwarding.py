@@ -4,8 +4,8 @@ import threading
 import nftables
 from sqlalchemy import select
 
-import domain_pb2
-from models import PortForwarding
+from minivirt import domain_pb2
+from minivirt.models import PortForwarding
 
 
 class IPTablesPortForwardingSynchronizer:

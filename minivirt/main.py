@@ -12,24 +12,26 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
-import controller_pb2_grpc
-import daemon_pb2_grpc
-import dns_pb2_grpc
-import domain_pb2
-import domain_pb2_grpc
-import host_pb2
-import host_pb2_grpc
-import port_forwarding_pb2_grpc
-import route_pb2_grpc
-import volume_pb2_grpc
-from controller import Controller
-from daemon import DaemonService
-from dns_controller import DNSController
-from host import HostController, HostService
-from models import Base
-from port_forwarding import IPTablesPortForwardingSynchronizer
-from utils import UnaryUnaryInterceptor
-from version import __version__
+from minivirt import (
+    controller_pb2_grpc,
+    daemon_pb2_grpc,
+    dns_pb2_grpc,
+    domain_pb2,
+    domain_pb2_grpc,
+    host_pb2,
+    host_pb2_grpc,
+    port_forwarding_pb2_grpc,
+    route_pb2_grpc,
+    volume_pb2_grpc,
+)
+from minivirt.controller import Controller
+from minivirt.daemon import DaemonService
+from minivirt.dns_controller import DNSController
+from minivirt.host import HostController, HostService
+from minivirt.models import Base
+from minivirt.port_forwarding import IPTablesPortForwardingSynchronizer
+from minivirt.utils import UnaryUnaryInterceptor
+from minivirt.version import __version__
 
 libvirt.registerErrorHandler(lambda u, e: None, None)
 
