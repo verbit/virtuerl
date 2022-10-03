@@ -1,8 +1,10 @@
 from setuptools import find_packages, setup
 
+from minivirt.version import __version__
+
 setup(
     name="restvirt",
-    version="0.1",
+    version="0.1",  # TODO: use __version__ instead
     packages=find_packages(),
     url="",
     license="Apache",
