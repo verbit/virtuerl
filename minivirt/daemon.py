@@ -52,6 +52,7 @@ def libvirt_state_to_string(state):
 def domain_to_dict(domain):
     domain_dict = xmltodict.parse(domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
     d = domain_dict["domain"]
+    d = domain_dict["domain"]
     res = {
         "uuid": d["uuid"],
         "name": d["name"],
@@ -439,7 +440,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 from urllib.request import urlopen
 
                 res = urlopen(
-                    f"https://cloud-images.ubuntu.com/releases/22.04/release-20220808/ubuntu-22.04-server-cloudimg-amd64.img"
+                    f"https://cloud-images.ubuntu.com/releases/22.04/release-20221117/ubuntu-22.04-server-cloudimg-amd64.img"
                 )
                 size = int(res.getheader("Content-length"))
                 base_img = img_pool.createXML(
