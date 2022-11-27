@@ -26,6 +26,15 @@ apps:
     plugs:
       - network
       - network-bind
+  bird:
+    command: bin/bird-wrapper
+    daemon: simple
+    before:
+      - daemon
+    plugs:
+      - network
+      - network-bind
+      - network-control
   daemon:
     command: bin/restvirt-daemon
     daemon: simple
@@ -59,3 +68,4 @@ parts:
       - libbrotli1  # kill me please
       - libnftables1
       - unbound
+      - bird2

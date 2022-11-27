@@ -1,5 +1,7 @@
 #!/bin/sh -e
 
+mkdir -p "$SNAP_DATA/var/run/bird/"
+
 controller_args="$(snapctl get controller.args)"
 if [ -z "$controller_args" ]; then
   snapctl set controller.args='-c $SNAP_COMMON'
