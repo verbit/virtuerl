@@ -56,5 +56,6 @@ parts:
       - pkg-config
     stage-packages:
       - libvirt0
+      - libbrotli1  # kill me please
       - libnftables1
       - unbound
