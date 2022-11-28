@@ -35,6 +35,8 @@ apps:
       - network
       - network-bind
       - network-control
+  birdc:
+    command: bin/birdc-wrapper
   daemon:
     command: bin/restvirt-daemon
     daemon: simple
