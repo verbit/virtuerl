@@ -124,6 +124,7 @@ def start_daemon(args):
     addr, port = args.bind
     port = port or 0
     addr = addr or "0.0.0.0"
+    name = args.name or "default"
 
     if args.debug:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -154,13 +155,14 @@ def start_daemon(args):
     host_client = host_pb2_grpc.HostServiceStub(controller_channel)
     hosts = host_client.ListHosts(host_pb2.ListHostsRequest()).hosts
     for host in hosts:
-        host_client.Deregister(host)
+        if host.name == name:
+            host_client.Deregister(host)
     token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
     host_client.Register(
         host_pb2.RegisterHostRequest(
             token=token,
             host=host_pb2.Host(
-                name="default",
+                name=name,
                 address=f"{addr}:{daemon_port}",
             ),
         )
@@ -205,6 +207,7 @@ def main():
     controller_parser.set_defaults(func=start_controller)
 
     daemon_parser = subparsers.add_parser("daemon")
+    daemon_parser.add_argument("--name", default="default", help="host's name")
     daemon_parser.add_argument("--debug", action="store_true", help="run in debug mode")
     daemon_parser.add_argument(
         "-b", "--bind", type=bind_address, default="localhost:8099", help="daemon bind address"
