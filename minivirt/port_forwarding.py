@@ -9,9 +9,10 @@ from minivirt.models import PortForwarding
 
 
 class IPTablesPortForwardingSynchronizer:
-    def __init__(self, controller):
+    def __init__(self, controller, controller_addr):
         self.controller = controller
         self.lock = threading.Lock()
+        self.controller_addr = controller_addr
 
     def handle_sync(self, session):
         with self.lock:
@@ -265,7 +266,7 @@ class IPTablesPortForwardingSynchronizer:
                                                                 "field": "daddr",
                                                             }
                                                         },
-                                                        "right": str(net[1]),
+                                                        "right": self.controller_addr,
                                                     }
                                                 },
                                                 {
@@ -274,9 +275,7 @@ class IPTablesPortForwardingSynchronizer:
                                                 {
                                                     "dnat": {
                                                         "family": "ip",
-                                                        "addr": str(
-                                                            net[1]
-                                                        ),  # TODO: only works in the single-host case
+                                                        "addr": self.controller_addr,
                                                         "port": 5354,
                                                     }
                                                 },
