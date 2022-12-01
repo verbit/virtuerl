@@ -143,7 +143,31 @@ def start_daemon(args):
     )
     daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
     controller_host, controller_port = args.controller
-    controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
+
+    server_key_pair_provided = args.server_cert is not None and args.server_key is not None
+    assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
+    assert args.client_ca_cert is None or server_key_pair_provided
+
+    if server_key_pair_provided:
+        with open(args.server_cert, "rb") as cert, open(args.server_key, "rb") as key:
+            key_pair = (key.read(), cert.read())
+
+        root_certificate = None
+        require_client_auth = args.client_ca_cert is not None
+        if require_client_auth:
+            with open(args.client_ca_cert, "rb") as ca_cert:
+                root_certificate = ca_cert.read()
+
+        creds = grpc.ssl_server_credentials(
+            [key_pair],
+            root_certificates=root_certificate,
+            require_client_auth=require_client_auth,
+        )
+
+        controller_channel = grpc.secure_channel(f"{controller_host}:{controller_port}", creds)
+    else:
+        controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
+
     daemon_service = DaemonService(
         session_factory,
         IPTablesPortForwardingSynchronizer(
