@@ -155,7 +155,7 @@ pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
     insecure_client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
 
 
-def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=180)):
+def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=600)):
     end_time = datetime.datetime.now() + timeout
     while True:
         try:
