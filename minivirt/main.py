@@ -234,10 +234,10 @@ def main():
     daemon_parser.add_argument("--name", default="default", help="host's name")
     daemon_parser.add_argument("--debug", action="store_true", help="run in debug mode")
     daemon_parser.add_argument(
-        "-b", "--bind", type=bind_address, default="localhost:8099", help="daemon bind address"
+        "-b", "--bind", type=bind_address, default="127.0.0.1:8099", help="daemon bind address"
     )
     daemon_parser.add_argument(
-        "-a", "--controller", type=bind_address, default="localhost:8094", help="controller address"
+        "-a", "--controller", type=bind_address, default="127.0.0.1:8094", help="controller address"
     )
     daemon_parser.add_argument(
         "-c", "--config", default="/etc/restvirt", help="configuration folder"
