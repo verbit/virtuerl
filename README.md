@@ -5,7 +5,7 @@ Manage libvirt through a REST API.
 # Installation
 
 ```shell
-apt install --no-install-recommends libvirt-daemon-system
+apt install --no-install-recommends dnsmasq-base libvirt-daemon-system qemu-kvm qemu-utils
 snap install minivirt
 sudo snap connect minivirt:network-control
 sudo snap connect minivirt:firewall-control
