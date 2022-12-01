@@ -147,7 +147,7 @@ def controller_client(session_factory, controller_channel, host_client):
     daemon_service = DaemonService(
         session_factory,
         IPTablesPortForwardingSynchronizer(
-            controller_pb2_grpc.ControllerServiceStub(controller_channel)
+            controller_pb2_grpc.ControllerServiceStub(controller_channel),
         ),
         controller_channel,
     )
