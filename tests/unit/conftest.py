@@ -148,7 +148,6 @@ def controller_client(session_factory, controller_channel, host_client):
         session_factory,
         IPTablesPortForwardingSynchronizer(
             controller_pb2_grpc.ControllerServiceStub(controller_channel),
-            "127.0.0.1",
         ),
         controller_channel,
     )

@@ -171,7 +171,7 @@ def start_daemon(args):
         session_factory,
         IPTablesPortForwardingSynchronizer(
             controller_pb2_grpc.ControllerServiceStub(controller_channel),
-            controller_host,
+            args.dns_server,
         ),
         controller_channel,
     )
@@ -233,6 +233,7 @@ def main():
     daemon_parser = subparsers.add_parser("daemon")
     daemon_parser.add_argument("--name", default="default", help="host's name")
     daemon_parser.add_argument("--debug", action="store_true", help="run in debug mode")
+    daemon_parser.add_argument("--dns-server", help="custom DNS server")
     daemon_parser.add_argument(
         "-b", "--bind", type=bind_address, default="127.0.0.1:8099", help="daemon bind address"
     )

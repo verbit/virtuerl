@@ -9,10 +9,10 @@ from minivirt.models import PortForwarding
 
 
 class IPTablesPortForwardingSynchronizer:
-    def __init__(self, controller, controller_addr):
+    def __init__(self, controller, dns_addr=None):
         self.controller = controller
         self.lock = threading.Lock()
-        self.controller_addr = controller_addr
+        self.dns_addr = dns_addr
 
     def handle_sync(self, session):
         with self.lock:
@@ -234,6 +234,11 @@ class IPTablesPortForwardingSynchronizer:
             networks = self.controller.ListNetworks(domain_pb2.ListNetworksRequest()).networks
             for network in networks:
                 net = ipaddress.IPv4Network(network.cidr)
+
+                dns_addr = self.dns_addr
+                if self.dns_addr is None:
+                    dns_addr = str(net[1])
+
                 for chain in ["output", "prerouting"]:
                     for protocol in ["udp", "tcp"]:
                         commands.extend(
@@ -275,7 +280,7 @@ class IPTablesPortForwardingSynchronizer:
                                                 {
                                                     "dnat": {
                                                         "family": "ip",
-                                                        "addr": self.controller_addr,
+                                                        "addr": dns_addr,
                                                         "port": 5354,
                                                     }
                                                 },
