@@ -144,24 +144,23 @@ def start_daemon(args):
     daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
     controller_host, controller_port = args.controller
 
-    server_key_pair_provided = args.server_cert is not None and args.server_key is not None
-    assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
-    assert args.client_ca_cert is None or server_key_pair_provided
+    client_key_pair_provided = args.client_cert is not None and args.client_key is not None
 
-    if server_key_pair_provided:
-        with open(args.server_cert, "rb") as cert, open(args.server_key, "rb") as key:
-            key_pair = (key.read(), cert.read())
+    if args.server_ca_cert is not None:
+        with open(args.server_ca_cert, "rb") as ca_cert:
+            root_certificate = ca_cert.read()
 
-        root_certificate = None
-        require_client_auth = args.client_ca_cert is not None
-        if require_client_auth:
-            with open(args.client_ca_cert, "rb") as ca_cert:
-                root_certificate = ca_cert.read()
+        certificate_chain = None
+        private_key = None
+        if client_key_pair_provided:
+            with open(args.client_cert, "rb") as cert, open(args.client_key, "rb") as key:
+                certificate_chain = cert.read()
+                private_key = key.read()
 
-        creds = grpc.ssl_server_credentials(
-            [key_pair],
+        creds = grpc.ssl_channel_credentials(
             root_certificates=root_certificate,
-            require_client_auth=require_client_auth,
+            certificate_chain=certificate_chain,
+            private_key=private_key,
         )
 
         controller_channel = grpc.secure_channel(f"{controller_host}:{controller_port}", creds)
@@ -242,9 +241,9 @@ def main():
     daemon_parser.add_argument(
         "-c", "--config", default="/etc/restvirt", help="configuration folder"
     )
-    daemon_parser.add_argument("--server-cert")
-    daemon_parser.add_argument("--server-key")
-    daemon_parser.add_argument("--client-ca-cert")
+    daemon_parser.add_argument("--client-cert")
+    daemon_parser.add_argument("--client-key")
+    daemon_parser.add_argument("--server-ca-cert")
     daemon_parser.set_defaults(func=start_daemon)
 
     args = parser.parse_args()
