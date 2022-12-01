@@ -266,7 +266,7 @@ class IPTablesPortForwardingSynchronizer:
                                                                 "field": "daddr",
                                                             }
                                                         },
-                                                        "right": self.controller_addr,
+                                                        "right": str(net[1]),
                                                     }
                                                 },
                                                 {
