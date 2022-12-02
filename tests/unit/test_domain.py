@@ -45,18 +45,19 @@ def test_libvirt_linux():
 def test_network_linux(client: domain_pb2_grpc.DomainServiceStub):
     network = client.CreateNetwork(
         domain_pb2.CreateNetworkRequest(
+            host="test",
             network=domain_pb2.Network(
                 name="restvirt",
                 cidr="192.168.69.0/24",
-            )
+            ),
         )
     )
 
-    resp = client.GetNetwork(domain_pb2.GetNetworkRequest(uuid=network.uuid))
+    resp = client.GetNetwork(domain_pb2.GetNetworkRequest(host="test", uuid=network.uuid))
     assert resp.name == "restvirt"
     assert resp.cidr == "192.168.69.0/24"
 
-    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
+    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(host="test", uuid=network.uuid))
 
 
 # def test_create_domain_linux(client: domain_pb2_grpc.DomainServiceStub):
