@@ -67,6 +67,7 @@ message ImageChunk {
 
 message GetNetworkRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 message Network {
@@ -75,7 +76,9 @@ message Network {
   string cidr = 3;
 }
 
-message ListNetworksRequest {}
+message ListNetworksRequest {
+  string host = 1;
+}
 
 message ListNetworksResponse {
   repeated Network networks = 1;
@@ -83,10 +86,12 @@ message ListNetworksResponse {
 
 message CreateNetworkRequest {
   Network network = 1;
+  string host = 2;
 }
 
 message DeleteNetworkRequest {
   string uuid = 1;
+  string host = 2;
 }
 
 

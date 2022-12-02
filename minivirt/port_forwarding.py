@@ -1,10 +1,12 @@
 import ipaddress
 import threading
 
+import libvirt
 import nftables
 from sqlalchemy import select
 
 from minivirt import domain_pb2
+from minivirt.daemon import _network_to_pb
 from minivirt.models import PortForwarding
 
 
@@ -14,7 +16,7 @@ class IPTablesPortForwardingSynchronizer:
         self.lock = threading.Lock()
         self.dns_addr = dns_addr
 
-    def handle_sync(self, session):
+    def handle_sync(self, session, libvirt_conn: libvirt.virConnect):
         with self.lock:
             forwardings = session.execute(select(PortForwarding).filter()).scalars().all()
 
@@ -231,7 +233,7 @@ class IPTablesPortForwardingSynchronizer:
                     ]
                 )
 
-            networks = self.controller.ListNetworks(domain_pb2.ListNetworksRequest()).networks
+            networks = [_network_to_pb(net) for net in libvirt_conn.listAllNetworks()]
             for network in networks:
                 net = ipaddress.IPv4Network(network.cidr)
 

@@ -248,61 +248,6 @@ class IPRouteSynchronizer:
                     self.put_ip_route(ip, tid, dst, gws)
 
 
-class NetworkSynchronizer:
-    import libvirt
-
-    def __init__(
-        self,
-        controller: controller_pb2_grpc.ControllerServiceStub,
-        libvirt_connection: libvirt.virConnect,
-    ):
-        self.controller = controller
-        self.libvirt_connection = libvirt_connection
-
-    def sync(self):
-        # net = self.conn.networkLookupByUUIDString(request.uuid)
-        # net_dict = xmltodict.parse(net.XMLDesc())["network"]
-        # net_def = net_dict["ip"]
-        # gateway = ipaddress.IPv4Address(net_def["@address"])
-        # net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
-        #
-        # return domain_pb2.Network(
-        #     uuid=request.uuid,
-        #     name=net_dict["name"],
-        #     cidr=net.with_prefixlen,
-        # )
-
-        lv_networks = self.libvirt_connection.listAllNetworks()
-        lv_network_names_map = {n.name(): n for n in lv_networks}
-        networks = self.controller.ListNetworks(domain_pb2.ListNetworksRequest()).networks
-        network_names_map = {n.name: n for n in networks}
-
-        for lv_network_name, lv_network in lv_network_names_map.items():
-            if lv_network_name not in network_names_map:
-                lv_network.destroy()
-                lv_network.undefine()
-
-        for network_name, network in network_names_map.items():
-            if network_name not in lv_network_names_map:
-                net = ipaddress.IPv4Network(network.cidr)
-                # TODO: forwarder domain addr should point to the controller
-                lvnet = self.libvirt_connection.networkDefineXML(
-                    f"""<network>
-  <name>{network.name}</name>
-  <forward mode='open'/>
-  <bridge stp='on' delay='0'/>
-  <dns enable='no'>
-  </dns>
-  <ip address='{net[1]}' netmask='{net.netmask}'>
-  </ip>
-</network>
-"""
-                )
-                lvnet.create()
-                lvnet.setAutostart(True)
-                # network.uuid = lvnet.UUIDString()
-
-
 def create_storage_pool(conn, name, pool_dir, location=None):
     if location is None:
         location = name
@@ -336,6 +281,19 @@ def get_root_volume(conn, domain_name):
     return vol
 
 
+def _network_to_pb(net):
+    net_dict = xmltodict.parse(net.XMLDesc())["network"]
+    return domain_pb2.Network(
+        uuid=net_dict["uuid"],
+        name=net_dict["name"],
+        cidr=str(
+            ipaddress.ip_network(
+                f'{net_dict["ip"]["@address"]}/{net_dict["ip"]["@netmask"]}', strict=False
+            )
+        ),
+    )
+
+
 class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def __init__(
         self, session_factory, port_fwd_sync_handler, controller_channel, pool_dir="/data/restvirt"
@@ -348,7 +306,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         self.routes_synchronizer = IPRouteSynchronizer()
 
         self.conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
-        self.network_synchronizer = NetworkSynchronizer(self.controller, self.conn)
 
         self.lock = threading.Lock()
         domains = self.conn.listAllDomains()
@@ -356,6 +313,40 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         create_storage_pool(self.conn, "restvirtimages", pool_dir, "images")
         create_storage_pool(self.conn, "volumes", pool_dir)
+
+    def GetNetwork(self, request, context):
+        net = self.conn.networkLookupByUUIDString(request.uuid)
+        return _network_to_pb(net)
+
+    def ListNetworks(self, request, context):
+        return domain_pb2.ListNetworksResponse(
+            networks=[_network_to_pb(net) for net in (self.conn.listAllNetworks())]
+        )
+
+    def CreateNetwork(self, request, context):
+        network = request.network
+        net = ipaddress.ip_network(network.cidr)
+        lvnet = self.conn.networkDefineXML(
+            f"""<network>
+  <name>{network.name}</name>
+  <forward mode='open'/>
+  <bridge stp='on' delay='0'/>
+  <dns enable='no'>
+  </dns>
+  <ip address='{net[1]}' netmask='{net.netmask}'>
+  </ip>
+</network>
+"""
+        )
+        lvnet.create()
+        lvnet.setAutostart(True)
+        return _network_to_pb(lvnet)
+
+    def DeleteNetwork(self, request, context):
+        net = self.conn.networkLookupByUUIDString(request.uuid)
+        net.destroy()
+        net.undefine()
+        return empty_pb2.Empty()
 
     def StartDomain(self, request, context):
         domain = self.conn.lookupByUUIDString(request.uuid)
@@ -757,7 +748,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         with self.session_factory() as session:
             session.merge(route)
             session.commit()
-            self.port_fwd_sync_handler.handle_sync(session)
+            self.port_fwd_sync_handler.handle_sync(session, self.conn)
 
         return f
 
@@ -770,20 +761,15 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 )
             )
             session.commit()
-            self.port_fwd_sync_handler.handle_sync(session)
+            self.port_fwd_sync_handler.handle_sync(session, self.conn)
 
         return empty_pb2.Empty()
 
     def sync(self):
         with self.session_factory() as session:
-            self.port_fwd_sync_handler.handle_sync(session)
-        self.network_synchronizer.sync()
+            self.port_fwd_sync_handler.handle_sync(session, self.conn)
 
     def SyncRoutes(self, request, context):
         self.tables_synchronizer.handle_sync(self.controller)
         self.routes_synchronizer.handle_sync(self.controller)
-        return empty_pb2.Empty()
-
-    def SyncNetworks(self, request, context):
-        self.network_synchronizer.sync()
         return empty_pb2.Empty()

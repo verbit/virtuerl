@@ -10,9 +10,13 @@ import "minivirt/volume.proto";
 import "minivirt/port_forwarding.proto";
 
 message SyncRoutesRequest {}
-message SyncNetworksRequest {}
 
 service DaemonService {
+  rpc GetNetwork(GetNetworkRequest) returns (Network) {}
+  rpc ListNetworks(ListNetworksRequest) returns (ListNetworksResponse) {}
+  rpc CreateNetwork(CreateNetworkRequest) returns (Network) {}
+  rpc DeleteNetwork(DeleteNetworkRequest) returns (google.protobuf.Empty) {}
+
   rpc StartDomain(StartDomainRequest) returns (google.protobuf.Empty) {}
   rpc StopDomain(StopDomainRequest) returns (google.protobuf.Empty) {}
   rpc GetDomain(GetDomainRequest) returns (Domain) {}
@@ -39,5 +43,4 @@ service DaemonService {
   rpc DeletePortForwarding(PortForwardingIdentifier) returns (google.protobuf.Empty) {}
 
   rpc SyncRoutes(internal.SyncRoutesRequest) returns (google.protobuf.Empty) {}
-  rpc SyncNetworks(internal.SyncNetworksRequest) returns (google.protobuf.Empty) {}
 }

@@ -8,14 +8,11 @@ from minivirt import (
     daemon_pb2_grpc,
     dns_pb2,
     dns_pb2_grpc,
-    domain_pb2,
-    network,
     route_pb2,
     route_pb2_grpc,
 )
 from minivirt.host import HostController
-from minivirt.models import DNSRecord, Host
-from minivirt.network import GenericNetworkController
+from minivirt.models import DNSRecord
 from minivirt.route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
 
@@ -30,17 +27,6 @@ class ControllerSyncHandler(SyncEventHandler):
             client.SyncRoutes(daemon_pb2.SyncRoutesRequest())
 
 
-class NetworkSyncHandler(network.SyncEventHandler):
-    def __init__(self, host_controller):
-        self.host_controller = host_controller
-
-    def handle_sync(self):
-        channels = self.host_controller.channels()
-        for channel in channels:
-            client = daemon_pb2_grpc.DaemonServiceStub(channel)
-            client.SyncNetworks(daemon_pb2.SyncNetworksRequest())
-
-
 class Controller(
     controller_pb2_grpc.ControllerServiceServicer,
     dns_pb2_grpc.DNSServicer,
@@ -51,10 +37,8 @@ class Controller(
         self.host_controller = host_controller
         self.dns_controller = dns_controller
         sync_handler = ControllerSyncHandler(host_controller)
-        network_sync_handler = NetworkSyncHandler(host_controller)
         self.route_table_controller = GenericRouteTableController(session_factory, sync_handler)
         self.route_controller = GenericRouteController(session_factory, sync_handler)
-        self.network_controller = GenericNetworkController(session_factory, network_sync_handler)
         self.channel_cache = {}
 
     def _get_daemon_client(self, hostname=None):
@@ -168,25 +152,6 @@ class Controller(
     def SyncRoutes(self, request, context):
         self.route_table_controller.sync()
         self.route_controller.sync()
-        return empty_pb2.Empty()
-
-    def GetNetwork(self, request, context):
-        n = self.network_controller.network(request.uuid)
-        return domain_pb2.Network(uuid=n.id, name=n.id, cidr=n.cidr)
-
-    def ListNetworks(self, request, context):
-        networks = self.network_controller.networks()
-        return domain_pb2.ListNetworksResponse(
-            networks=[domain_pb2.Network(uuid=n.id, name=n.id, cidr=n.cidr) for n in networks]
-        )
-
-    def CreateNetwork(self, request, context):
-        n = request.network
-        self.network_controller.put_network(n.name, n.cidr)
-        return domain_pb2.Network(uuid=n.name, name=n.name, cidr=n.cidr)
-
-    def DeleteNetwork(self, request, context):
-        self.network_controller.remove_network(request.uuid)
         return empty_pb2.Empty()
 
     def Sync(self, request, context):

@@ -18,6 +18,26 @@ class DaemonServiceStub(object):
         Args:
             channel: A grpc.Channel.
         """
+        self.GetNetwork = channel.unary_unary(
+                '/internal.DaemonService/GetNetwork',
+                request_serializer=minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
+                )
+        self.ListNetworks = channel.unary_unary(
+                '/internal.DaemonService/ListNetworks',
+                request_serializer=minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
+                )
+        self.CreateNetwork = channel.unary_unary(
+                '/internal.DaemonService/CreateNetwork',
+                request_serializer=minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
+                response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
+                )
+        self.DeleteNetwork = channel.unary_unary(
+                '/internal.DaemonService/DeleteNetwork',
+                request_serializer=minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
         self.StartDomain = channel.unary_unary(
                 '/internal.DaemonService/StartDomain',
                 request_serializer=minivirt_dot_domain__pb2.StartDomainRequest.SerializeToString,
@@ -123,15 +143,34 @@ class DaemonServiceStub(object):
                 request_serializer=minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
-        self.SyncNetworks = channel.unary_unary(
-                '/internal.DaemonService/SyncNetworks',
-                request_serializer=minivirt_dot_daemon__pb2.SyncNetworksRequest.SerializeToString,
-                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-                )
 
 
 class DaemonServiceServicer(object):
     """Missing associated documentation comment in .proto file."""
+
+    def GetNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ListNetworks(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def CreateNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def DeleteNetwork(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
 
     def StartDomain(self, request, context):
         """Missing associated documentation comment in .proto file."""
@@ -259,15 +298,29 @@ class DaemonServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
-    def SyncNetworks(self, request, context):
-        """Missing associated documentation comment in .proto file."""
-        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
-        context.set_details('Method not implemented!')
-        raise NotImplementedError('Method not implemented!')
-
 
 def add_DaemonServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
+            'GetNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.GetNetwork,
+                    request_deserializer=minivirt_dot_domain__pb2.GetNetworkRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Network.SerializeToString,
+            ),
+            'ListNetworks': grpc.unary_unary_rpc_method_handler(
+                    servicer.ListNetworks,
+                    request_deserializer=minivirt_dot_domain__pb2.ListNetworksRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.ListNetworksResponse.SerializeToString,
+            ),
+            'CreateNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.CreateNetwork,
+                    request_deserializer=minivirt_dot_domain__pb2.CreateNetworkRequest.FromString,
+                    response_serializer=minivirt_dot_domain__pb2.Network.SerializeToString,
+            ),
+            'DeleteNetwork': grpc.unary_unary_rpc_method_handler(
+                    servicer.DeleteNetwork,
+                    request_deserializer=minivirt_dot_domain__pb2.DeleteNetworkRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
             'StartDomain': grpc.unary_unary_rpc_method_handler(
                     servicer.StartDomain,
                     request_deserializer=minivirt_dot_domain__pb2.StartDomainRequest.FromString,
@@ -373,11 +426,6 @@ def add_DaemonServiceServicer_to_server(servicer, server):
                     request_deserializer=minivirt_dot_daemon__pb2.SyncRoutesRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
-            'SyncNetworks': grpc.unary_unary_rpc_method_handler(
-                    servicer.SyncNetworks,
-                    request_deserializer=minivirt_dot_daemon__pb2.SyncNetworksRequest.FromString,
-                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-            ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
             'internal.DaemonService', rpc_method_handlers)
@@ -387,6 +435,74 @@ def add_DaemonServiceServicer_to_server(servicer, server):
  # This class is part of an EXPERIMENTAL API.
 class DaemonService(object):
     """Missing associated documentation comment in .proto file."""
+
+    @staticmethod
+    def GetNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetNetwork',
+            minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Network.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ListNetworks(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListNetworks',
+            minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
+            minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def CreateNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateNetwork',
+            minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
+            minivirt_dot_domain__pb2.Network.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def DeleteNetwork(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteNetwork',
+            minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
     def StartDomain(request,
@@ -741,23 +857,6 @@ class DaemonService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/SyncRoutes',
             minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
-            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-            options, channel_credentials,
-            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
-
-    @staticmethod
-    def SyncNetworks(request,
-            target,
-            options=(),
-            channel_credentials=None,
-            call_credentials=None,
-            insecure=False,
-            compression=None,
-            wait_for_ready=None,
-            timeout=None,
-            metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/SyncNetworks',
-            minivirt_dot_daemon__pb2.SyncNetworksRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
