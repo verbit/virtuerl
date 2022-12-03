@@ -1,4 +1,4 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, TypeDecorator, Unicode
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, Text, TypeDecorator, Unicode
 from sqlalchemy.orm import backref, registry, relationship
 
 
@@ -116,3 +116,15 @@ class DNSRecord(Base):
 
     def __repr__(self):
         return f"DNSEntry({self.name} {self.type} {self.ttl} {' '.join(self.records)}"
+
+
+class Domain(Base):
+    __tablename__ = "domains"
+
+    id = Column(String, primary_key=True)
+    private_ip = Column(String, unique=True)
+    os_type = Column(String)
+    user_data = Column(Text)
+
+    def __repr__(self):
+        return f"Domain(id={self.id} private_ip={self.private_ip})"

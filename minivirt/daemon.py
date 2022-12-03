@@ -21,12 +21,8 @@ from minivirt import (
     route_pb2,
     volume_pb2,
 )
-from minivirt.image import (
-    create_cloud_config_image,
-    read_ip_from_cloud_config_image,
-    read_user_data_from_cloud_config_image,
-)
-from minivirt.models import PortForwarding
+from minivirt.image import create_cloud_config_image
+from minivirt.models import Domain, PortForwarding
 
 
 def libvirt_state_to_string(state):
@@ -51,7 +47,6 @@ def libvirt_state_to_string(state):
 
 def domain_to_dict(domain):
     domain_dict = xmltodict.parse(domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
-    d = domain_dict["domain"]
     d = domain_dict["domain"]
     res = {
         "uuid": d["uuid"],
@@ -308,11 +303,45 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         self.conn = libvirt.open("qemu:///system?socket=/var/run/libvirt/libvirt-sock")
 
         self.lock = threading.Lock()
-        domains = self.conn.listAllDomains()
-        self.ips = {self._get_domain(d.UUIDString())["private_ip"] for d in domains}
 
         create_storage_pool(self.conn, "restvirtimages", pool_dir, "images")
         create_storage_pool(self.conn, "volumes", pool_dir)
+
+        # FIXME(migration): can be removed once migration complete
+        with session_factory() as session:
+            from minivirt.image import (
+                read_ip_from_cloud_config_image,
+                read_user_data_from_cloud_config_image,
+            )
+
+            domains = session.execute(select(Domain)).scalars().all()
+            domains = {dom.id for dom in domains}
+            domains_lv = self.conn.listAllDomains()
+            for domain in domains_lv:
+                if domain.UUIDString() not in domains:
+                    pool = self.conn.storagePoolLookupByName("restvirtimages")
+                    vol = pool.storageVolLookupByName(f"{domain.name()}-cloud-init.img")
+                    stream = self.conn.newStream()
+                    vol.download(stream, 0, 0)
+                    vol.info()
+                    res = bytearray()
+                    while True:
+                        bytes = stream.recv(64 * 1024)
+                        res += bytes
+                        if not len(bytes):
+                            break
+                    stream.finish()
+                    private_ip = read_ip_from_cloud_config_image(res)
+                    user_data = read_user_data_from_cloud_config_image(res)
+
+                    d = Domain(
+                        id=domain.UUIDString(),
+                        os_type="linux",
+                        private_ip=private_ip,
+                        user_data=user_data,
+                    )
+                    session.add(d)
+            session.commit()
 
     def GetNetwork(self, request, context):
         net = self.conn.networkLookupByUUIDString(request.uuid)
@@ -362,26 +391,25 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         return empty_pb2.Empty()
 
     def _get_domain(self, uuid):
-        domain = self.conn.lookupByUUIDString(uuid)
-        domain_dict = domain_to_dict(domain)
-        state, _ = domain.state()
-        pool = self.conn.storagePoolLookupByName("restvirtimages")
-        vol = pool.storageVolLookupByName(f"{domain_dict['name']}-cloud-init.img")
-        stream = self.conn.newStream()
-        vol.download(stream, 0, 0)
-        vol.info()
-        res = bytearray()
-        while True:
-            bytes = stream.recv(64 * 1024)
-            res += bytes
-            if not len(bytes):
-                break
-        stream.finish()
-        private_ip = read_ip_from_cloud_config_image(res)
-        user_data = read_user_data_from_cloud_config_image(res)
+        domain_lv = self.conn.lookupByUUIDString(uuid)
+        domain_dict = domain_to_dict(domain_lv)
+        state, _ = domain_lv.state()
         domain_dict["state"] = libvirt_state_to_string(state)
-        domain_dict["private_ip"] = private_ip
-        domain_dict["user_data"] = user_data
+
+        with self.session_factory() as session:
+            domain = (
+                session.execute(
+                    select(Domain).filter(
+                        Domain.id == uuid,
+                    )
+                )
+                .scalars()
+                .one_or_none()
+            )
+            domain_dict["os_type"] = domain.os_type
+            domain_dict["private_ip"] = domain.private_ip
+            domain_dict["user_data"] = domain.user_data
+
         return domain_dict
 
     def GetDomain(self, request, context):
@@ -405,20 +433,32 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         gateway = ipaddress.IPv4Address(net_def["@address"])
         net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
 
+        dom_uuid = uuid.uuid4()
+        os_type = domreq.os_type
+        if os_type is None:
+            os_type = "linux"
+        user_data = domreq.user_data
+        if user_data is None:
+            user_data = ""
         private_ip = domreq.private_ip
-        if not private_ip:
-            available = {str(h) for h in net.hosts()}
-            available -= {str(net.network_address), str(net.broadcast_address)}
-            with self.lock:
-                print(self.ips)
-                available -= self.ips
-                private_ip = available.pop()
-                self.ips.add(private_ip)
-                print(self.ips)
-        else:
-            with self.lock:
-                assert private_ip not in self.ips
-                self.ips.add(private_ip)
+        with self.lock:
+            with self.session_factory() as session:
+                domains = session.execute(select(Domain)).scalars().all()
+                ips = set([dom.private_ip for dom in domains])
+
+                if not private_ip:
+                    available = {str(h) for h in net.hosts()}
+                    available -= {str(net.network_address), str(net.broadcast_address)}
+                    available -= ips
+                    private_ip = available.pop()
+                else:
+                    assert private_ip not in ips
+
+                domain = Domain(
+                    id=str(dom_uuid), os_type=os_type, private_ip=private_ip, user_data=user_data
+                )
+                session.add(domain)
+                session.commit()
 
         ip = ipaddress.ip_address(private_ip)
 
@@ -470,14 +510,12 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         )
         root_image_path = vol.path()
 
-        dom_uuid = uuid.uuid4()
-
         mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
             0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
         )
         ccfg_raw = create_cloud_config_image(
             domain_id=dom_uuid,
-            user_data=domreq.user_data,
+            user_data=user_data,
             mac=mac,
             network=net,
             address=ip,
@@ -544,9 +582,12 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         return domain_pb2.Domain(**self._get_domain(dom.UUIDString()))
 
     def DeleteDomain(self, request, context):
+        with self.session_factory() as session:
+            session.execute(delete(Domain).where(Domain.id == request.uuid))
+            session.commit()
+
         dom = self.conn.lookupByUUIDString(str(request.uuid))
         name = dom.name()
-        ip = self._get_domain(dom.UUIDString())["private_ip"]
         try:
             dom.destroy()
         except libvirt.libvirtError as e:
@@ -555,9 +596,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             else:
                 raise e
         dom.undefine()
-
-        with self.lock:
-            self.ips.remove(ip)
 
         pool = self.conn.storagePoolLookupByName("restvirtimages")
         vol = get_root_volume(self.conn, name)

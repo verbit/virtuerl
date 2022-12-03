@@ -35,6 +35,7 @@ message Domain {
   bool nested_virtualization = 11;
   string base_image = 12;
   google.protobuf.Timestamp created_at = 13;
+  string os_type = 14;
 }
 
 message ListDomainsRequest {
