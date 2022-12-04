@@ -13,7 +13,7 @@ setup(
     description="",
     entry_points={"console_scripts": ["restvirt=minivirt.main:main"]},
     install_requires=[
-        "libvirt-python==8.0.0",
+        "libvirt-python==8.10.0",
         "grpcio==1.51.1",
         "grpcio-reflection==1.51.1",
         "protobuf==4.21.10",
