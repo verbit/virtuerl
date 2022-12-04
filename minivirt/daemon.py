@@ -307,42 +307,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         create_storage_pool(self.conn, "restvirtimages", pool_dir, "images")
         create_storage_pool(self.conn, "volumes", pool_dir)
 
-        # FIXME(migration): can be removed once migration complete
-        with session_factory() as session:
-            from minivirt.image import (
-                read_ip_from_cloud_config_image,
-                read_user_data_from_cloud_config_image,
-            )
-
-            domains = session.execute(select(Domain)).scalars().all()
-            domains = {dom.id for dom in domains}
-            domains_lv = self.conn.listAllDomains()
-            for domain in domains_lv:
-                if domain.UUIDString() not in domains:
-                    pool = self.conn.storagePoolLookupByName("restvirtimages")
-                    vol = pool.storageVolLookupByName(f"{domain.name()}-cloud-init.img")
-                    stream = self.conn.newStream()
-                    vol.download(stream, 0, 0)
-                    vol.info()
-                    res = bytearray()
-                    while True:
-                        bytes = stream.recv(64 * 1024)
-                        res += bytes
-                        if not len(bytes):
-                            break
-                    stream.finish()
-                    private_ip = read_ip_from_cloud_config_image(res)
-                    user_data = read_user_data_from_cloud_config_image(res)
-
-                    d = Domain(
-                        id=domain.UUIDString(),
-                        os_type="linux",
-                        private_ip=private_ip,
-                        user_data=user_data,
-                    )
-                    session.add(d)
-            session.commit()
-
     def GetNetwork(self, request, context):
         net = self.conn.networkLookupByUUIDString(request.uuid)
         return _network_to_pb(net)
