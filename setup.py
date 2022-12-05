@@ -23,7 +23,7 @@ setup(
         "python-iptables==1.0.0",
         "SQLAlchemy==1.4.44",
         "xmltodict==0.12.0",
-        "dnslib==0.9.16",
+        "dnslib==0.9.23",
         "dnspython==2.2.1",
         "PyYAML==6.0",
     ],
