@@ -17,7 +17,7 @@ setup(
         "grpcio==1.51.1",
         "grpcio-reflection==1.51.1",
         "protobuf==4.21.10",
-        "pycdlib==1.12.0",
+        "pycdlib==1.13.0",
         "pyroute2==0.7.2",
         "nftables @ git+https://salsa.debian.org/pkg-netfilter-team/pkg-nftables.git@upstream/1.0.4#egg=nftables&subdirectory=py",
         "python-iptables==1.0.0",
