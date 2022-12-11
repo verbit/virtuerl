@@ -1,7 +1,5 @@
 syntax = "proto3";
 
-package internal;
-
 option go_package = ".;pb";
 
 import "google/protobuf/empty.proto";
@@ -42,5 +40,5 @@ service DaemonService {
   rpc PutPortForwarding(PutPortForwardingRequest) returns (PortForwarding) {}
   rpc DeletePortForwarding(PortForwardingIdentifier) returns (google.protobuf.Empty) {}
 
-  rpc SyncRoutes(internal.SyncRoutesRequest) returns (google.protobuf.Empty) {}
+  rpc SyncRoutes(SyncRoutesRequest) returns (google.protobuf.Empty) {}
 }

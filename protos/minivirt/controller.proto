@@ -3,13 +3,12 @@ syntax = "proto3";
 option go_package = ".;pb";
 
 import "google/protobuf/empty.proto";
+import "minivirt/daemon.proto";
 import "minivirt/domain.proto";
 import "minivirt/volume.proto";
 import "minivirt/port_forwarding.proto";
 import "minivirt/dns.proto";
 import "minivirt/route.proto";
-
-message SyncRoutesRequest {}
 
 service ControllerService {
   rpc GetDNSRecord(DNSRecordIdentifier) returns (DNSRecord) {}
