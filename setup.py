@@ -22,6 +22,7 @@ setup(
         "nftables @ git+https://salsa.debian.org/pkg-netfilter-team/pkg-nftables.git@upstream/1.0.4#egg=nftables&subdirectory=py",
         "python-iptables==1.0.0",
         "SQLAlchemy==1.4.44",
+        "alembic==1.9.1",
         "xmltodict==0.12.0",
         "dnslib==0.9.16",
         "dnspython==2.2.1",

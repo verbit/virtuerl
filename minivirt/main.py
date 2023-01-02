@@ -12,6 +12,7 @@ from sqlalchemy.engine import Engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+from alembic import command, config
 from minivirt import (
     controller_pb2_grpc,
     daemon_pb2_grpc,
@@ -50,13 +51,18 @@ def start_controller(args):
     if args.debug:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
+    connection_string = f"sqlite:///{os.path.join(args.config, 'controller.sqlite3')}"
     engine = create_engine(
-        f"sqlite:///{os.path.join(args.config, 'controller.sqlite3')}",
+        connection_string,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
         future=True,
     )
     Base.metadata.create_all(engine)
+    cfg = config.Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", connection_string)
+    command.stamp(cfg, "15080f4a8099")
+
     session_factory = sessionmaker(engine, future=True)
 
     dns_controller = DNSController(session_factory)
@@ -129,13 +135,18 @@ def start_daemon(args):
     if args.debug:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
 
+    connection_string = f"sqlite:///{os.path.join(args.config, 'daemon.sqlite3')}"
     engine = create_engine(
-        f"sqlite:///{os.path.join(args.config, 'daemon.sqlite3')}",
+        connection_string,
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
         future=True,
     )
     Base.metadata.create_all(engine)
+    cfg = config.Config("alembic.ini")
+    cfg.set_main_option("sqlalchemy.url", connection_string)
+    command.stamp(cfg, "15080f4a8099")
+
     session_factory = sessionmaker(engine, future=True)
 
     daemon = grpc.server(
