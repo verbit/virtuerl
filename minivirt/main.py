@@ -3,6 +3,7 @@ import logging
 import os
 import re
 from concurrent import futures
+from pathlib import Path
 
 import grpc
 import libvirt
@@ -59,7 +60,8 @@ def start_controller(args):
         future=True,
     )
     Base.metadata.create_all(engine)
-    cfg = config.Config("alembic.ini")
+    cfg_path = Path(__file__).parent / "alembic.ini"
+    cfg = config.Config(str(cfg_path))
     cfg.set_main_option("sqlalchemy.url", connection_string)
     command.stamp(cfg, "15080f4a8099")
 
@@ -143,7 +145,8 @@ def start_daemon(args):
         future=True,
     )
     Base.metadata.create_all(engine)
-    cfg = config.Config("alembic.ini")
+    cfg_path = Path(__file__).parent / "alembic.ini"
+    cfg = config.Config(str(cfg_path))
     cfg.set_main_option("sqlalchemy.url", connection_string)
     command.stamp(cfg, "15080f4a8099")
 
