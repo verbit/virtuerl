@@ -63,6 +63,9 @@ def start_controller(args):
     cfg_path = Path(__file__).parent / "alembic.ini"
     print("alembic config path:", cfg_path)
     cfg = config.Config(str(cfg_path))
+    print(cfg)
+    print(cfg.get_main_option("script_location"))
+    print(cfg.get_main_option("sqlalchemy.url"))
     cfg.set_main_option("sqlalchemy.url", connection_string)
     command.stamp(cfg, "15080f4a8099")
 
@@ -149,6 +152,9 @@ def start_daemon(args):
     cfg_path = Path(__file__).parent / "alembic.ini"
     print("alembic config path:", cfg_path)
     cfg = config.Config(str(cfg_path))
+    print(cfg)
+    print(cfg.get_main_option("script_location"))
+    print(cfg.get_main_option("sqlalchemy.url"))
     cfg.set_main_option("sqlalchemy.url", connection_string)
     command.stamp(cfg, "15080f4a8099")
 
