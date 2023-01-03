@@ -12,7 +12,6 @@ setup(
     author_email="ilya@verbit.io",
     description="",
     entry_points={"console_scripts": ["restvirt=minivirt.main:main"]},
-    package_data={"minivirt": ["*.ini", "alembic/*", "alembic/**/*"]},
     include_package_data=True,
     install_requires=[
         "libvirt-python==8.10.0",
