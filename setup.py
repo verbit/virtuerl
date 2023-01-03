@@ -1,3 +1,6 @@
+import os
+from glob import glob
+
 from setuptools import find_packages, setup
 
 from minivirt.version import __version__
@@ -12,7 +15,10 @@ setup(
     author_email="ilya@verbit.io",
     description="",
     entry_points={"console_scripts": ["restvirt=minivirt.main:main"]},
-    include_package_data=True,
+    data_files=[
+        (".", ["alembic.ini"]),
+        ("alembic", [path for path in glob("alembic/**", recursive=True) if os.path.isfile(path)]),
+    ],
     install_requires=[
         "libvirt-python==8.10.0",
         "grpcio==1.51.1",
