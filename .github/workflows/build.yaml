@@ -85,7 +85,10 @@ jobs:
           sudo snap set minivirt controller.args='--debug -b :8093 -c $SNAP_COMMON --server-cert $SNAP_COMMON/server.crt --server-key $SNAP_COMMON/server.key --client-ca-cert $SNAP_COMMON/ca.crt'
 
           sleep 10
-          sudo ${{ steps.python.outputs.python-path }} -m pytest tests/integration
+          if ! sudo ${{ steps.python.outputs.python-path }} -m pytest tests/integration ; then
+            sudo journalctl
+            exit 1
+          fi
 #          sleep 5
 #          snap services minivirt
 #          sudo journalctl -e
