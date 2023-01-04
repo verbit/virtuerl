@@ -1,3 +1,7 @@
 .idea/
 venv/
+.venv/
 __pycache__/
+*.snap
+*.egg-info
+*.sqlite3
