@@ -70,6 +70,7 @@ def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServ
             network=domain_pb2.Network(
                 name="restvirt",
                 cidr="192.168.69.0/24",
+                cidr6="fd8d:dd47:05bc:5307::/64",
             )
         )
     )
@@ -80,6 +81,7 @@ def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServ
                 vcpu=1,
                 memory=512,
                 private_ip="192.168.69.69",
+                ipv6_address="fd8d:dd47:05bc:5307::10",
                 network=network.name,
                 user_data="""#cloud-config
 
@@ -143,6 +145,8 @@ pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
 
     insecure_client.StartDomain(domain_pb2.StartDomainRequest(uuid=dom.uuid))
     response = wait_for_http("http://192.168.69.1:8080")
+    assert "Welcome to nginx!" in response
+    response = wait_for_http("http://[fd8d:dd47:05bc:5307::10]")
     assert "Welcome to nginx!" in response
 
     new_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)

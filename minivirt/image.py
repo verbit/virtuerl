@@ -25,9 +25,14 @@ def read_ip_from_cloud_config_image(data):
     return ip
 
 
-def create_cloud_config_image(domain_id, user_data, mac, network, address, gateway, name):
+def create_cloud_config_image(
+    domain_id, user_data, mac, network, network6, address, address6, gateway, gateway6, name
+):
     assert gateway in network
     assert address in network
+
+    assert gateway6 in network6
+    assert address6 in network6
 
     network_config = f"""version: 2
 ethernets:
@@ -36,13 +41,17 @@ ethernets:
        macaddress: "{mac}"
      set-name: "ens2"
      dhcp4: false
+     dhcp6: false
      # default libvirt network
      addresses:
        - {address}/{network.prefixlen}
+       {f"- {address6}/{network6.prefixlen}" if address6 is not None else ""}
      gateway4: {gateway}
+     {f"gateway6: {gateway6}" if gateway6 is not None else ""}
      nameservers:
        addresses:
          - {gateway}
+         {f"- {gateway6}" if gateway6 is not None else ""}
 """
 
     meta_config = f"""instance-id: {domain_id}

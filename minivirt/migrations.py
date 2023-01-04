@@ -3,7 +3,27 @@ import sqlite3
 
 import sqlalchemy as sa
 
-migrations = {}
+
+def _migration_0(engine):
+    with engine.connect() as conn:
+        conn.connection.executescript(
+            """
+BEGIN;
+
+ALTER TABLE domains ADD ipv6_address VARCHAR;
+ALTER TABLE networks ADD cidr6 VARCHAR;
+
+DELETE FROM versions;
+INSERT INTO versions VALUES('1');
+
+COMMIT;
+"""
+        )
+
+
+migrations = {
+    "0": _migration_0,
+}
 
 
 def run_migrations(engine: sa.engine.Engine):

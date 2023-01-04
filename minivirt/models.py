@@ -65,9 +65,10 @@ class Network(Base):
 
     id = Column(String, primary_key=True)
     cidr = Column(String)
+    cidr6 = Column(String)
 
     def __repr__(self):
-        return f"Network({self.id!r}: {self.cidr!r})"
+        return f"Network({self.id!r}: {self.cidr!r} {self.cidr6!r})"
 
 
 class RouteTable(Base):
@@ -123,8 +124,9 @@ class Domain(Base):
 
     id = Column(String, primary_key=True)
     private_ip = Column(String, unique=True)
+    ipv6_address = Column(String, unique=True)
     os_type = Column(String)
     user_data = Column(Text)
 
     def __repr__(self):
-        return f"Domain(id={self.id} private_ip={self.private_ip})"
+        return f"Domain(id={self.id} private_ip={self.private_ip} ipv6_address={self.ipv6_address})"
