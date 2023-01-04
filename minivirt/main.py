@@ -28,7 +28,7 @@ from minivirt.controller import Controller
 from minivirt.daemon import DaemonService
 from minivirt.dns_controller import DNSController
 from minivirt.host import HostController, HostService
-from minivirt.models import Base
+from minivirt.migrations import run_migrations
 from minivirt.port_forwarding import IPTablesPortForwardingSynchronizer
 from minivirt.utils import UnaryUnaryInterceptor
 from minivirt.version import __version__
@@ -56,7 +56,7 @@ def start_controller(args):
         poolclass=StaticPool,
         future=True,
     )
-    Base.metadata.create_all(engine)
+    run_migrations(engine)
     session_factory = sessionmaker(engine, future=True)
 
     dns_controller = DNSController(session_factory)
@@ -135,7 +135,7 @@ def start_daemon(args):
         poolclass=StaticPool,
         future=True,
     )
-    Base.metadata.create_all(engine)
+    run_migrations(engine)
     session_factory = sessionmaker(engine, future=True)
 
     daemon = grpc.server(
