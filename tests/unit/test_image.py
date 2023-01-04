@@ -16,8 +16,11 @@ def data():
         user_data="hello world",
         mac="mac_address",
         network=ip_network("192.168.1.0/24"),
+        network6=ip_network("fd8d:dd47:05bc:5307::/64"),
         address=ip_address("192.168.1.43"),
+        address6=ip_address("fd8d:dd47:05bc:5307::10"),
         gateway=ip_address("192.168.1.1"),
+        gateway6=ip_address("fd8d:dd47:05bc:5307::1"),
         name="name",
     )
 

@@ -276,16 +276,32 @@ def get_root_volume(conn, domain_name):
     return vol
 
 
+def _network_prefix(net_elem):
+    if "@netmask" in net_elem:
+        return ipaddress.ip_network("0.0.0.0/" + net_elem["@netmask"]).prefixlen
+    return net_elem["@prefix"]
+
+
 def _network_to_pb(net):
-    net_dict = xmltodict.parse(net.XMLDesc())["network"]
+    net_dict = xmltodict.parse(net.XMLDesc(), force_list=("ip",))["network"]
+    cidr6 = ""
+    if len(net_dict["ip"]) > 1:
+        cidr6 = str(
+            ipaddress.ip_network(
+                f'{net_dict["ip"][1]["@address"]}/{_network_prefix(net_dict["ip"][1])}',
+                strict=False,
+            )
+        )
     return domain_pb2.Network(
         uuid=net_dict["uuid"],
         name=net_dict["name"],
         cidr=str(
             ipaddress.ip_network(
-                f'{net_dict["ip"]["@address"]}/{net_dict["ip"]["@netmask"]}', strict=False
+                f'{net_dict["ip"][0]["@address"]}/{_network_prefix(net_dict["ip"][0])}',
+                strict=False,
             )
         ),
+        cidr6=cidr6,
     )
 
 
@@ -319,6 +335,10 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateNetwork(self, request, context):
         network = request.network
         net = ipaddress.ip_network(network.cidr)
+        net6def = ""
+        if network.cidr6:
+            net6 = ipaddress.ip_network(network.cidr6)
+            net6def = f"<ip family='ipv6' address='{net6[1]}' prefix='{net6.prefixlen}'/>"
         lvnet = self.conn.networkDefineXML(
             f"""<network>
   <name>{network.name}</name>
@@ -326,8 +346,9 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
   <bridge stp='on' delay='0'/>
   <dns enable='no'>
   </dns>
-  <ip address='{net[1]}' netmask='{net.netmask}'>
+  <ip address='{net[1]}' prefix='{net.prefixlen}'>
   </ip>
+  {net6def}
 </network>
 """
         )
@@ -390,10 +411,17 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         domreq = request.domain
 
         lvnet = self.conn.networkLookupByUUIDString(domreq.network)
-        net_dict = xmltodict.parse(lvnet.XMLDesc())
-        net_def = net_dict["network"]["ip"]
-        gateway = ipaddress.IPv4Address(net_def["@address"])
-        net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
+        net_dict = xmltodict.parse(lvnet.XMLDesc(), force_list=("ip",))
+        net_def = net_dict["network"]["ip"][0]
+        gateway = ipaddress.ip_address(net_def["@address"])
+        net = ipaddress.ip_network(f'{gateway}/{net_def["@prefix"]}', strict=False)
+
+        gateway6 = None
+        net6 = None
+        if len(net_dict["network"]["ip"]) > 1:
+            net6_def = net_dict["network"]["ip"][1]
+            gateway6 = ipaddress.ip_address(net6_def["@address"])
+            net6 = ipaddress.ip_network(f'{gateway6}/{net6_def["@prefix"]}', strict=False)
 
         dom_uuid = uuid.uuid4()
         os_type = domreq.os_type
@@ -403,11 +431,12 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         if user_data is None:
             user_data = ""
         private_ip = domreq.private_ip
+        ipv6_address = domreq.ipv6_address
         with self.lock:
             with self.session_factory() as session:
                 domains = session.execute(select(Domain)).scalars().all()
-                ips = set([dom.private_ip for dom in domains])
 
+                ips = set([dom.private_ip for dom in domains])
                 if not private_ip:
                     available = {str(h) for h in net.hosts()}
                     available -= {str(net.network_address), str(net.broadcast_address)}
@@ -417,12 +446,17 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                     assert private_ip not in ips
 
                 domain = Domain(
-                    id=str(dom_uuid), os_type=os_type, private_ip=private_ip, user_data=user_data
+                    id=str(dom_uuid),
+                    os_type=os_type,
+                    private_ip=private_ip,
+                    ipv6_address=ipv6_address,
+                    user_data=user_data,
                 )
                 session.add(domain)
                 session.commit()
 
         ip = ipaddress.ip_address(private_ip)
+        ip6 = ipaddress.ip_address(ipv6_address) if ipv6_address else None
 
         img_pool = self.conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
@@ -480,8 +514,11 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             user_data=user_data,
             mac=mac,
             network=net,
+            network6=net6,
             address=ip,
+            address6=ip6,
             gateway=net[1],
+            gateway6=gateway6,
             name=domreq.name,
         )
         stream = self.conn.newStream()

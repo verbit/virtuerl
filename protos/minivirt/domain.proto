@@ -31,6 +31,7 @@ message Domain {
   string bridge = 7;
   string state = 8;
   string private_ip = 9;
+  string ipv6_address = 15;
   string user_data = 10;
   bool nested_virtualization = 11;
   string base_image = 12;
@@ -75,6 +76,7 @@ message Network {
   string uuid = 1;
   string name = 2;
   string cidr = 3;
+  string cidr6 = 4;
 }
 
 message ListNetworksRequest {

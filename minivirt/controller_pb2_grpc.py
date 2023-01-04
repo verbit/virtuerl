@@ -3,7 +3,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-from minivirt import controller_pb2 as minivirt_dot_controller__pb2
+from minivirt import daemon_pb2 as minivirt_dot_daemon__pb2
 from minivirt import dns_pb2 as minivirt_dot_dns__pb2
 from minivirt import domain_pb2 as minivirt_dot_domain__pb2
 from minivirt import port_forwarding_pb2 as minivirt_dot_port__forwarding__pb2
@@ -202,7 +202,7 @@ class ControllerServiceStub(object):
                 )
         self.SyncRoutes = channel.unary_unary(
                 '/ControllerService/SyncRoutes',
-                request_serializer=minivirt_dot_controller__pb2.SyncRoutesRequest.SerializeToString,
+                request_serializer=minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
 
@@ -617,7 +617,7 @@ def add_ControllerServiceServicer_to_server(servicer, server):
             ),
             'SyncRoutes': grpc.unary_unary_rpc_method_handler(
                     servicer.SyncRoutes,
-                    request_deserializer=minivirt_dot_controller__pb2.SyncRoutesRequest.FromString,
+                    request_deserializer=minivirt_dot_daemon__pb2.SyncRoutesRequest.FromString,
                     response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
             ),
     }
@@ -1254,7 +1254,7 @@ class ControllerService(object):
             timeout=None,
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/ControllerService/SyncRoutes',
-            minivirt_dot_controller__pb2.SyncRoutesRequest.SerializeToString,
+            minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)

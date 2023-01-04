@@ -19,127 +19,127 @@ class DaemonServiceStub(object):
             channel: A grpc.Channel.
         """
         self.GetNetwork = channel.unary_unary(
-                '/internal.DaemonService/GetNetwork',
+                '/DaemonService/GetNetwork',
                 request_serializer=minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
                 )
         self.ListNetworks = channel.unary_unary(
-                '/internal.DaemonService/ListNetworks',
+                '/DaemonService/ListNetworks',
                 request_serializer=minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
                 )
         self.CreateNetwork = channel.unary_unary(
-                '/internal.DaemonService/CreateNetwork',
+                '/DaemonService/CreateNetwork',
                 request_serializer=minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.Network.FromString,
                 )
         self.DeleteNetwork = channel.unary_unary(
-                '/internal.DaemonService/DeleteNetwork',
+                '/DaemonService/DeleteNetwork',
                 request_serializer=minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.StartDomain = channel.unary_unary(
-                '/internal.DaemonService/StartDomain',
+                '/DaemonService/StartDomain',
                 request_serializer=minivirt_dot_domain__pb2.StartDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.StopDomain = channel.unary_unary(
-                '/internal.DaemonService/StopDomain',
+                '/DaemonService/StopDomain',
                 request_serializer=minivirt_dot_domain__pb2.StopDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetDomain = channel.unary_unary(
-                '/internal.DaemonService/GetDomain',
+                '/DaemonService/GetDomain',
                 request_serializer=minivirt_dot_domain__pb2.GetDomainRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.Domain.FromString,
                 )
         self.ListDomains = channel.unary_unary(
-                '/internal.DaemonService/ListDomains',
+                '/DaemonService/ListDomains',
                 request_serializer=minivirt_dot_domain__pb2.ListDomainsRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.ListDomainsResponse.FromString,
                 )
         self.CreateDomain = channel.unary_unary(
-                '/internal.DaemonService/CreateDomain',
+                '/DaemonService/CreateDomain',
                 request_serializer=minivirt_dot_domain__pb2.CreateDomainRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.Domain.FromString,
                 )
         self.DeleteDomain = channel.unary_unary(
-                '/internal.DaemonService/DeleteDomain',
+                '/DaemonService/DeleteDomain',
                 request_serializer=minivirt_dot_domain__pb2.DeleteDomainRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.DownloadImage = channel.unary_stream(
-                '/internal.DaemonService/DownloadImage',
+                '/DaemonService/DownloadImage',
                 request_serializer=minivirt_dot_domain__pb2.DownloadImageRequest.SerializeToString,
                 response_deserializer=minivirt_dot_domain__pb2.ImageChunk.FromString,
                 )
         self.GetVolume = channel.unary_unary(
-                '/internal.DaemonService/GetVolume',
+                '/DaemonService/GetVolume',
                 request_serializer=minivirt_dot_volume__pb2.GetVolumeRequest.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.ListVolumes = channel.unary_unary(
-                '/internal.DaemonService/ListVolumes',
+                '/DaemonService/ListVolumes',
                 request_serializer=minivirt_dot_volume__pb2.ListVolumesRequest.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.ListVolumesResponse.FromString,
                 )
         self.CreateVolume = channel.unary_unary(
-                '/internal.DaemonService/CreateVolume',
+                '/DaemonService/CreateVolume',
                 request_serializer=minivirt_dot_volume__pb2.CreateVolumeRequest.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.UpdateVolume = channel.unary_unary(
-                '/internal.DaemonService/UpdateVolume',
+                '/DaemonService/UpdateVolume',
                 request_serializer=minivirt_dot_volume__pb2.UpdateVolumeRequest.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.Volume.FromString,
                 )
         self.DeleteVolume = channel.unary_unary(
-                '/internal.DaemonService/DeleteVolume',
+                '/DaemonService/DeleteVolume',
                 request_serializer=minivirt_dot_volume__pb2.DeleteVolumeRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.ListVolumeAttachments = channel.unary_unary(
-                '/internal.DaemonService/ListVolumeAttachments',
+                '/DaemonService/ListVolumeAttachments',
                 request_serializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.ListVolumeAttachmentsResponse.FromString,
                 )
         self.GetVolumeAttachment = channel.unary_unary(
-                '/internal.DaemonService/GetVolumeAttachment',
+                '/DaemonService/GetVolumeAttachment',
                 request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.VolumeAttachment.FromString,
                 )
         self.AttachVolume = channel.unary_unary(
-                '/internal.DaemonService/AttachVolume',
+                '/DaemonService/AttachVolume',
                 request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=minivirt_dot_volume__pb2.VolumeAttachment.FromString,
                 )
         self.DetachVolume = channel.unary_unary(
-                '/internal.DaemonService/DetachVolume',
+                '/DaemonService/DetachVolume',
                 request_serializer=minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.GetPortForwarding = channel.unary_unary(
-                '/internal.DaemonService/GetPortForwarding',
+                '/DaemonService/GetPortForwarding',
                 request_serializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
                 response_deserializer=minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.ListPortForwardings = channel.unary_unary(
-                '/internal.DaemonService/ListPortForwardings',
+                '/DaemonService/ListPortForwardings',
                 request_serializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
                 response_deserializer=minivirt_dot_port__forwarding__pb2.ListPortForwardingsResponse.FromString,
                 )
         self.PutPortForwarding = channel.unary_unary(
-                '/internal.DaemonService/PutPortForwarding',
+                '/DaemonService/PutPortForwarding',
                 request_serializer=minivirt_dot_port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
                 response_deserializer=minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
                 )
         self.DeletePortForwarding = channel.unary_unary(
-                '/internal.DaemonService/DeletePortForwarding',
+                '/DaemonService/DeletePortForwarding',
                 request_serializer=minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
         self.SyncRoutes = channel.unary_unary(
-                '/internal.DaemonService/SyncRoutes',
+                '/DaemonService/SyncRoutes',
                 request_serializer=minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
                 response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
                 )
@@ -428,7 +428,7 @@ def add_DaemonServiceServicer_to_server(servicer, server):
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
-            'internal.DaemonService', rpc_method_handlers)
+            'DaemonService', rpc_method_handlers)
     server.add_generic_rpc_handlers((generic_handler,))
 
 
@@ -447,7 +447,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetNetwork',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/GetNetwork',
             minivirt_dot_domain__pb2.GetNetworkRequest.SerializeToString,
             minivirt_dot_domain__pb2.Network.FromString,
             options, channel_credentials,
@@ -464,7 +464,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListNetworks',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/ListNetworks',
             minivirt_dot_domain__pb2.ListNetworksRequest.SerializeToString,
             minivirt_dot_domain__pb2.ListNetworksResponse.FromString,
             options, channel_credentials,
@@ -481,7 +481,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateNetwork',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/CreateNetwork',
             minivirt_dot_domain__pb2.CreateNetworkRequest.SerializeToString,
             minivirt_dot_domain__pb2.Network.FromString,
             options, channel_credentials,
@@ -498,7 +498,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteNetwork',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/DeleteNetwork',
             minivirt_dot_domain__pb2.DeleteNetworkRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -515,7 +515,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/StartDomain',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/StartDomain',
             minivirt_dot_domain__pb2.StartDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -532,7 +532,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/StopDomain',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/StopDomain',
             minivirt_dot_domain__pb2.StopDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -549,7 +549,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetDomain',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/GetDomain',
             minivirt_dot_domain__pb2.GetDomainRequest.SerializeToString,
             minivirt_dot_domain__pb2.Domain.FromString,
             options, channel_credentials,
@@ -566,7 +566,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListDomains',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/ListDomains',
             minivirt_dot_domain__pb2.ListDomainsRequest.SerializeToString,
             minivirt_dot_domain__pb2.ListDomainsResponse.FromString,
             options, channel_credentials,
@@ -583,7 +583,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateDomain',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/CreateDomain',
             minivirt_dot_domain__pb2.CreateDomainRequest.SerializeToString,
             minivirt_dot_domain__pb2.Domain.FromString,
             options, channel_credentials,
@@ -600,7 +600,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteDomain',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/DeleteDomain',
             minivirt_dot_domain__pb2.DeleteDomainRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -617,7 +617,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_stream(request, target, '/internal.DaemonService/DownloadImage',
+        return grpc.experimental.unary_stream(request, target, '/DaemonService/DownloadImage',
             minivirt_dot_domain__pb2.DownloadImageRequest.SerializeToString,
             minivirt_dot_domain__pb2.ImageChunk.FromString,
             options, channel_credentials,
@@ -634,7 +634,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/GetVolume',
             minivirt_dot_volume__pb2.GetVolumeRequest.SerializeToString,
             minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
@@ -651,7 +651,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListVolumes',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/ListVolumes',
             minivirt_dot_volume__pb2.ListVolumesRequest.SerializeToString,
             minivirt_dot_volume__pb2.ListVolumesResponse.FromString,
             options, channel_credentials,
@@ -668,7 +668,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/CreateVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/CreateVolume',
             minivirt_dot_volume__pb2.CreateVolumeRequest.SerializeToString,
             minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
@@ -685,7 +685,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/UpdateVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/UpdateVolume',
             minivirt_dot_volume__pb2.UpdateVolumeRequest.SerializeToString,
             minivirt_dot_volume__pb2.Volume.FromString,
             options, channel_credentials,
@@ -702,7 +702,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeleteVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/DeleteVolume',
             minivirt_dot_volume__pb2.DeleteVolumeRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -719,7 +719,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListVolumeAttachments',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/ListVolumeAttachments',
             minivirt_dot_volume__pb2.ListVolumeAttachmentsRequest.SerializeToString,
             minivirt_dot_volume__pb2.ListVolumeAttachmentsResponse.FromString,
             options, channel_credentials,
@@ -736,7 +736,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetVolumeAttachment',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/GetVolumeAttachment',
             minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             minivirt_dot_volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
@@ -753,7 +753,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/AttachVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/AttachVolume',
             minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             minivirt_dot_volume__pb2.VolumeAttachment.FromString,
             options, channel_credentials,
@@ -770,7 +770,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DetachVolume',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/DetachVolume',
             minivirt_dot_volume__pb2.VolumeAttachmentIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -787,7 +787,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/GetPortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/GetPortForwarding',
             minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
             minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
@@ -804,7 +804,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/ListPortForwardings',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/ListPortForwardings',
             minivirt_dot_port__forwarding__pb2.ListPortForwardingsRequest.SerializeToString,
             minivirt_dot_port__forwarding__pb2.ListPortForwardingsResponse.FromString,
             options, channel_credentials,
@@ -821,7 +821,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/PutPortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/PutPortForwarding',
             minivirt_dot_port__forwarding__pb2.PutPortForwardingRequest.SerializeToString,
             minivirt_dot_port__forwarding__pb2.PortForwarding.FromString,
             options, channel_credentials,
@@ -838,7 +838,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/DeletePortForwarding',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/DeletePortForwarding',
             minivirt_dot_port__forwarding__pb2.PortForwardingIdentifier.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
@@ -855,7 +855,7 @@ class DaemonService(object):
             wait_for_ready=None,
             timeout=None,
             metadata=None):
-        return grpc.experimental.unary_unary(request, target, '/internal.DaemonService/SyncRoutes',
+        return grpc.experimental.unary_unary(request, target, '/DaemonService/SyncRoutes',
             minivirt_dot_daemon__pb2.SyncRoutesRequest.SerializeToString,
             google_dot_protobuf_dot_empty__pb2.Empty.FromString,
             options, channel_credentials,
