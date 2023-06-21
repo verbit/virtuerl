@@ -1,0 +1,3 @@
+#!/bin/sh -e
+
+snapctl stop --disable minivirt
