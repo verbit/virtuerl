@@ -387,8 +387,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateDomain(self, request, context):
         domreq = request.domain
 
-        net = self.conn.networkLookupByUUIDString(domreq.network)
-        net_dict = xmltodict.parse(net.XMLDesc())
+        lvnet = self.conn.networkLookupByUUIDString(domreq.network)
+        net_dict = xmltodict.parse(lvnet.XMLDesc())
         net_def = net_dict["network"]["ip"]
         gateway = ipaddress.IPv4Address(net_def["@address"])
         net = ipaddress.IPv4Network(f'{gateway}/{net_def["@netmask"]}', strict=False)
@@ -528,7 +528,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     </disk>
     <interface type='network'>
       <mac address='{mac}'/>
-      <source network='{net.name()}'/>
+      <source network='{lvnet.name()}'/>
       <model type='virtio'/>
     </interface>
     <console type='pty'/>
