@@ -387,11 +387,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateDomain(self, request, context):
         domreq = request.domain
 
-        network_name = domreq.network
-        if not network_name:
-            network_name = "default"  # FIXME: only for backwards-compatibility
-
-        net = self.conn.networkLookupByName(network_name)
+        net = self.conn.networkLookupByUUIDString(domreq.network)
         net_dict = xmltodict.parse(net.XMLDesc())
         net_def = net_dict["network"]["ip"]
         gateway = ipaddress.IPv4Address(net_def["@address"])
