@@ -528,7 +528,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     </disk>
     <interface type='network'>
       <mac address='{mac}'/>
-      <source network='{network_name}'/>
+      <source network='{net.name()}'/>
       <model type='virtio'/>
     </interface>
     <console type='pty'/>
