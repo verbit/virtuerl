@@ -357,6 +357,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def _get_domain(self, uuid):
         domain_lv = self.conn.lookupByUUIDString(uuid)
         domain_dict = domain_to_dict(domain_lv)
+        net = self.conn.networkLookupByName(domain_dict["network"])
+        domain_dict["network"] = net.UUIDString()
         state, _ = domain_lv.state()
         domain_dict["state"] = libvirt_state_to_string(state)
 
