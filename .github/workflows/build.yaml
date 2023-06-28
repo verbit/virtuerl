@@ -34,11 +34,14 @@ jobs:
         run: |
           sudo snap install --classic snapcraft
           sudo usermod --append --groups lxd $(whoami)
-          sg lxd -c 'lxd init --auto'
-          sg lxd -c 'snapcraft --use-lxd'
+          sudo lxd init --auto
+          snapcraft --use-lxd
       - name: Integration Tests
         run: |
           sudo snap install --dangerous minivirt*.snap
+          sudo snap start --enable minivirt.unbound
+          sudo snap start --enable minivirt.controller
+          sudo snap start --enable minivirt.daemon
           sudo snap connect minivirt:network-control
           sudo snap connect minivirt:firewall-control
           sudo snap connect minivirt:libvirt
