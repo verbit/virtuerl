@@ -82,7 +82,7 @@ def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServ
                 memory=512,
                 private_ip="192.168.69.69",
                 ipv6_address="fd8d:dd47:05bc:5307::10",
-                network=network.name,
+                network=network.uuid,
                 user_data="""#cloud-config
 
 users:
