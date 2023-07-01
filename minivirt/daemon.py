@@ -334,21 +334,37 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
     def CreateNetwork(self, request, context):
         network = request.network
-        net = ipaddress.ip_network(network.cidr)
-        net6def = ""
-        if network.cidr6:
-            net6 = ipaddress.ip_network(network.cidr6)
-            net6def = f"<ip family='ipv6' address='{net6[1]}' prefix='{net6.prefixlen}'/>"
+
+        nets = [network.cidr, network.cidr6]
+        nets = [ipaddress.ip_network(net) for net in nets if net]
+        assert len(nets), "no networks supplied"
+
+        def to_family_string(net):
+            if isinstance(net, ipaddress.IPv4Network):
+                return "ipv4"
+            elif isinstance(net, ipaddress.IPv6Network):
+                return "ipv6"
+            else:
+                assert False, "unknown ip familiy"
+
+        netdefs = [
+            f"<ip family='{to_family_string(net)}' address='{net[1]}' prefix='{net.prefixlen}'/>"
+            for net in nets
+        ]
+        creation_timestamp = datetime.now(timezone.utc)
         lvnet = self.conn.networkDefineXML(
             f"""<network>
   <name>{network.name}</name>
+  <metadata>
+    <restvirt:metadata xmlns:restvirt="https://restvirt.io/xml">
+        <created>{creation_timestamp.isoformat()}</created>
+    </restvirt:metadata>
+  </metadata>
   <forward mode='open'/>
   <bridge stp='on' delay='0'/>
   <dns enable='no'>
   </dns>
-  <ip address='{net[1]}' prefix='{net.prefixlen}'>
-  </ip>
-  {net6def}
+{chr(10).join(netdefs)}
 </network>
 """
         )
