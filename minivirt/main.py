@@ -66,7 +66,9 @@ def start_controller(args):
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
 
-    host_controller = HostController(session_factory)
+    creds = read_grpc_creds(args.client_ca_cert, args.server_cert, args.server_key)
+
+    host_controller = HostController(session_factory, to_channel_creds(creds))
     controller = Controller(
         session_factory=session_factory,
         host_controller=host_controller,
@@ -82,30 +84,7 @@ def start_controller(args):
         HostService(host_controller, session_factory), server
     )
 
-    server_key_pair_provided = args.server_cert is not None and args.server_key is not None
-    assert server_key_pair_provided or (args.server_cert is None and args.server_key is None)
-    assert args.client_ca_cert is None or server_key_pair_provided
-
-    if server_key_pair_provided:
-        with open(args.server_cert, "rb") as cert, open(args.server_key, "rb") as key:
-            key_pair = (key.read(), cert.read())
-
-        root_certificate = None
-        require_client_auth = args.client_ca_cert is not None
-        if require_client_auth:
-            with open(args.client_ca_cert, "rb") as ca_cert:
-                root_certificate = ca_cert.read()
-
-        creds = grpc.ssl_server_credentials(
-            [key_pair],
-            root_certificates=root_certificate,
-            require_client_auth=require_client_auth,
-        )
-
-        server.add_secure_port(f"{host}:{port}", creds)
-    else:
-        server.add_insecure_port(f"{host}:{port}")
-    server.add_insecure_port("localhost:8094")
+    server.add_secure_port(f"{host}:{port}", to_server_creds(creds))
     reflection.enable_server_reflection(
         [
             service_descriptor.full_name
@@ -120,32 +99,48 @@ def start_controller(args):
     server.wait_for_termination()
 
 
+def read_grpc_creds(ca_cert_path, cert_path, key_path):
+    with (
+        open(ca_cert_path, "rb") as ca_cert,
+        open(cert_path, "rb") as cert,
+        open(key_path, "rb") as key,
+    ):
+        root_certificate = ca_cert.read()
+        certificate_chain = cert.read()
+        private_key = key.read()
+
+    return (root_certificate, certificate_chain, private_key)
+
+
+def to_channel_creds(triple):
+    (root_certificate, certificate_chain, private_key) = triple
+    return grpc.ssl_channel_credentials(
+        root_certificates=root_certificate,
+        certificate_chain=certificate_chain,
+        private_key=private_key,
+    )
+
+
+def to_server_creds(triple):
+    (root_certificate, certificate_chain, private_key) = triple
+    return grpc.ssl_server_credentials(
+        [(private_key, certificate_chain)],
+        root_certificates=root_certificate,
+        require_client_auth=True,
+    )
+
+
 def get_controller_channel(args):
     controller_host, controller_port = args.controller
     client_key_pair_provided = args.client_cert is not None and args.client_key is not None
 
-    if args.server_ca_cert is not None:
-        with open(args.server_ca_cert, "rb") as ca_cert:
-            root_certificate = ca_cert.read()
+    assert args.server_ca_cert is not None
+    assert client_key_pair_provided
 
-        certificate_chain = None
-        private_key = None
-        if client_key_pair_provided:
-            with open(args.client_cert, "rb") as cert, open(args.client_key, "rb") as key:
-                certificate_chain = cert.read()
-                private_key = key.read()
-
-        creds = grpc.ssl_channel_credentials(
-            root_certificates=root_certificate,
-            certificate_chain=certificate_chain,
-            private_key=private_key,
-        )
-
-        controller_channel = grpc.secure_channel(f"{controller_host}:{controller_port}", creds)
-    else:
-        controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
-
-    return controller_channel
+    return grpc.secure_channel(
+        f"{controller_host}:{controller_port}",
+        to_channel_creds(read_grpc_creds(args.server_ca_cert, args.client_cert, args.client_key)),
+    )
 
 
 def start_daemon(args):
@@ -168,7 +163,10 @@ def start_daemon(args):
     daemon = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
-    daemon.add_insecure_port(f"{addr}:{port}")
+    daemon.add_secure_port(
+        f"{addr}:{port}",
+        to_server_creds(read_grpc_creds(args.server_ca_cert, args.client_cert, args.client_key)),
+    )
 
     controller_channel = get_controller_channel(args)
 

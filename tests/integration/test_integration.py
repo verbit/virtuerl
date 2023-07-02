@@ -13,12 +13,6 @@ from minivirt import controller_pb2_grpc, domain_pb2, port_forwarding_pb2, volum
 
 
 @pytest.fixture
-def insecure_client():
-    channel = grpc.insecure_channel("localhost:8094")
-    return controller_pb2_grpc.ControllerServiceStub(channel)
-
-
-@pytest.fixture
 def client():
     channel = grpc.secure_channel(
         "localhost:8093",
@@ -64,8 +58,8 @@ def client():
     return controller_pb2_grpc.ControllerServiceStub(channel)
 
 
-def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServiceStub):
-    network = insecure_client.CreateNetwork(
+def test_create_domain_linux(client: controller_pb2_grpc.ControllerServiceStub):
+    network = client.CreateNetwork(
         domain_pb2.CreateNetworkRequest(
             network=domain_pb2.Network(
                 name="restvirt",
@@ -74,7 +68,7 @@ def test_create_domain_linux(insecure_client: controller_pb2_grpc.ControllerServ
             )
         )
     )
-    dom = insecure_client.CreateDomain(
+    dom = client.CreateDomain(
         domain_pb2.CreateDomainRequest(
             domain=domain_pb2.Domain(
                 name="test",
@@ -108,9 +102,7 @@ runcmd:
         target_ip="192.168.69.69",
         target_port=80,
     )
-    insecure_client.PutPortForwarding(
-        port_forwarding_pb2.PutPortForwardingRequest(port_forwarding=fwd)
-    )
+    client.PutPortForwarding(port_forwarding_pb2.PutPortForwardingRequest(port_forwarding=fwd))
 
     response = wait_for_http("http://192.168.69.1:8080")
     assert "Welcome to nginx!" in response
@@ -131,19 +123,19 @@ pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
     old_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)
     assert old_root_vol_size == 20 * 1024**3
 
-    volumes = insecure_client.ListVolumes(volume_pb2.ListVolumesRequest())
+    volumes = client.ListVolumes(volume_pb2.ListVolumesRequest())
     volumes = {v.name: v for v in volumes.volumes}
     root_vol_name = f"{dom.name}-root.qcow2"
     assert root_vol_name in volumes
 
-    wait_until_stopped(insecure_client, dom.uuid)
-    insecure_client.UpdateVolume(
+    wait_until_stopped(client, dom.uuid)
+    client.UpdateVolume(
         volume_pb2.UpdateVolumeRequest(
             volume=volume_pb2.Volume(id=root_vol_name, size=30 * 1024**3)
         )
     )
 
-    insecure_client.StartDomain(domain_pb2.StartDomainRequest(uuid=dom.uuid))
+    client.StartDomain(domain_pb2.StartDomainRequest(uuid=dom.uuid))
     response = wait_for_http("http://192.168.69.1:8080")
     assert "Welcome to nginx!" in response
     response = wait_for_http("http://[fd8d:dd47:05bc:5307::10]")
@@ -152,11 +144,11 @@ pVCP1uv6f5iQwZ+IDdFcAAAAFWlseWFASWx5YXMtaU1hYy5sb2NhbA==
     new_root_vol_size = int(conn.run("lsblk /dev/vda -bndo SIZE").stdout)
     assert new_root_vol_size == 30 * 1024**3
 
-    insecure_client.DeletePortForwarding(
+    client.DeletePortForwarding(
         port_forwarding_pb2.PortForwardingIdentifier(protocol="tcp", source_port=8080)
     )
-    insecure_client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
-    insecure_client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
+    client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
+    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
 
 
 def wait_for_http(server, path="/", timeout=datetime.timedelta(seconds=180)):
