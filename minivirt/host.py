@@ -12,13 +12,19 @@ from minivirt.models import BootstrapToken, Host
 
 
 class HostController:
-    def __init__(self, session_factory):
+    def __init__(self, session_factory, creds=None):
         self.session_factory = session_factory
+        self.creds = creds
         self.lock = threading.Lock()
         self.cache = {}
 
         for host in self.hosts():
-            self.cache[host.name] = grpc.insecure_channel(host.address)
+            self.cache[host.name] = self._create_channel(host.address)
+
+    def _create_channel(self, address):
+        if self.creds is not None:
+            return grpc.secure_channel(address, self.creds)
+        return grpc.insecure_channel(address)
 
     def hosts(self):
         with self.session_factory() as session:
@@ -43,7 +49,7 @@ class HostController:
                 raise Exception("BootstrapToken invalid")
             session.add(Host(name=hostname, address=address))
             with self.lock:
-                self.cache[hostname] = grpc.insecure_channel(address)
+                self.cache[hostname] = self._create_channel(address)
         return empty_pb2.Empty()
 
     def deregister(self, hostname):
