@@ -120,30 +120,8 @@ def start_controller(args):
     server.wait_for_termination()
 
 
-def start_daemon(args):
-    addr, port = args.bind
-    port = port or 0
-    addr = addr or "0.0.0.0"
-    name = args.name or "default"
-
-    if args.debug:
-        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
-
-    engine = create_engine(
-        f"sqlite:///{os.path.join(args.config, 'daemon.sqlite3')}",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-        future=True,
-    )
-    run_migrations(engine)
-    session_factory = sessionmaker(engine, future=True)
-
-    daemon = grpc.server(
-        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
-    )
-    daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
+def get_controller_channel(args):
     controller_host, controller_port = args.controller
-
     client_key_pair_provided = args.client_cert is not None and args.client_key is not None
 
     if args.server_ca_cert is not None:
@@ -166,6 +144,34 @@ def start_daemon(args):
         controller_channel = grpc.secure_channel(f"{controller_host}:{controller_port}", creds)
     else:
         controller_channel = grpc.insecure_channel(f"{controller_host}:{controller_port}")
+
+    return controller_channel
+
+
+def start_daemon(args):
+    addr, port = args.bind
+    port = port or 0
+    addr = addr or "0.0.0.0"
+    name = args.name or "default"
+
+    if args.debug:
+        logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
+
+    engine = create_engine(
+        f"sqlite:///{os.path.join(args.config, 'daemon.sqlite3')}",
+        connect_args={"check_same_thread": False},
+        poolclass=StaticPool,
+        future=True,
+    )
+    run_migrations(engine)
+    session_factory = sessionmaker(engine, future=True)
+
+    daemon = grpc.server(
+        futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
+    )
+    daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
+
+    controller_channel = get_controller_channel(args)
 
     daemon_service = DaemonService(
         session_factory,
