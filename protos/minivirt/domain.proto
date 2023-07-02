@@ -69,7 +69,7 @@ message ImageChunk {
 
 message GetNetworkRequest {
   string uuid = 1;
-  string host = 2;
+  string host = 2 [deprecated = true];
 }
 
 message Network {
@@ -80,7 +80,7 @@ message Network {
 }
 
 message ListNetworksRequest {
-  string host = 1;
+  string host = 1 [deprecated = true];
 }
 
 message ListNetworksResponse {

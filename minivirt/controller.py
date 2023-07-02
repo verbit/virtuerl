@@ -1,6 +1,9 @@
+import ipaddress
+
 import grpc
 from google.protobuf import empty_pb2
 from grpc import StatusCode
+from sqlalchemy import delete, select
 
 from minivirt import (
     controller_pb2_grpc,
@@ -8,11 +11,12 @@ from minivirt import (
     daemon_pb2_grpc,
     dns_pb2,
     dns_pb2_grpc,
+    domain_pb2,
     route_pb2,
     route_pb2_grpc,
 )
 from minivirt.host import HostController
-from minivirt.models import DNSRecord
+from minivirt.models import DNSRecord, Network
 from minivirt.route import GenericRouteController, GenericRouteTableController, SyncEventHandler
 
 
@@ -85,6 +89,69 @@ class Controller(
 
     def DeleteDNSRecord(self, request, context):
         self.dns_controller.remove(request.name, request.type)
+        return empty_pb2.Empty()
+
+    def GetNetwork(self, request, context):
+        with self.session_factory() as session:
+            net = (
+                session.execute(
+                    select(Network).filter(
+                        Network.id == request.uuid,
+                    )
+                )
+                .scalars()
+                .one_or_none()
+            )
+
+        return domain_pb2.GetNetworkResponse(
+            network=domain_pb2.Network(
+                uuid=net.id,
+                name=net.name,
+                cidr=net.cidr,
+                cidr6=net.cidr6,
+            )
+        )
+
+    def ListNetworks(self, request, context):
+        with self.session_factory() as session:
+            networks = session.execute(select(Network)).scalars().all()
+        return domain_pb2.ListNetworksResponse(
+            networks=[
+                domain_pb2.Network(
+                    uuid=net.id,
+                    name=net.name,
+                    cidr=net.cidr,
+                    cidr6=net.cidr6,
+                )
+                for net in networks
+            ]
+        )
+
+    def CreateNetwork(self, request, context):
+        f = request.network
+        network = Network(
+            name=f.name,
+            cidr=f.cidr,
+            cidr6=f.cidr6,
+        )
+
+        with self.session_factory() as session:
+            session.add(network)
+            session.commit()
+
+        # TODO: generate uuid
+
+        return f
+
+    def DeleteNetwork(self, request, context):
+        with self.session_factory() as session:
+            session.execute(
+                delete(Network).where(
+                    Network.id == request.uuid,
+                )
+            )
+            session.commit()
+
         return empty_pb2.Empty()
 
     def GetRouteTable(self, request, context):

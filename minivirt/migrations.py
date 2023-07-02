@@ -21,8 +21,25 @@ COMMIT;
         )
 
 
+def _migration_1(engine):
+    with engine.connect() as conn:
+        conn.connection.executescript(
+            """
+BEGIN;
+
+ALTER TABLE networks ADD name VARCHAR;
+
+DELETE FROM versions;
+INSERT INTO versions VALUES('2');
+
+COMMIT;
+"""
+        )
+
+
 migrations = {
     "0": _migration_0,
+    "1": _migration_1,
 }
 
 
