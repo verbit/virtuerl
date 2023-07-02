@@ -152,7 +152,6 @@ def start_daemon(args):
     addr, port = args.bind
     port = port or 0
     addr = addr or "0.0.0.0"
-    name = args.name or "default"
 
     if args.debug:
         logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)
@@ -169,7 +168,7 @@ def start_daemon(args):
     daemon = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
     )
-    daemon_port = daemon.add_insecure_port(f"{addr}:{port}")
+    daemon.add_insecure_port(f"{addr}:{port}")
 
     controller_channel = get_controller_channel(args)
 
@@ -182,26 +181,42 @@ def start_daemon(args):
         controller_channel,
     )
     daemon_pb2_grpc.add_DaemonServiceServicer_to_server(daemon_service, daemon)
-    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
-    hosts = host_client.ListHosts(host_pb2.ListHostsRequest()).hosts
-    for host in hosts:
-        if host.name == name:
-            host_client.Deregister(host)
-    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
-    host_client.Register(
-        host_pb2.RegisterHostRequest(
-            token=token,
-            host=host_pb2.Host(
-                name=name,
-                address=f"{addr}:{daemon_port}",
-            ),
-        )
-    )
     daemon_service.sync()
 
     logging.info(f"Starting Daemon ({__version__})")
     daemon.start()
     daemon.wait_for_termination()
+
+
+def register_host(args):
+    addr, port = args.bind
+    port = port or 0
+    addr = addr or "0.0.0.0"
+
+    controller_channel = get_controller_channel(args)
+
+    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
+    token = host_client.CreateBootstrapToken(host_pb2.CreateBootstrapTokenRequest()).token
+    host_client.Register(
+        host_pb2.RegisterHostRequest(
+            token=token,
+            host=host_pb2.Host(
+                name=args.name,
+                address=f"{addr}:{port}",
+            ),
+        )
+    )
+
+    logging.info(f"Successfully registered host ({__version__})")
+
+
+def deregister_host(args):
+    controller_channel = get_controller_channel(args)
+
+    host_client = host_pb2_grpc.HostServiceStub(controller_channel)
+    host_client.Deregister(host_pb2.Host(name=args.name))
+
+    logging.info(f"Successfully deregistered host ({__version__})")
 
 
 def main():
@@ -253,6 +268,27 @@ def main():
     daemon_parser.add_argument("--client-key")
     daemon_parser.add_argument("--server-ca-cert")
     daemon_parser.set_defaults(func=start_daemon)
+
+    register_parser = subparsers.add_parser("register")
+    register_parser.add_argument("--name", help="host's name")
+    register_parser.add_argument("-b", "--bind", type=bind_address, help="daemon bind address")
+    register_parser.add_argument(
+        "-a", "--controller", type=bind_address, default="127.0.0.1:8094", help="controller address"
+    )
+    register_parser.add_argument("--client-cert")
+    register_parser.add_argument("--client-key")
+    register_parser.add_argument("--server-ca-cert")
+    register_parser.set_defaults(func=register_host)
+
+    deregister_parser = subparsers.add_parser("deregister")
+    deregister_parser.add_argument("--name", help="host's name")
+    deregister_parser.add_argument(
+        "-a", "--controller", type=bind_address, default="127.0.0.1:8094", help="controller address"
+    )
+    deregister_parser.add_argument("--client-cert")
+    deregister_parser.add_argument("--client-key")
+    deregister_parser.add_argument("--server-ca-cert")
+    deregister_parser.set_defaults(func=deregister_host)
 
     args = parser.parse_args()
     logging.debug(args)

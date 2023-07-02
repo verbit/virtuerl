@@ -39,9 +39,6 @@ jobs:
       - name: Integration Tests
         run: |
           sudo snap install --dangerous minivirt*.snap
-          sudo snap start --enable minivirt.unbound
-          sudo snap start --enable minivirt.controller
-          sudo snap start --enable minivirt.daemon
           sudo snap connect minivirt:network-control
           sudo snap connect minivirt:firewall-control
           sudo snap connect minivirt:libvirt
@@ -86,6 +83,11 @@ jobs:
           -----END EC PRIVATE KEY-----
           EOF
           sudo snap set minivirt controller.args='--debug -b :8093 -c $SNAP_COMMON --server-cert $SNAP_COMMON/server.crt --server-key $SNAP_COMMON/server.key --client-ca-cert $SNAP_COMMON/ca.crt'
+          sudo snap start --enable minivirt.unbound
+          sudo snap start --enable minivirt.controller
+
+          sudo minivirt.register -a 127.0.0.1:8093 --name default -b 127.0.0.1:8099
+          sudo snap start --enable minivirt.daemon
 
           sleep 10
           if ! sudo ${{ steps.python.outputs.python-path }} -m pytest tests/integration ; then

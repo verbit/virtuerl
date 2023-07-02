@@ -37,6 +37,16 @@ apps:
       - network-control
   birdc:
     command: bin/birdc-wrapper
+  register:
+    command: bin/restvirt-register
+    plugs:
+      - network
+      - network-bind
+  deregister:
+    command: bin/restvirt-deregister
+    plugs:
+      - network
+      - network-bind
   daemon:
     command: bin/restvirt-daemon
     daemon: simple
