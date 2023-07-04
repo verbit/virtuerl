@@ -89,12 +89,12 @@ message ListNetworksResponse {
 
 message CreateNetworkRequest {
   Network network = 1;
-  string host = 2;
+  string host = 2 [deprecated = true];
 }
 
 message DeleteNetworkRequest {
   string uuid = 1;
-  string host = 2;
+  string host = 2 [deprecated = true];
 }
 
 
