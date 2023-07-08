@@ -44,43 +44,44 @@ jobs:
           sudo snap connect minivirt:libvirt
           cat << EOF | sudo tee -a /var/snap/minivirt/common/ca.crt
           -----BEGIN CERTIFICATE-----
-          MIICBDCCAYqgAwIBAgIRAOfU+EvUkVhYLwFKwS1rp1kwCgYIKoZIzj0EAwMwQzEL
-          MAkGA1UEBhMCREUxDzANBgNVBAgTBkJlcmxpbjEPMA0GA1UEBxMGQmVybGluMRIw
-          EAYDVQQKEwlvc2FmdC5kZXYwHhcNMjIwODIxMTEwNjA2WhcNMzIxMTI2MTEwNjA2
-          WjBDMQswCQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJs
-          aW4xEjAQBgNVBAoTCW9zYWZ0LmRldjB2MBAGByqGSM49AgEGBSuBBAAiA2IABMSJ
-          ajmDRZT8lFk/mUh32cIpoa/0TmWOtyyP8ivEjerFpiTnX+o6Umu/66R5p52D9D0d
-          +3L8Hs4DR4xfbugECKdMBlBQUl3al1VZKLSM+S+sAiqQxgsP+ZvXRCjsM/DEsaNC
-          MEAwDgYDVR0PAQH/BAQDAgEGMA8GA1UdEwEB/wQFMAMBAf8wHQYDVR0OBBYEFOEI
-          RRLKbTHzEmS6nKa2BkD1rrh3MAoGCCqGSM49BAMDA2gAMGUCMQDYfKvPNIkv3veR
-          tmr4InE2Nay07ePvRn4dIXIBOIAXqjzsaZeVBpNfV2K5qi+4kW4CMGxeiGH+4HA0
-          LclhLWjLmOZnTRAT8chHkNh8z+3EXt4cmJ3wpLTTkuhxmYQwS6mBrA==
+          MIICCjCCAY+gAwIBAgIUSl7KWjtgvG9rNMz7hhYRKy5LsB8wCgYIKoZIzj0EAwIw
+          RDELMAkGA1UEBhMCREUxDzANBgNVBAgMBkJlcmxpbjERMA8GA1UECgwIbWluaXZp
+          cnQxETAPBgNVBAMMCG1pbml2aXJ0MB4XDTIzMDcwODIzMjUyMFoXDTMzMDcwNTIz
+          MjUyMFowRDELMAkGA1UEBhMCREUxDzANBgNVBAgMBkJlcmxpbjERMA8GA1UECgwI
+          bWluaXZpcnQxETAPBgNVBAMMCG1pbml2aXJ0MHYwEAYHKoZIzj0CAQYFK4EEACID
+          YgAEI3nOFzsWO3w8qGLSjDSiX3OWCH7qBRcTjt/luPjXLqe3DVcFQPLYN31PaggR
+          o0jCjrKklxqtzHmmMdMRnyoRPbQOQPRa9N177a2s97M5ZJQVkeFL8WRUf7x1P0Cd
+          SZvco0IwQDAdBgNVHQ4EFgQUde9ormRTZys4Nt81qAPcSm1qQWMwDwYDVR0TAQH/
+          BAUwAwEB/zAOBgNVHQ8BAf8EBAMCAYYwCgYIKoZIzj0EAwIDaQAwZgIxAJTpUOUz
+          RJwMLNUEa4qIgdamMuqyl5h6ghT9zX5BLsX3cFs+MqJ/J0HcKDJd81lVlQIxAPCG
+          hy/zgj6wy28S8GWe8KdbZ73BJtC5MyOu6hHD9EpZ1hT8K3q0VIwMEyUMmbv3Xw==
           -----END CERTIFICATE-----
           EOF
           cat << EOF | sudo tee -a /var/snap/minivirt/common/server.crt
           -----BEGIN CERTIFICATE-----
-          MIICYjCCAeegAwIBAgIQbVv7tB/q2tQqDT3ZgWznCjAKBggqhkjOPQQDAzBDMQsw
-          CQYDVQQGEwJERTEPMA0GA1UECBMGQmVybGluMQ8wDQYDVQQHEwZCZXJsaW4xEjAQ
-          BgNVBAoTCW9zYWZ0LmRldjAeFw0yMjA4MjExMTA2MDZaFw0zMjExMjYxMTA2MDZa
-          MFcxCzAJBgNVBAYTAkRFMQ8wDQYDVQQIEwZCZXJsaW4xDzANBgNVBAcTBkJlcmxp
-          bjESMBAGA1UEChMJb3NhZnQuZGV2MRIwEAYDVQQDEwlvc2FmdC5kZXYwdjAQBgcq
-          hkjOPQIBBgUrgQQAIgNiAASxu/GUY+FihAR/EAf6o9tCVPMWUzAANMF+0+D0XHAH
-          k1SELZsg7ZQ9zwSJtclZHG3lB2e4r8uW4q/hJbKwauM4347F1sD1TdrQzsflQDHM
-          6S1UJmp8z6YblEacWgp970WjgYswgYgwDgYDVR0PAQH/BAQDAgWgMBMGA1UdJQQM
-          MAoGCCsGAQUFBwMBMAwGA1UdEwEB/wQCMAAwHwYDVR0jBBgwFoAU4QhFEsptMfMS
-          ZLqcprYGQPWuuHcwMgYDVR0RBCswKYILcGF0Y2gucGxhY2WCCW9zYWZ0LmRldoIJ
-          bG9jYWxob3N0hwTAqHoBMAoGCCqGSM49BAMDA2kAMGYCMQCEpBNSt3rxydDMYxP5
-          by/8lxXAnlzj5giAv4MPuoX+nobc6IipEhtTXUydUnrkSPQCMQCkMiKObWQn6yk1
-          9XGIqdSQcS/unAilbrjf8J+BfZemdntXvIz8lReizV2pgyFGO1k=
+          MIICeTCCAf+gAwIBAgIUVG1gWhFwRQ5kzxwRzF6V5h6D8ZYwCgYIKoZIzj0EAwIw
+          RDELMAkGA1UEBhMCREUxDzANBgNVBAgMBkJlcmxpbjERMA8GA1UECgwIbWluaXZp
+          cnQxETAPBgNVBAMMCG1pbml2aXJ0MB4XDTIzMDcwODIzMzA0MloXDTI1MDcwNzIz
+          MzA0MlowRDELMAkGA1UEBhMCREUxDzANBgNVBAgMBkJlcmxpbjERMA8GA1UECgwI
+          bWluaXZpcnQxETAPBgNVBAMMCG1pbml2aXJ0MHYwEAYHKoZIzj0CAQYFK4EEACID
+          YgAEHWV9eL3/egpqcgTaMDPWga2xpfTZCc66yNxkVGPsw5BWE/EXvWtuUCjDmHWo
+          HOdrbt7iI9lA9VnSwlC9PeIvX4lK2dXNOpn3GJlZ8JkjpZZBg0mxaUt6vQMyGSco
+          cOOAo4GxMIGuMB8GA1UdIwQYMBaAFHXvaK5kU2crODbfNagD3EptakFjMAwGA1Ud
+          EwEB/wQCMAAwDgYDVR0PAQH/BAQDAgWgMCAGA1UdJQEB/wQWMBQGCCsGAQUFBwMB
+          BggrBgEFBQcDAjAsBgNVHREEJTAjgglsb2NhbGhvc3SHBH8AAAGHEAAAAAAAAAAA
+          AAAAAAAAAAEwHQYDVR0OBBYEFDtlzMapZ4eV0/m8ina1GM3biELeMAoGCCqGSM49
+          BAMCA2gAMGUCMECXLmHsWMTaFRK+qWaBRZMLuhFNixMsSmmHHIqGlvIrWFa5MiN6
+          RaZ7aTGa/HMKZAIxAPRJZ11Vp1BNBszSiswk32hsck4JP9h1hn00IMu33iK0+q22
+          Jv73oZy3l4gQmLlCDg==
           -----END CERTIFICATE-----
           EOF
           cat << EOF | sudo tee -a /var/snap/minivirt/common/server.key
-          -----BEGIN EC PRIVATE KEY-----
-          MIGkAgEBBDCWM9jrmN8xhoA0nmXKvhuyPsnO+2zjVrN1hmfSqRjlHRokjFxW9Gmd
-          ehdVNofOkEWgBwYFK4EEACKhZANiAASxu/GUY+FihAR/EAf6o9tCVPMWUzAANMF+
-          0+D0XHAHk1SELZsg7ZQ9zwSJtclZHG3lB2e4r8uW4q/hJbKwauM4347F1sD1TdrQ
-          zsflQDHM6S1UJmp8z6YblEacWgp970U=
-          -----END EC PRIVATE KEY-----
+          -----BEGIN PRIVATE KEY-----
+          MIG2AgEAMBAGByqGSM49AgEGBSuBBAAiBIGeMIGbAgEBBDCIJQuTNENeEnhjCtdV
+          GXoFgh69LQ+Ms5B/i0jWMSqMALL26uG6NNM4nvHgIMbChKGhZANiAAQdZX14vf96
+          CmpyBNowM9aBrbGl9NkJzrrI3GRUY+zDkFYT8Re9a25QKMOYdagc52tu3uIj2UD1
+          WdLCUL094i9fiUrZ1c06mfcYmVnwmSOllkGDSbFpS3q9AzIZJyhw44A=
+          -----END PRIVATE KEY-----
           EOF
           sudo snap set minivirt controller.args='--debug -b :8093 -c $SNAP_COMMON --server-cert $SNAP_COMMON/server.crt --server-key $SNAP_COMMON/server.key --client-ca-cert $SNAP_COMMON/ca.crt'
           sudo snap start --enable minivirt.unbound
