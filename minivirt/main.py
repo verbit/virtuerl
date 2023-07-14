@@ -9,7 +9,7 @@ import libvirt
 from grpc_reflection.v1alpha import reflection
 from sqlalchemy import create_engine, event
 from sqlalchemy.engine import Engine
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import scoped_session, sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from minivirt import (
@@ -57,7 +57,7 @@ def start_controller(args):
         future=True,
     )
     run_migrations(engine)
-    session_factory = sessionmaker(engine, future=True)
+    session_factory = scoped_session(sessionmaker(engine, future=True))
 
     dns_controller = DNSController(session_factory)
     dns_controller.start(port=5353)
@@ -158,7 +158,7 @@ def start_daemon(args):
         future=True,
     )
     run_migrations(engine)
-    session_factory = sessionmaker(engine, future=True)
+    session_factory = scoped_session(sessionmaker(engine, future=True))
 
     daemon = grpc.server(
         futures.ThreadPoolExecutor(max_workers=10), interceptors=[UnaryUnaryInterceptor()]
