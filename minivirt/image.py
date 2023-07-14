@@ -31,8 +31,9 @@ def create_cloud_config_image(
     assert gateway in network
     assert address in network
 
-    assert gateway6 in network6
-    assert address6 in network6
+    if network6 is not None:
+        assert gateway6 in network6
+        assert address6 in network6
 
     network_config = f"""version: 2
 ethernets:
