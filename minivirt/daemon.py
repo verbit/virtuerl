@@ -412,6 +412,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             )
             domain_dict["os_type"] = domain.os_type
             domain_dict["private_ip"] = domain.private_ip
+            domain_dict["ipv6_address"] = domain.ipv6_address
             domain_dict["user_data"] = domain.user_data
 
         return domain_dict
