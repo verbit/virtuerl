@@ -60,6 +60,34 @@ WdLCUL094i9fiUrZ1c06mfcYmVnwmSOllkGDSbFpS3q9AzIZJyhw44A=
     return controller_pb2_grpc.ControllerServiceStub(channel)
 
 
+def test_create_domain_ipv4_linux(client: controller_pb2_grpc.ControllerServiceStub):
+    network = client.CreateNetwork(
+        domain_pb2.CreateNetworkRequest(
+            network=domain_pb2.Network(
+                name="restvirt",
+                cidr="192.168.69.0/24",
+            )
+        )
+    )
+    dom = client.CreateDomain(
+        domain_pb2.CreateDomainRequest(
+            domain=domain_pb2.Domain(
+                name="test",
+                vcpu=1,
+                memory=512,
+                private_ip="192.168.69.69",
+                network=network.uuid,
+                user_data="""#cloud-config""",
+            ),
+        )
+    )
+    dom = client.GetDomain(domain_pb2.GetDomainRequest(uuid=dom.uuid))
+    assert dom.private_ip == "192.168.69.69"
+
+    client.DeleteDomain(domain_pb2.DeleteDomainRequest(uuid=dom.uuid))
+    client.DeleteNetwork(domain_pb2.DeleteNetworkRequest(uuid=network.uuid))
+
+
 def test_create_domain_linux(client: controller_pb2_grpc.ControllerServiceStub):
     network = client.CreateNetwork(
         domain_pb2.CreateNetworkRequest(
@@ -97,6 +125,9 @@ runcmd:
             ),
         )
     )
+
+    dom = client.GetDomain(domain_pb2.GetDomainRequest(uuid=dom.uuid))
+    assert dom.ipv6_address == "fd8d:dd47:05bc:5307::10"
 
     fwd = port_forwarding_pb2.PortForwarding(
         protocol="tcp",
