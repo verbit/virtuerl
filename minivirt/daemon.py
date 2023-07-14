@@ -277,6 +277,7 @@ def get_root_volume(conn, domain_name):
 
 
 def _network_prefix(net_elem):
+    # FIXME: remove/simplify me, once all network use prefix
     if "@netmask" in net_elem:
         return ipaddress.ip_network("0.0.0.0/" + net_elem["@netmask"]).prefixlen
     return net_elem["@prefix"]
@@ -430,7 +431,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         net_dict = xmltodict.parse(lvnet.XMLDesc(), force_list=("ip",))
         net_def = net_dict["network"]["ip"][0]
         gateway = ipaddress.ip_address(net_def["@address"])
-        net = ipaddress.ip_network(f'{gateway}/{net_def["@prefix"]}', strict=False)
+        net = ipaddress.ip_network(f"{gateway}/{_network_prefix(net_def)}", strict=False)
 
         gateway6 = None
         net6 = None
