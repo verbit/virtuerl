@@ -70,6 +70,53 @@ class Network(Base):
     def __repr__(self):
         return f"Network({self.id!r}: {self.cidr!r} {self.cidr6!r})"
 
+class NetworkV2(Base):
+    __tablename__ = "networks_v2"
+
+    id = Column(String, primary_key=True)
+
+    def __repr__(self):
+        return f"NetworkV2({self.id!r})"
+
+
+class IPPool(Base):
+    __tablename__ = "ip_pools"
+
+    id = Column(String, primary_key=True)
+    network_id = Column(String, ForeignKey("networks_v2.id", ondelete="CASCADE"))
+    cidr = Column(String)
+
+    def __repr__(self):
+        return f"IPPool({self.id!r}: {self.cidr!r})"
+
+
+class FloatingIP(Base):
+    __tablename__ = "floating_ips"
+
+    ip_pool_id = Column(Integer, ForeignKey("ip_pool.id", ondelete="CASCADE"))
+    ip_pool = relationship(
+        "IPPool",
+        backref=backref("floating_ips", cascade="all, delete-orphan", passive_deletes=True),
+    )
+    address = Column(String, primary_key=True)
+
+
+class FloatingIPAssignment(Base):
+    __tablename__ = ""
+
+    floating_ip_address = Column(Integer, ForeignKey("floating_ip.address", ondelete="CASCADE"))
+    floating_ip = relationship(
+        "FloatingIP",
+        backref=backref(
+            "floating_ip_assignments", cascade="all, delete-orphan", passive_deletes=True
+        ),
+    )
+    # domain_id = Column(Integer, ForeignKey("domain.id", ondelete="CASCADE"))
+    # domain = relationship(
+    #     "Domain", backref=backref("floating_ip_assignments", cascade="all, delete-orphan", passive_deletes=True)
+    # )
+    domain_id = Column(String)
+
 
 class RouteTable(Base):
     __tablename__ = "route_tables"
