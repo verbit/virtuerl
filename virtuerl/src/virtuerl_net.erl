@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3]).
--export([parse_cidr/1, format_ip/1]).
+-export([parse_cidr/1, format_ip/1, format_ip_bitstring/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -125,6 +125,8 @@ format_ip(<<A:8, B:8, C:8, D:8>>) ->
   inet:ntoa({A, B, C, D});
 format_ip(<<A:16, B:16, C:16, D:16, E:16, F:16, G:16, H:16>>) ->
   inet:ntoa({A, B, C, D, E, F, G, H}).
+format_ip_bitstring(IP) ->
+  list_to_binary(format_ip(IP)).
 
 format_bird_route(<<IP/binary>>) ->
   io_lib:format("~s/~B", [format_ip(IP), bit_size(IP)]).
