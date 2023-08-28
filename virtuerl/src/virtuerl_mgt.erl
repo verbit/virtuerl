@@ -84,7 +84,7 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
     [{_, #domain{network_id = NetworkID, ipv4_addr=IP, tap_name = TapName}}] ->
-      DomRet = #{network_id => NetworkID, ipv4_addr => virtuerl_net:format_ip(IP)}, % , tap_name => TapName
+      DomRet = #{network_id => NetworkID, ipv4_addr => virtuerl_net:format_ip_bitstring(IP)}, % , tap_name => TapName
       {ok, DomRet};
     [] -> notfound
   end,

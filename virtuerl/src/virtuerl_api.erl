@@ -40,7 +40,7 @@ start_link() ->
 
 urls() ->
   RawURLs = [
-    {"^/networks/?$", networks, ['GET']},
+    {"^/networks/?$", networks, ['GET', 'POST']},
     {"^/networks/(?<id>[^/]+)/?$", network, ['GET', 'PUT', 'DELETE']},
     {"^/domains/?$", domains, ['GET', 'POST']},
     {"^/domains/(?<id>[^/]+)/?$", domain, ['GET']}
@@ -118,8 +118,9 @@ parse_json(Req) ->
   JSON.
 
 handle(networks, 'GET', _, Req) ->
-%%  virtuerl_ipam:ipam_put_net({}),
-  mochiweb_request:ok({[], "HELLO\n"}, Req);
+  {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
+  io:format("~p~n", [Nets]),
+  mochiweb_request:respond({200, [{"Content-Type", "application/json"}], thoas:encode(Nets)}, Req);
 handle(networks, 'POST', _, Req) ->
   JSON = parse_json(Req),
   #{<<"network">> := #{<<"cidr">> := CIDR}} = JSON,

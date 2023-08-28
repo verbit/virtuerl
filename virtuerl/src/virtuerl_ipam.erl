@@ -7,7 +7,7 @@
 
 -behavior(gen_server).
 
--export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_put_ip/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1]).
+-export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_put_ip/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0]).
 
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
@@ -47,6 +47,9 @@ ipam_put_net(NetworkDef) ->
 		Other ->
 			Other
 	end.
+
+ipam_list_nets() ->
+	gen_server:call(ipam, net_list).
 
 ipam_delete_net(ID) ->
 	case gen_server:call(ipam, {net_delete, ID}) of
@@ -96,6 +99,13 @@ terminate(_Reason, StoreId) ->
 		ok
 	end.
 
+handle_call(net_list, _From, StoreId) ->
+	case khepri:get_many(StoreId, [network, ?KHEPRI_WILDCARD_STAR]) of
+		{ok, Map} ->
+			Res = maps:from_list([{NetworkId, #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)]),
+			{reply, {ok, Res}, StoreId};
+		Res -> {reply, Res, StoreId}
+	end;
 handle_call({net_put, Network}, _From, StoreId) ->
 	{ID, Address, PrefixLen} = Network,
 	{From, To} = get_range({Address, PrefixLen}),
