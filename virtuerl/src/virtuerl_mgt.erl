@@ -10,7 +10,7 @@
 
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-  code_change/3]).
+  code_change/3, handle_continue/2]).
 -export([create_vm/0, domain_create/1, domain_get/1]).
 
 -define(SERVER, ?MODULE).
@@ -44,9 +44,28 @@ start_link() ->
 
 init([]) ->
   {ok, Table} = dets:open_file(vms, []),
-  virtuerl_ipam:ipam_put_net({default, <<192:8, 168:8, 10:8, 0:8>>, 28}),
-  application:ensure_all_started(grpcbox),
-  {ok, {Table}}.
+%%  virtuerl_ipam:ipam_put_net({default, <<192:8, 168:8, 10:8, 0:8>>, 28}),
+%%  application:ensure_all_started(grpcbox),
+  {ok, {Table}, {continue, sync_domains}}.
+%%  {ok, {Table}}.
+
+handle_continue(sync_domains, State) ->
+  {Table} = State,
+  TargetDomains = sets:from_list([Id || {Id, _} <- dets:match_object(Table, '_')]),
+  RunningDomains = sets:from_list([Id || {Id, _, _, _} <- supervisor:which_children(virtuerl_sup), is_binary(Id)]),
+  ToDelete = sets:subtract(RunningDomains, TargetDomains),
+  ToAdd = sets:subtract(TargetDomains, RunningDomains),
+  [supervisor:delete_child(virtuerl_sup, Id) || Id <- sets:to_list(ToDelete)],
+  [  supervisor:start_child(virtuerl_sup, {
+    Id,
+    {virtuerl_qemu, start_link, [Id]},
+    permanent,
+    infinity,
+    worker,
+    []
+}) || Id <- sets:to_list(ToAdd)],
+  {noreply, State}.
+
 
 generate_unique_tap_name(TapNames) ->
   TapName = io_lib:format("verltap~s", [binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
