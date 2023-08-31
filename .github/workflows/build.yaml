@@ -18,7 +18,7 @@ jobs:
       - name: Install dependencies
         run: |
           sudo apt update
-          sudo apt install -y libvirt-dev
+          sudo apt install -y libvirt-dev rebar3
           pip install -r requirements.txt -r requirements-dev.txt
       - name: Lint
         run: |
@@ -36,6 +36,26 @@ jobs:
           sudo usermod --append --groups lxd $(whoami)
           sudo lxd init --auto
           snapcraft --use-lxd
+      - name: Setup Virtuerl
+        working-directory: virtuerl
+        run: |
+          sudo -s rebar3 compile
+
+          cat << EOF | sudo tee -a /etc/systemd/system/virtuerl.service
+          [Unit]
+          Description=Virtuerl
+          After=network.target
+
+          [Service]
+          WorkingDirectory=${PWD}
+          ExecStart=/bin/sh -c 'erl -pa _build/default/lib/*/ebin -config config/sys.config -s virtuerl_app -noshell -noinput'
+          Restart=always
+
+          [Install]
+          WantedBy=multi-user.target
+          EOF
+
+          sudo systemctl --now enable virtuerl
       - name: Integration Tests
         run: |
           sudo snap install --dangerous minivirt*.snap
