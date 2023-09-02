@@ -37,7 +37,7 @@ req(Msg) ->
 
 ipam_create_net(NetworkDef) ->
 	{Address, Prefixlen} = NetworkDef,
-	ID = binary:encode_hex(<<(rand:uniform(16#FFFFFFFF)-1):32>>),
+	ID = virtuerl_util:uuid4(),
 	ipam_put_net({ID, Address, Prefixlen}).
 
 ipam_put_net(NetworkDef) ->

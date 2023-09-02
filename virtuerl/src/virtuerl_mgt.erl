@@ -78,7 +78,7 @@ generate_unique_tap_name(TapNames) ->
 
 handle_call({domain_create, #{network_id := NetworkID}}, _From, State) ->
   {Table} = State,
-  DomainID = binary:encode_hex(<<(rand:uniform(16#FFFFFFFF)-1):32>>),
+  DomainID = virtuerl_util:uuid4(),
   Domain = #domain{id = DomainID, network_id = NetworkID},
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
