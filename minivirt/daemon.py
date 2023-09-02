@@ -6,11 +6,13 @@ import uuid
 from datetime import datetime, timezone
 
 import libvirt
+import requests
 import xmltodict
 from google.protobuf import empty_pb2, timestamp_pb2
 from grpc import StatusCode
 from pyroute2 import IPRoute
 from pyroute2.netlink.rtnl import rtypes
+from requests.exceptions import ConnectionError, HTTPError
 from sqlalchemy import delete, select
 
 from minivirt import (
@@ -336,6 +338,24 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateNetwork(self, request, context):
         network = request.network
 
+        try:
+            net_json = {}
+            if network.cidr:
+                net_json["cidr4"] = network.cidr
+            if network.cidr6:
+                net_json["cidr6"] = network.cidr6
+            res = requests.post(
+                "http://localhost:8080/networks",
+                json={"network": net_json},
+            )
+            res.raise_for_status()
+            virtuerl_net = res.json()
+            net_id = virtuerl_net["id"]
+        except ConnectionError as e:
+            net_id = uuid.uuid4()
+        except HTTPError as e:
+            raise e
+
         nets = [network.cidr, network.cidr6]
         nets = [ipaddress.ip_network(net) for net in nets if net]
         assert len(nets), "no networks supplied"
@@ -356,6 +376,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         lvnet = self.conn.networkDefineXML(
             f"""<network>
   <name>{network.name}</name>
+  <uuid>{net_id}</uuid>
   <metadata>
     <restvirt:metadata xmlns:restvirt="https://restvirt.io/xml">
         <created>{creation_timestamp.isoformat()}</created>
@@ -377,6 +398,9 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         net = self.conn.networkLookupByUUIDString(request.uuid)
         net.destroy()
         net.undefine()
+
+        requests.delete(f"http://localhost:8080/networks/{request.uuid}")
+
         return empty_pb2.Empty()
 
     def StartDomain(self, request, context):
@@ -428,6 +452,20 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateDomain(self, request, context):
         domreq = request.domain
 
+        try:
+            res = requests.post(
+                "http://localhost:8080/domains", json={"domain": {"network_id": domreq.network}}
+            )
+            res.raise_for_status()
+            virtuerl_dom = res.json()
+            dom_id = virtuerl_dom["id"]
+            tap_name = virtuerl_dom["tap_name"]
+            print(f"TAP NAME: {tap_name}")
+        except ConnectionError as e:
+            dom_id = uuid.uuid4()
+        except HTTPError as e:
+            raise e
+
         lvnet = self.conn.networkLookupByUUIDString(domreq.network)
         net_dict = xmltodict.parse(lvnet.XMLDesc(), force_list=("ip",))
         net_def = net_dict["network"]["ip"][0]
@@ -441,7 +479,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             gateway6 = ipaddress.ip_address(net6_def["@address"])
             net6 = ipaddress.ip_network(f'{gateway6}/{net6_def["@prefix"]}', strict=False)
 
-        dom_uuid = uuid.uuid4()
+        dom_uuid = dom_id
         os_type = domreq.os_type
         if os_type is None:
             os_type = "linux"
@@ -619,6 +657,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         vol.delete()
         vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
         vol.delete()
+
+        requests.delete(f"http://localhost:8080/domains/{str(request.uuid)}")
 
         return empty_pb2.Empty()
 
