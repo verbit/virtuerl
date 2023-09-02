@@ -26,5 +26,6 @@ setup(
         "dnslib==0.9.16",
         "dnspython==2.2.1",
         "PyYAML==6.0",
+        "requests==2.31.0",
     ],
 )
