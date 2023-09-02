@@ -107,6 +107,8 @@ jobs:
           sudo snap start --enable minivirt.unbound
           sudo snap start --enable minivirt.controller
 
+          sleep 5
+
           sudo minivirt.register -a 127.0.0.1:8093 --name default -b 127.0.0.1:8099 --client-cert /var/snap/minivirt/common/server.crt --client-key /var/snap/minivirt/common/server.key --server-ca-cert /var/snap/minivirt/common/ca.crt
           sudo snap set minivirt daemon.args='--debug -a 127.0.0.1:8093 -b 127.0.0.1:8099 -c $SNAP_COMMON --client-cert $SNAP_COMMON/server.crt --client-key $SNAP_COMMON/server.key --server-ca-cert $SNAP_COMMON/ca.crt'
           sudo snap start --enable minivirt.daemon
