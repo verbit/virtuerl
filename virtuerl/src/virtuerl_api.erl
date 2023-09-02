@@ -127,8 +127,9 @@ handle(networks, 'POST', _, Req) ->
   {Addr, Prefixlen} = virtuerl_net:parse_cidr(CIDR),
   io:format("POST~n"),
   io:format("NetworkDef ~p/~p~n", [Addr, Prefixlen]),
-  virtuerl_ipam:ipam_create_net({Addr, Prefixlen}),
-  mochiweb_request:ok({[], "HELLO\n"}, Req);
+  {ok, {ID, _, _}} = virtuerl_ipam:ipam_create_net({Addr, Prefixlen}),
+  RespJSON = thoas:encode(#{id => ID}),
+  mochiweb_request:respond({201, [{"Content-Type", "application/json"}, {"Location", "/networks/" ++ binary_to_list(ID)}], RespJSON}, Req);
 handle(network, 'PUT', #{id := ID}, Req) ->
   JSON = parse_json(Req),
   #{<<"network">> := #{<<"cidr">> := CIDR}} = JSON,

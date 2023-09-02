@@ -42,8 +42,8 @@ ipam_create_net(NetworkDef) ->
 
 ipam_put_net(NetworkDef) ->
 	case gen_server:call(ipam, {net_put, NetworkDef}) of
-		{ok, Res} ->
-			Res;
+		ok ->
+			{ok, NetworkDef};
 		Other ->
 			Other
 	end.
