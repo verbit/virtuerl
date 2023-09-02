@@ -351,49 +351,15 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             res.raise_for_status()
             virtuerl_net = res.json()
             net_id = virtuerl_net["id"]
-        except ConnectionError as e:
-            net_id = uuid.uuid4()
         except HTTPError as e:
             raise e
 
-        nets = [network.cidr, network.cidr6]
-        nets = [ipaddress.ip_network(net) for net in nets if net]
-        assert len(nets), "no networks supplied"
-
-        def to_family_string(net):
-            if isinstance(net, ipaddress.IPv4Network):
-                return "ipv4"
-            elif isinstance(net, ipaddress.IPv6Network):
-                return "ipv6"
-            else:
-                assert False, "unknown ip familiy"
-
-        netdefs = [
-            f"<ip family='{to_family_string(net)}' address='{net[1]}' prefix='{net.prefixlen}'/>"
-            for net in nets
-        ]
-        creation_timestamp = datetime.now(timezone.utc)
-        lvnet = self.conn.networkDefineXML(
-            f"""<network>
-  <name>{network.name}</name>
-  <uuid>{net_id}</uuid>
-  <metadata>
-    <restvirt:metadata xmlns:restvirt="https://restvirt.io/xml">
-        <created>{creation_timestamp.isoformat()}</created>
-        <virtuerl>true</virtuerl>
-    </restvirt:metadata>
-  </metadata>
-  <forward mode='open'/>
-  <bridge stp='on' delay='0'/>
-  <dns enable='no'>
-  </dns>
-{chr(10).join(netdefs)}
-</network>
-"""
+        return domain_pb2.Network(
+            uuid=net_id,
+            name="name",
+            cidr=network.cidr,
+            cidr6=network.cidr6,
         )
-        lvnet.create()
-        lvnet.destroy()
-        return _network_to_pb(lvnet)
 
     def DeleteNetwork(self, request, context):
         try:
