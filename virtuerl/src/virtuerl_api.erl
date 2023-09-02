@@ -151,7 +151,7 @@ handle(domains, 'POST', _, Req) ->
   #{<<"domain">> := #{<<"network_id">> := NetworkID}} = JSON,
   {ok, Resp} = virtuerl_mgt:domain_create(#{network_id => NetworkID}),
   #{id := DomainID, tap_name := TapName, ip_addr := IP} = Resp,
-  RespJSON = thoas:encode(#{id => DomainID, tap_name => TapName, ip_addr => virtuerl_net:format_ip(IP)}),
+  RespJSON = thoas:encode(#{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => iolist_to_binary(virtuerl_net:format_ip(IP))}),
   mochiweb_request:respond({201, [{"Content-Type", "application/json"}, {"Location", "/domains/" ++ binary_to_list(DomainID)}], RespJSON}, Req);
 handle(domain, 'GET', #{id := ID}, Req) ->
   io:format("DOMAIN GET: ~p~n", [ID]),
