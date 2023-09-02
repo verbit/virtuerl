@@ -123,7 +123,7 @@ handle(networks, 'GET', _, Req) ->
   mochiweb_request:respond({200, [{"Content-Type", "application/json"}], thoas:encode(Nets)}, Req);
 handle(networks, 'POST', _, Req) ->
   JSON = parse_json(Req),
-  #{<<"network">> := #{<<"cidr">> := CIDR}} = JSON,
+  #{<<"network">> := #{<<"cidr4">> := CIDR}} = JSON,
   {Addr, Prefixlen} = virtuerl_net:parse_cidr(CIDR),
   io:format("POST~n"),
   io:format("NetworkDef ~p/~p~n", [Addr, Prefixlen]),
