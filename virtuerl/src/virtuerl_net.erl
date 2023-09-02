@@ -219,4 +219,5 @@ add_taps([]) -> ok;
 add_taps([{Tap, Bridge}|T]) ->
   Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s master ~s~n", [Tap, Tap, Bridge]),
   io:format(Cmd),
-  os:cmd(Cmd).
+  os:cmd(Cmd),
+  add_taps(T).

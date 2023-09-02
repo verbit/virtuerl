@@ -380,6 +380,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
   <metadata>
     <restvirt:metadata xmlns:restvirt="https://restvirt.io/xml">
         <created>{creation_timestamp.isoformat()}</created>
+        <virtuerl>true</virtuerl>
     </restvirt:metadata>
   </metadata>
   <forward mode='open'/>
@@ -391,13 +392,19 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 """
         )
         lvnet.create()
-        lvnet.setAutostart(True)
+        lvnet.destroy()
         return _network_to_pb(lvnet)
 
     def DeleteNetwork(self, request, context):
-        net = self.conn.networkLookupByUUIDString(request.uuid)
-        net.destroy()
-        net.undefine()
+        try:
+            net = self.conn.networkLookupByUUIDString(request.uuid)
+            try:
+                net.destroy()
+            except:
+                pass
+            net.undefine()
+        except:
+            pass
 
         requests.delete(f"http://localhost:8080/networks/{request.uuid}")
 
@@ -452,32 +459,46 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def CreateDomain(self, request, context):
         domreq = request.domain
 
+        req_net = {"domain": {"network_id": domreq.network}}
+        private_ip = domreq.private_ip
+        if private_ip:
+            req_net["domain"]["ipv4_addr"] = private_ip
+        ipv6_address = domreq.ipv6_address
+
         try:
-            res = requests.post(
-                "http://localhost:8080/domains", json={"domain": {"network_id": domreq.network}}
-            )
+            res = requests.post("http://localhost:8080/domains", json=req_net)
             res.raise_for_status()
             virtuerl_dom = res.json()
             dom_id = virtuerl_dom["id"]
             tap_name = virtuerl_dom["tap_name"]
+            ip_addr = virtuerl_dom["ip_addr"]
             print(f"TAP NAME: {tap_name}")
-        except ConnectionError as e:
-            dom_id = uuid.uuid4()
         except HTTPError as e:
             raise e
 
-        lvnet = self.conn.networkLookupByUUIDString(domreq.network)
-        net_dict = xmltodict.parse(lvnet.XMLDesc(), force_list=("ip",))
-        net_def = net_dict["network"]["ip"][0]
-        gateway = ipaddress.ip_address(net_def["@address"])
-        net = ipaddress.ip_network(f"{gateway}/{_network_prefix(net_def)}", strict=False)
-
         gateway6 = None
         net6 = None
-        if len(net_dict["network"]["ip"]) > 1:
-            net6_def = net_dict["network"]["ip"][1]
-            gateway6 = ipaddress.ip_address(net6_def["@address"])
-            net6 = ipaddress.ip_network(f'{gateway6}/{net6_def["@prefix"]}', strict=False)
+
+        try:
+            lvnet = self.conn.networkLookupByUUIDString(domreq.network)
+
+            net_dict = xmltodict.parse(lvnet.XMLDesc(), force_list=("ip",))
+            net_def = net_dict["network"]["ip"][0]
+            gateway = ipaddress.ip_address(net_def["@address"])
+            net = ipaddress.ip_network(f"{gateway}/{_network_prefix(net_def)}", strict=False)
+
+            if len(net_dict["network"]["ip"]) > 1:
+                net6_def = net_dict["network"]["ip"][1]
+                gateway6 = ipaddress.ip_address(net6_def["@address"])
+                net6 = ipaddress.ip_network(f'{gateway6}/{net6_def["@prefix"]}', strict=False)
+
+            is_virtuerl_net = False
+        except libvirt.libvirtError as e:
+            if e.get_error_code() != libvirt.VIR_ERR_NO_NETWORK:
+                raise e
+            private_ip = ip_addr
+
+            is_virtuerl_net = True
 
         dom_uuid = dom_id
         os_type = domreq.os_type
@@ -486,8 +507,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         user_data = domreq.user_data
         if user_data is None:
             user_data = ""
-        private_ip = domreq.private_ip
-        ipv6_address = domreq.ipv6_address
         with self.lock:
             with self.session_factory() as session:
                 domains = session.execute(select(Domain)).scalars().all()
@@ -513,6 +532,24 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         ip = ipaddress.ip_address(private_ip)
         ip6 = ipaddress.ip_address(ipv6_address) if ipv6_address else None
+        mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
+            0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
+        )
+
+        if is_virtuerl_net:
+            netxml = f"""<interface type='ethernet'>
+  <mac address='{mac}'/>
+  <target dev='{tap_name}' managed='no'/>
+  <model type='virtio'/>
+</interface>
+"""
+        else:
+            netxml = f"""<interface type='network'>
+  <mac address='{mac}'/>
+  <source network='{lvnet.name()}'/>
+  <model type='virtio'/>
+</interface>
+"""
 
         img_pool = self.conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
@@ -562,9 +599,6 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         )
         root_image_path = vol.path()
 
-        mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
-            0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
-        )
         ccfg_raw = create_cloud_config_image(
             domain_id=dom_uuid,
             user_data=user_data,
@@ -621,11 +655,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
       <source file='{ccfg_vol.path()}'/>
       <target dev='vde' bus='sata'/>
     </disk>
-    <interface type='network'>
-      <mac address='{mac}'/>
-      <source network='{lvnet.name()}'/>
-      <model type='virtio'/>
-    </interface>
+    {netxml}
     <console type='pty'/>
   </devices>
 </domain>"""
