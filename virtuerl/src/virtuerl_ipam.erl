@@ -7,7 +7,7 @@
 
 -behavior(gen_server).
 
--export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_put_ip/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0]).
+-export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_put_ip/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1]).
 
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
@@ -59,6 +59,15 @@ ipam_delete_net(ID) ->
 			Other
 	end.
 
+ipam_get_net(Id) ->
+	case gen_server:call(ipam, {net_get, Id}) of
+		{ok, #network{address = Address, prefixlen = PrefixLen}} ->
+			Cidr4 = iolist_to_binary([virtuerl_net:format_ip_bitstring(Address), "/", integer_to_binary(PrefixLen)]),
+			Res = #{id => Id, cidr4 => Cidr4},
+			{ok, Res};
+		Other -> Other
+	end.
+
 ipam_put_ip(NetworkName, IP) ->
 	gen_server:call(ipam, {ip_put, NetworkName, IP}).
 
@@ -106,6 +115,8 @@ handle_call(net_list, _From, StoreId) ->
 			{reply, {ok, Res}, StoreId};
 		Res -> {reply, Res, StoreId}
 	end;
+handle_call({net_get, NetworkId}, _From, StoreId) ->
+	{reply, khepri:get(StoreId, [network, NetworkId]), StoreId};
 handle_call({net_put, Network}, _From, StoreId) ->
 	{ID, Address, PrefixLen} = Network,
 	{From, To} = get_range({Address, PrefixLen}),
