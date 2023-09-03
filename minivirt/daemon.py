@@ -55,9 +55,12 @@ def domain_to_dict(domain):
         "name": d["name"],
         "vcpu": int(d["vcpu"]["#text"]),
         "memory": int(d["memory"]["#text"]) // 1024,
-        "network": d["devices"]["interface"]["source"]["@network"],
         "nested_virtualization": d["cpu"]["@mode"] == "host-model",
     }
+    try:
+        res["network"] = d["devices"]["interface"]["source"]["@network"]
+    except:
+        pass
     try:  # FIXME: once all have create metadata, remove this try/catch
         dt = datetime.fromisoformat(d["metadata"]["restvirt:metadata"]["created"])
         res["created_at"] = timestamp_pb2.Timestamp(
@@ -392,8 +395,13 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     def _get_domain(self, uuid):
         domain_lv = self.conn.lookupByUUIDString(uuid)
         domain_dict = domain_to_dict(domain_lv)
-        net = self.conn.networkLookupByName(domain_dict["network"])
-        domain_dict["network"] = net.UUIDString()
+        try:
+            net = self.conn.networkLookupByName(domain_dict["network"])
+            domain_dict["network"] = net.UUIDString()
+        except:
+            res = requests.get(f"http://localhost:8080/domains/{uuid}")
+            resj = res.json()
+            domain_dict["network"] = resj["network_id"]
         state, _ = domain_lv.state()
         domain_dict["state"] = libvirt_state_to_string(state)
 
