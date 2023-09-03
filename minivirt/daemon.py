@@ -464,6 +464,11 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 raise e
             private_ip = ip_addr
 
+            vres = requests.get(f"http://localhost:8080/networks/{domreq.network}")
+            vres.raise_for_status()
+            vresj = vres.json()
+            net = ipaddress.ip_network(vresj["cidr4"], strict=False)
+
             is_virtuerl_net = True
 
         dom_uuid = dom_id

@@ -140,7 +140,9 @@ handle(network, 'PUT', #{id := ID}, Req) ->
   mochiweb_request:ok({[], "HELLO\n"}, Req);
 handle(network, 'GET', #{id := ID}, Req) ->
   io:format("GET: ~p~n", [ID]),
-  mochiweb_request:ok({[], "HELLO\n"}, Req);
+  {ok, Net} = virtuerl_ipam:ipam_get_net(list_to_binary(ID)),
+  RespJson = thoas:encode(Net),
+  mochiweb_request:respond({200, [{"Content-Type", "application/json"}], RespJson}, Req);
 handle(network, 'DELETE', #{id := ID}, Req) ->
   io:format("DELETE: ~p~n", [ID]),
   ok = virtuerl_ipam:ipam_delete_net(list_to_binary(ID)),
