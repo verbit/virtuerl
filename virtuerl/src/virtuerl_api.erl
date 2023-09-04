@@ -151,7 +151,12 @@ handle(network, 'DELETE', #{id := ID}, Req) ->
 handle(domains, 'POST', _, Req) ->
   JSON = parse_json(Req),
   #{<<"domain">> := #{<<"network_id">> := NetworkID}} = JSON,
-  {ok, Resp} = virtuerl_mgt:domain_create(#{network_id => NetworkID}),
+  {ok, Resp} = case JSON of
+    #{<<"domain">> := #{<<"ipv4_addr">> := Ipv4Addr}} ->
+      virtuerl_mgt:domain_create(#{network_id => NetworkID, ipv4_addr => Ipv4Addr});
+    _ ->
+      virtuerl_mgt:domain_create(#{network_id => NetworkID})
+  end,
   #{id := DomainID, tap_name := TapName, ip_addr := IP} = Resp,
   RespJSON = thoas:encode(#{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => iolist_to_binary(virtuerl_net:format_ip(IP))}),
   mochiweb_request:respond({201, [{"Content-Type", "application/json"}, {"Location", "/domains/" ++ binary_to_list(DomainID)}], RespJSON}, Req);
