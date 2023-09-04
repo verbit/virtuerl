@@ -86,8 +86,8 @@ handle_call({domain_create, Conf}, _From, State) ->
   {ok, Network, IP} = case Conf of
     #{ipv4_addr := Ipv4Addr} ->
       Ipv4Addr1 = virtuerl_net:parse_ip(Ipv4Addr),
-      ok = virtuerl_ipam:ipam_put_ip(NetworkID, Ipv4Addr1, DomainID),
-      {ok, NetworkID, Ipv4Addr1};
+      {ok, NetRes} = virtuerl_ipam:ipam_put_ip(NetworkID, Ipv4Addr1, DomainID),
+      {ok, NetRes, Ipv4Addr1};
    _ ->
       virtuerl_ipam:assign_next(NetworkID, DomainID)
   end,
@@ -97,7 +97,7 @@ handle_call({domain_create, Conf}, _From, State) ->
   dets:insert(Table, {DomainID, Domain#domain{network_addr =Network, ipv4_addr=IP, tap_name = TapName}}),
   dets:sync(Table),
 
-  gen_server:call(virtuerl_net, {net_update}),
+  ok = gen_server:call(virtuerl_net, {net_update}),
   supervisor:start_child(virtuerl_sup, {
     DomainID,
     {virtuerl_qemu, start_link, [DomainID]},

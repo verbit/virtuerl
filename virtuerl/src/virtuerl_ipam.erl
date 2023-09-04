@@ -163,7 +163,17 @@ handle_call({ip_next, NetworkID, DomainID}, _From, StoreId) ->
 	{reply, R, StoreId};
 
 handle_call({ip_put, NetworkId, IpAddr, DomainId}, _From, StoreId) ->
-	R = khepri:create(StoreId, [network, NetworkId, IpAddr], DomainId),
+	R = case khepri:get([network, NetworkId]) of
+		{ok, Network} ->
+			#network{address = Address, prefixlen = PrefixLen} = Network,
+			case khepri:create(StoreId, [network, NetworkId, IpAddr], DomainId) of
+				ok ->
+					{ok, {Address, PrefixLen}};
+				Other -> Other
+			end;
+		{error, ?khepri_error(node_not_found, _)} ->
+			{error, network_not_found}
+	end,
 	{reply, R, StoreId};
 
 handle_call({ip_clear}, _From, StoreId) ->
