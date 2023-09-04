@@ -97,7 +97,7 @@ handle_call({domain_create, Conf}, _From, State) ->
   dets:insert(Table, {DomainID, Domain#domain{network_addr =Network, ipv4_addr=IP, tap_name = TapName}}),
   dets:sync(Table),
 
-  gen_server:cast(virtuerl_net, {net_update}),
+  gen_server:call(virtuerl_net, {net_update}),
   supervisor:start_child(virtuerl_sup, {
     DomainID,
     {virtuerl_qemu, start_link, [DomainID]},
