@@ -201,7 +201,7 @@ sync_taps(Domains) ->
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
   lists:foreach(fun (E) ->
-    Cmd = io_lib:format("ip tuntap del ~s~n", [E]),
+    Cmd = io_lib:format("ip link del ~s~n", [E]),
     io:format(Cmd),
     os:cmd(Cmd)
 end, sets:to_list(TapsToDelete)),
