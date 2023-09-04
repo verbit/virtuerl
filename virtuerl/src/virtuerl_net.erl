@@ -35,6 +35,11 @@ terminate(_Reason, {Table}) ->
   dets:close(Table).
 
 handle_call({vm_create, Conf}, _From, State) ->
+  {reply, ok, State};
+
+handle_call({net_update}, _From, State) ->
+  {Table} = State,
+  update_net(Table),
   {reply, ok, State}.
 
 handle_cast({net_update}, State) ->
