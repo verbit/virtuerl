@@ -7,7 +7,7 @@
 
 -behavior(gen_server).
 
--export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_put_ip/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1]).
+-export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1, ipam_put_ip/3]).
 
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
@@ -68,8 +68,8 @@ ipam_get_net(Id) ->
 		Other -> Other
 	end.
 
-ipam_put_ip(NetworkName, IP) ->
-	gen_server:call(ipam, {ip_put, NetworkName, IP}).
+ipam_put_ip(NetworkName, IP, DomainId) ->
+	gen_server:call(ipam, {ip_put, NetworkName, IP, DomainId}).
 
 assign_next(NetworkID, VMID) ->
 	case gen_server:call(ipam, {ip_next, NetworkID, VMID}) of
@@ -162,8 +162,8 @@ handle_call({ip_next, NetworkID, DomainID}, _From, StoreId) ->
 	end),
 	{reply, R, StoreId};
 
-handle_call({ip_put, NetworkName, IPBlock, IPAddress}, _From, StoreId) ->
-	R = khepri:put(StoreId, [network, NetworkName, IPBlock, IPAddress], khepri_payload:none()),
+handle_call({ip_put, NetworkId, IpAddr, DomainId}, _From, StoreId) ->
+	R = khepri:create(StoreId, [network, NetworkId, IpAddr], DomainId),
 	{reply, R, StoreId};
 
 handle_call({ip_clear}, _From, StoreId) ->

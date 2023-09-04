@@ -76,13 +76,21 @@ generate_unique_tap_name(TapNames) ->
       generate_unique_tap_name(TapNames)
   end.
 
-handle_call({domain_create, #{network_id := NetworkID}}, _From, State) ->
+handle_call({domain_create, Conf}, _From, State) ->
   {Table} = State,
+  #{network_id := NetworkID} = Conf,
   DomainID = virtuerl_util:uuid4(),
-  Domain = #domain{id = DomainID, network_id = NetworkID},
+  Domain = #domain{id = DomainID, network_id = NetworkID},  % TODO: save ipv4 addr as well
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
-  {ok, Network, IP} = virtuerl_ipam:assign_next(NetworkID, DomainID),
+  {ok, Network, IP} = case Conf of
+    #{ipv4_addr := Ipv4Addr} ->
+      Ipv4Addr1 = virtuerl_net:parse_ip(Ipv4Addr),
+      ok = virtuerl_ipam:ipam_put_ip(NetworkID, Ipv4Addr1, DomainID),
+      {ok, NetworkID, Ipv4Addr1};
+   _ ->
+      virtuerl_ipam:assign_next(NetworkID, DomainID)
+  end,
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #domain{tap_name=Tap} <- Domains]),
   TapName = generate_unique_tap_name(TapNames),
@@ -98,12 +106,12 @@ handle_call({domain_create, #{network_id := NetworkID}}, _From, State) ->
     worker,
     []
   }),
-  {reply, {ok, #{id => DomainID, tap_name => TapName, ip_addr => IP}}, State};
+  {reply, {ok, #{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => IP}}, State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
     [{_, #domain{network_id = NetworkID, ipv4_addr=IP, tap_name = TapName}}] ->
-      DomRet = #{network_id => NetworkID, ipv4_addr => virtuerl_net:format_ip_bitstring(IP)}, % , tap_name => TapName
+      DomRet = #{network_id => NetworkID, ipv4_addr => virtuerl_net:format_ip_bitstring(IP), tap_name => iolist_to_binary(TapName)},
       {ok, DomRet};
     [] -> notfound
   end,
