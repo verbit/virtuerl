@@ -7,7 +7,7 @@
 
 -behavior(gen_server).
 
--export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, assign_next/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1, ipam_put_ip/3]).
+-export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1, ipam_put_ip/3, assign_next/3]).
 
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
@@ -36,9 +36,8 @@ req(Msg) ->
 -record(network, {last_insert, from, to, address, prefixlen}).
 
 ipam_create_net(NetworkDef) ->
-	{Address, Prefixlen} = NetworkDef,
 	ID = virtuerl_util:uuid4(),
-	ipam_put_net({ID, Address, Prefixlen}).
+	ipam_put_net({ID, NetworkDef}).
 
 ipam_put_net(NetworkDef) ->
 	case gen_server:call(ipam, {net_put, NetworkDef}) of
@@ -61,18 +60,21 @@ ipam_delete_net(ID) ->
 
 ipam_get_net(Id) ->
 	case gen_server:call(ipam, {net_get, Id}) of
-		{ok, #network{address = Address, prefixlen = PrefixLen}} ->
-			Cidr4 = iolist_to_binary([virtuerl_net:format_ip_bitstring(Address), "/", integer_to_binary(PrefixLen)]),
-			Res = #{id => Id, cidr4 => Cidr4},
+		{ok, Pools} ->
+			io:format("POOLS: ~p~n", [Pools]),
+			Cidrs = [iolist_to_binary([Address, "/", integer_to_binary(Prefixlen)]) || #{address := Address, prefixlen := Prefixlen} <- maps:values(Pools)],
+			Res = #{id => Id, cidrs => Cidrs},
 			{ok, Res};
-		Other -> Other
+		Other ->
+			io:format("Error ~p~n", [Other]),
+			Other
 	end.
 
 ipam_put_ip(NetworkName, IP, DomainId) ->
 	gen_server:call(ipam, {ip_put, NetworkName, IP, DomainId}).
 
-assign_next(NetworkID, VMID) ->
-	case gen_server:call(ipam, {ip_next, NetworkID, VMID}) of
+assign_next(NetworkID, Tag, VMID) ->
+	case gen_server:call(ipam, {ip_next, NetworkID, Tag, VMID}) of
 		{ok, Res} ->
 			Res;
 		Other ->
@@ -109,49 +111,68 @@ terminate(_Reason, StoreId) ->
 	end.
 
 handle_call(net_list, _From, StoreId) ->
-	case khepri:get_many(StoreId, [network, ?KHEPRI_WILDCARD_STAR]) of
+	case khepri:get_many(StoreId, [network, ?KHEPRI_WILDCARD_STAR, ?KHEPRI_WILDCARD_STAR]) of
 		{ok, Map} ->
-			Res = maps:from_list([{NetworkId, #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)]),
+			ToMapKey = fun(Tag) -> case Tag of ipv4 -> cidr4; ipv6 -> cidr6 end end,
+			Res0 = [{NetworkId, ToMapKey(Tag),  #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId, Tag], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)],
+			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
+			Res = maps:map(fun(_, V) -> maps:from_list(V) end, Res1),
 			{reply, {ok, Res}, StoreId};
 		Res -> {reply, Res, StoreId}
 	end;
 handle_call({net_get, NetworkId}, _From, StoreId) ->
-	{reply, khepri:get(StoreId, [network, NetworkId]), StoreId};
+	case khepri:get_many(StoreId, [network, NetworkId, ?KHEPRI_WILDCARD_STAR]) of
+		{ok, Map} ->
+			ToMapKey = fun(Tag) -> case Tag of ipv4 -> cidr4; ipv6 -> cidr6 end end,
+			Res0 = [{NetworkId, ToMapKey(Tag),  #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId, Tag], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)],
+			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
+			#{NetworkId := Res} = maps:map(fun(_, V) -> maps:from_list(V) end, Res1),
+			{reply, {ok, Res}, StoreId};
+		Res -> {reply, Res, StoreId}
+	end;
 handle_call({net_put, Network}, _From, StoreId) ->
-	{ID, Address, PrefixLen} = Network,
-	{From, To} = get_range({Address, PrefixLen}),
-	case To - From =< 8 of
-	false ->
-		BitLength = bit_size(Address),
-		ok = khepri:put(StoreId, [network, ID], #network{address = Address, prefixlen = PrefixLen, from= <<(From+8):BitLength>>, to= <<To:BitLength>>, last_insert= <<(From+8):BitLength>>}),
-		{reply, ok, StoreId};
-		true ->
+	{ID, Defs} = Network,
+	Ranges = [get_range({Address, PrefixLen}) || {Address, PrefixLen} <- Defs],
+	TooSmallNets = [too_small || {From, To} <- Ranges, To - From =< 8],
+	case TooSmallNets of
+		[] ->
+			InsertNet = fun({Address, Prefixlen}) ->
+				{From, To} = get_range({Address, Prefixlen}),
+				BitLength = bit_size(Address),
+				Tag = case BitLength of
+								32 -> ipv4;
+								128 -> ipv6
+							end,
+				ok = khepri:put(StoreId, [network, ID, Tag], #network{address = Address, prefixlen = Prefixlen, from = <<(From + 8):BitLength>>, to = <<To:BitLength>>, last_insert = <<(From + 8):BitLength>>})
+									end,
+			lists:foreach(InsertNet, Defs),
+			{reply, {ok, ID}, StoreId};
+		_ ->
 			{reply, {error, network_too_small}, StoreId}
 	end;
 handle_call({net_delete, ID}, _From, StoreId) ->
 	Ret = khepri:delete(StoreId, [network, ID]),
 	{reply, Ret, StoreId};
 
-handle_call({ip_next, NetworkID}, _From, StoreId) -> handle_call({ip_next, NetworkID, ""}, _From, StoreId);
-handle_call({ip_next, NetworkID, DomainID}, _From, StoreId) ->
+handle_call({ip_next, NetworkID, Tag, DomainID}, _From, StoreId) ->
 	R = khepri:transaction(StoreId, fun() ->
-		case khepri_tx:get([network, NetworkID]) of
+		case khepri_tx:get([network, NetworkID, Tag]) of
 			{ok, Network} ->
 				#network{address = Address, prefixlen = PrefixLen, last_insert= LastInsertBin, from= FromBin, to= ToBin} = Network,
 				BitLength = bit_size(LastInsertBin),
 				<<LastInsert:BitLength>> = LastInsertBin,
 				<<From:BitLength>> = FromBin,
 				<<To:BitLength>> = ToBin,
-				{ok, Map} = khepri_tx:get_many([network, NetworkID, #if_name_matches{regex = any}]),
+				{ok, Map} = khepri_tx:get_many([network, NetworkID, Tag, #if_name_matches{regex = any}]),
 				NextIP = case LastInsert of
 									 undefined ->
-										 get_next(Map, [network, NetworkID], BitLength, From, To, From);
+										 get_next(Map, [network, NetworkID, Tag], BitLength, From, To, From);
 									 Payload ->
-										 get_next(Map, [network, NetworkID], BitLength, From, To, Payload)
+										 get_next(Map, [network, NetworkID, Tag], BitLength, From, To, Payload)
 								 end,
 				case NextIP of
 					{ok, IP} ->
-						khepri_tx:put([network, NetworkID, <<IP:BitLength>>], DomainID),
+						khepri_tx:put([network, NetworkID, Tag, <<IP:BitLength>>], DomainID),
 						{ok, {Address, PrefixLen}, <<IP:BitLength>>};
 					Other ->
 						Other
@@ -163,10 +184,14 @@ handle_call({ip_next, NetworkID, DomainID}, _From, StoreId) ->
 	{reply, R, StoreId};
 
 handle_call({ip_put, NetworkId, IpAddr, DomainId}, _From, StoreId) ->
-	R = case khepri:get([network, NetworkId]) of
+	Tag = case bit_size(IpAddr) of
+		32 -> ipv4;
+		128 -> ipv6
+	end,
+	R = case khepri:get([network, NetworkId, Tag]) of
 		{ok, Network} ->
 			#network{address = Address, prefixlen = PrefixLen} = Network,
-			case khepri:create(StoreId, [network, NetworkId, IpAddr], DomainId) of
+			case khepri:create(StoreId, [network, NetworkId, Tag, IpAddr], DomainId) of
 				ok ->
 					{ok, {Address, PrefixLen}};
 				Other -> Other

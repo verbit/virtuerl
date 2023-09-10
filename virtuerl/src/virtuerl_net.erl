@@ -73,7 +73,7 @@ update_net(Table) ->
   [io:format("~p~n", [Domain]) || Domain <- Domains],
   reload_net(Table).
 
--record(domain, {id, network_id, network_addr, ipv4_addr, tap_name}).
+-record(domain, {id, network_id, network_addrs, ipv4_addr, ipv6_addr, tap_name}).
 
 handle_interface(If, Table) ->
   %% 1. Delete all devices without an address set
@@ -82,24 +82,27 @@ handle_interface(If, Table) ->
     [] -> os:cmd(io_lib:format("ip addr del ~p", [maps:get(<<"ifname">>, If)]))
   end.
 
-get_cidr(If) ->
+get_cidrs(If) ->
   Addrs = maps:get(<<"addr_info">>, If, []),
   Ifname = maps:get(<<"ifname">>, If),
   case Addrs of
     [] -> {unset, Ifname};
-    [Something] -> {{parse_ip(maps:get(<<"local">>, Something)), maps:get(<<"prefixlen">>, Something)}, Ifname}
+    AddrInfos when is_list(AddrInfos) ->
+      Cidrs = [ iolist_to_binary([Ip, "/", integer_to_binary(Prefixlen)])
+        || #{<<"local">> := Ip, <<"prefixlen">> := Prefixlen} <- AddrInfos],
+      {lists:sort(Cidrs), Ifname}
   end.
 
 reload_net(Table) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
   io:format("~p~n", [JSON]),
-  Matched = maps:from_list([get_cidr(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
+  Matched = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
 %%  lists:foreach(fun(L) -> handle_interface(L, Table) end, Matched),
   io:format("Actual: ~p~n", [Matched]),
   Domains = dets:match_object(Table, '_'),
 
-  TargetAddrs = sets:from_list([{bridge_addr(Addr), Prefixlen} || {_, #domain{network_addr = {Addr, Prefixlen}}} <- Domains]),
+  TargetAddrs = sets:from_list([lists:sort(Cidrs) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
   io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
   sync_networks(Matched, TargetAddrs),
   sync_taps(Domains),
@@ -144,8 +147,8 @@ build_routes([{Addr, Bridge}|L]) ->
 update_bird_conf(Domains) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
-  Bridges = maps:from_list([get_cidr(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
-  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}} || {_, #domain{network_addr = {NetAddr, Prefixlen}, ipv4_addr = Addr}} <- Domains]),
+  Bridges = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
+  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}} || {_, #domain{network_addrs = {NetAddr, Prefixlen}, ipv4_addr = Addr}} <- Domains]),
   AddrToBridgeMap = maps:map(fun (_, Net) -> maps:get(Net, Bridges) end, AddrMap),
 
   io:format("DOMAINS: ~p~n", [Domains]),
@@ -172,9 +175,10 @@ sync_networks(ActualAddrs, TargetAddrs) ->
 
 add_bridges([], _) ->
   ok;
-add_bridges([{Addr,Prefixlen}|T], Ifnames) ->
+add_bridges([Cidrs|T], Ifnames) ->
   Ifname = generate_unique_bridge_name(Ifnames),
-  Cmd = io_lib:format("ip link add name ~s type bridge~nip addr add ~s/~B dev ~s~n", [Ifname, format_ip(Addr), Prefixlen, Ifname]),
+  AddrAddCmd = [io_lib:format("ip addr add ~s dev ~s~n", [Cidr, Ifname]) || Cidr <- Cidrs],
+  Cmd = lists:flatten([io_lib:format("ip link add name ~s type bridge~n", [Ifname]), AddrAddCmd]),
   io:format(Cmd),
   os:cmd(Cmd),
   add_bridges(T, Ifnames),
@@ -194,7 +198,7 @@ generate_unique_bridge_name(Ifnames) ->
 sync_taps(Domains) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
-  Bridges = maps:from_list([get_cidr(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
+  Bridges = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
 
   OutputTaps = os:cmd("ip -j link"),
   {ok, JSONTaps} = thoas:decode(OutputTaps),
@@ -202,7 +206,7 @@ sync_taps(Domains) ->
   TapsActual = sets:from_list([maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>)]),
   TapsTarget = sets:from_list([TapName || {_, #domain{tap_name = TapName}} <- Domains]),
   io:format("Taps to add: ~p~n", [sets:to_list(TapsTarget)]),
-  TapsMap = maps:from_list([{Tap, {bridge_addr(Addr), Prefixlen}} || {_, #domain{network_addr = {Addr, Prefixlen}, tap_name = Tap}} <- Domains]),
+  TapsMap = maps:from_list([{Tap, {bridge_addr(Addr), Prefixlen}} || {_, #domain{network_addrs = {Addr, Prefixlen}, tap_name = Tap}} <- Domains]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
   lists:foreach(fun (E) ->
