@@ -115,7 +115,8 @@ handle_call(net_list, _From, StoreId) ->
 		{ok, Map} ->
 			ToMapKey = fun(Tag) -> case Tag of ipv4 -> cidr4; ipv6 -> cidr6 end end,
 			Res0 = [{NetworkId, ToMapKey(Tag),  #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId, Tag], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)],
-			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
+			Res1 = lists:foldl(fun({NetworkId, Tag, Def}, MapAcc) -> maps:update_with(NetworkId, fun(L) -> [{Tag, Def}|L] end, [{Tag, Def}], MapAcc) end, #{}, Res0),
+%%			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
 			Res = maps:map(fun(_, V) -> maps:from_list(V) end, Res1),
 			{reply, {ok, Res}, StoreId};
 		Res -> {reply, Res, StoreId}
@@ -125,7 +126,8 @@ handle_call({net_get, NetworkId}, _From, StoreId) ->
 		{ok, Map} ->
 			ToMapKey = fun(Tag) -> case Tag of ipv4 -> cidr4; ipv6 -> cidr6 end end,
 			Res0 = [{NetworkId, ToMapKey(Tag),  #{address => virtuerl_net:format_ip_bitstring(Address), prefixlen => PrefixLen}} || {[network, NetworkId, Tag], #network{address = Address, prefixlen = PrefixLen}} <- maps:to_list(Map)],
-			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
+			Res1 = lists:foldl(fun({NetworkId, Tag, Def}, MapAcc) -> maps:update_with(NetworkId, fun(L) -> [{Tag, Def}|L] end, [{Tag, Def}], MapAcc) end, #{}, Res0),
+%%			Res1 = maps:groups_from_list(fun({NetworkId, _, _}) -> NetworkId end, fun({_, Tag, Def}) -> {Tag, Def} end, Res0),
 			#{NetworkId := Res} = maps:map(fun(_, V) -> maps:from_list(V) end, Res1),
 			{reply, {ok, Res}, StoreId};
 		Res -> {reply, Res, StoreId}
