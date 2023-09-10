@@ -37,7 +37,7 @@ domains_list(Conf) ->
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
--record(domain, {id, network_id, network_addr, ipv4_addr, tap_name}).
+-record(domain, {id, network_id, network_addrs, ipv4_addr, ipv6_addr, tap_name}).
 
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -83,18 +83,34 @@ handle_call({domain_create, Conf}, _From, State) ->
   Domain = #domain{id = DomainID, network_id = NetworkID},  % TODO: save ipv4 addr as well
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
-  {ok, Network, IP} = case Conf of
-    #{ipv4_addr := Ipv4Addr} ->
-      Ipv4Addr1 = virtuerl_net:parse_ip(Ipv4Addr),
-      {ok, NetRes} = virtuerl_ipam:ipam_put_ip(NetworkID, Ipv4Addr1, DomainID),
-      {ok, NetRes, Ipv4Addr1};
-   _ ->
-      virtuerl_ipam:assign_next(NetworkID, DomainID)
-  end,
+
+  Default = maps:from_keys([ipv4_addr, ipv6_addr], undefined),
+  Conf0 = maps:merge(Default, Conf),
+  Conf1 = maps:intersect(Default, Conf0),
+  Conf2 = maps:to_list(Conf1),
+
+  KeyToTag = fun(Key) -> case Key of ipv4_addr -> ipv4; ipv6_addr -> ipv6 end end,
+
+  Addresses = [
+    case Addr of
+      undefined ->
+        Tag = KeyToTag(Key),
+        {ok, _, Ip} = virtuerl_ipam:assign_next(NetworkID, Tag, DomainID),
+        {Tag, Ip};
+      Addr ->
+        Addr1 = virtuerl_net:parse_ip(Addr),
+        {ok, _} = virtuerl_ipam:ipam_put_ip(NetworkID, Addr1, DomainID),
+        {KeyToTag(Key), Addr1}
+    end
+    || {Key, Addr} <- Conf2
+  ],
+  #{ipv4 := Ipv4Addr, ipv6 := Ipv6Addr} = maps:from_list(Addresses),
+
+  {ok, #{cidrs := Cidrs}} = virtuerl_ipam:ipam_get_net(NetworkID),
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #domain{tap_name=Tap} <- Domains]),
   TapName = generate_unique_tap_name(TapNames),
-  dets:insert(Table, {DomainID, Domain#domain{network_addr =Network, ipv4_addr=IP, tap_name = TapName}}),
+  dets:insert(Table, {DomainID, Domain#domain{network_addrs =Cidrs, ipv4_addr=Ipv4Addr, ipv6_addr = Ipv6Addr, tap_name = TapName}}),
   dets:sync(Table),
 
   ok = gen_server:call(virtuerl_net, {net_update}),
@@ -106,7 +122,7 @@ handle_call({domain_create, Conf}, _From, State) ->
     worker,
     []
   }),
-  {reply, {ok, #{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => IP}}, State};
+  {reply, {ok, #{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => Ipv4Addr, ipv6_addr => Ipv6Addr}}, State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of

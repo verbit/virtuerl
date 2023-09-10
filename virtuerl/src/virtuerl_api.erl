@@ -123,11 +123,25 @@ handle(networks, 'GET', _, Req) ->
   mochiweb_request:respond({200, [{"Content-Type", "application/json"}], thoas:encode(Nets)}, Req);
 handle(networks, 'POST', _, Req) ->
   JSON = parse_json(Req),
-  #{<<"network">> := #{<<"cidr4">> := CIDR}} = JSON,
-  {Addr, Prefixlen} = virtuerl_net:parse_cidr(CIDR),
+  #{<<"network">> := NetJson} = JSON,
+  {ok, NetDefs} = case NetJson of
+    #{<<"cidr4">> := Cidr4, <<"cidr6">> := Cidr6} ->
+      {Addr4, Prefixlen4} = virtuerl_net:parse_cidr(Cidr4),
+      {Addr6, Prefixlen6} = virtuerl_net:parse_cidr(Cidr6),
+      {ok, [{Addr4, Prefixlen4}, {Addr6, Prefixlen6}]};
+    #{<<"cidr4">> := Cidr4} ->
+      {Addr4, Prefixlen4} = virtuerl_net:parse_cidr(Cidr4),
+      {ok, [{Addr4, Prefixlen4}]};
+    #{<<"cidr6">> := Cidr6} ->
+      {Addr6, Prefixlen6} = virtuerl_net:parse_cidr(Cidr6),
+      {ok, [{Addr6, Prefixlen6}]};
+    _ ->
+      {error, no_cidrs_provided}
+  end,
+
   io:format("POST~n"),
-  io:format("NetworkDef ~p/~p~n", [Addr, Prefixlen]),
-  {ok, {ID, _, _}} = virtuerl_ipam:ipam_create_net({Addr, Prefixlen}),
+  io:format("NetworkDefs ~p~n", [NetDefs]),
+  {ok, ID} = virtuerl_ipam:ipam_create_net(NetDefs),
   RespJSON = thoas:encode(#{id => ID}),
   mochiweb_request:respond({201, [{"Content-Type", "application/json"}, {"Location", "/networks/" ++ binary_to_list(ID)}], RespJSON}, Req);
 handle(network, 'PUT', #{id := ID}, Req) ->

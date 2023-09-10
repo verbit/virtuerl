@@ -438,6 +438,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         if private_ip:
             req_net["domain"]["ipv4_addr"] = private_ip
         ipv6_address = domreq.ipv6_address
+        if ipv6_address:
+            req_net["domain"]["ipv6_addr"] = ipv6_address
 
         try:
             res = requests.post("http://localhost:8080/domains", json=req_net)
@@ -445,8 +447,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             virtuerl_dom = res.json()
             dom_id = virtuerl_dom["id"]
             tap_name = virtuerl_dom["tap_name"]
-            ip_addr = virtuerl_dom["ip_addr"]
-            print(f"TAP NAME: {tap_name}")
+            ip_addr = virtuerl_dom["ipv4_addr"]
+            ip6_addr = virtuerl_dom["ipv6_addr"]
         except HTTPError as e:
             raise e
 
@@ -476,6 +478,10 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             vres.raise_for_status()
             vresj = vres.json()
             net = ipaddress.ip_network(vresj["cidr4"], strict=False)
+            gateway = net[1]
+            if ipv6_address:
+                net6 = ipaddress.ip_network(vresj["cidr6"], strict=False)
+                gateway6 = net6[1]
 
             is_virtuerl_net = True
 
