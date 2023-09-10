@@ -84,7 +84,16 @@ handle_call({domain_create, Conf}, _From, State) ->
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
 
-  Default = maps:from_keys([ipv4_addr, ipv6_addr], undefined),
+  {ok, #{cidrs := Cidrs}} = virtuerl_ipam:ipam_get_net(NetworkID),
+  Keys = lists:map(fun(Cidr) ->
+    {Ip, _} = virtuerl_net:parse_cidr(Cidr),
+    case bit_size(Ip) of
+      32 -> ipv4_addr;
+      128 -> ipv6_addr
+    end
+    end, Cidrs),
+
+  Default = maps:from_keys(Keys, undefined),
   Conf0 = maps:merge(Default, Conf),
   Conf1 = maps:intersect(Default, Conf0),
   Conf2 = maps:to_list(Conf1),
@@ -104,9 +113,10 @@ handle_call({domain_create, Conf}, _From, State) ->
     end
     || {Key, Addr} <- Conf2
   ],
-  #{ipv4 := Ipv4Addr, ipv6 := Ipv6Addr} = maps:from_list(Addresses),
+  AddressesMap = maps:from_list(Addresses),
+  Ipv4Addr = maps:get(ipv4, AddressesMap, undefined),
+  Ipv6Addr = maps:get(ipv6, AddressesMap, undefined),
 
-  {ok, #{cidrs := Cidrs}} = virtuerl_ipam:ipam_get_net(NetworkID),
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #domain{tap_name=Tap} <- Domains]),
   TapName = generate_unique_tap_name(TapNames),
