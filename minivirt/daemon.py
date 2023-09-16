@@ -448,7 +448,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             dom_id = virtuerl_dom["id"]
             tap_name = virtuerl_dom["tap_name"]
             ip_addr = virtuerl_dom["ipv4_addr"]
-            ip6_addr = virtuerl_dom["ipv6_addr"]
+            if ipv6_address:
+                ip6_addr = virtuerl_dom["ipv6_addr"]
         except HTTPError as e:
             raise e
 
