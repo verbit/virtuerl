@@ -105,17 +105,17 @@ handle_call({domain_create, Conf}, _From, State) ->
       undefined ->
         Tag = KeyToTag(Key),
         {ok, _, Ip} = virtuerl_ipam:assign_next(NetworkID, Tag, DomainID),
-        {Tag, Ip};
+        {Key, Ip};
       Addr ->
         Addr1 = virtuerl_net:parse_ip(Addr),
         {ok, _} = virtuerl_ipam:ipam_put_ip(NetworkID, Addr1, DomainID),
-        {KeyToTag(Key), Addr1}
+        {Key, Addr1}
     end
     || {Key, Addr} <- Conf2
   ],
   AddressesMap = maps:from_list(Addresses),
-  Ipv4Addr = maps:get(ipv4, AddressesMap, undefined),
-  Ipv6Addr = maps:get(ipv6, AddressesMap, undefined),
+  Ipv4Addr = maps:get(ipv4_addr, AddressesMap, undefined),
+  Ipv6Addr = maps:get(ipv6_addr, AddressesMap, undefined),
 
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #domain{tap_name=Tap} <- Domains]),
@@ -132,7 +132,7 @@ handle_call({domain_create, Conf}, _From, State) ->
     worker,
     []
   }),
-  {reply, {ok, #{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => Ipv4Addr, ipv6_addr => Ipv6Addr}}, State};
+  {reply, {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName)}, maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))}, State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of

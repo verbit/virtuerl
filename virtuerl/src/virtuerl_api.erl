@@ -43,7 +43,7 @@ urls() ->
     {"^/networks/?$", networks, ['GET', 'POST']},
     {"^/networks/(?<id>[^/]+)/?$", network, ['GET', 'PUT', 'DELETE']},
     {"^/domains/?$", domains, ['GET', 'POST']},
-    {"^/domains/(?<id>[^/]+)/?$", domain, ['GET']}
+    {"^/domains/(?<id>[^/]+)/?$", domain, ['GET', 'DELETE']}
   ],
   CompiledUrls = lists:map(fun ({URL, Tag, Methods}) ->
     {ok, Pat} = re:compile(URL),
@@ -165,14 +165,13 @@ handle(network, 'DELETE', #{id := ID}, Req) ->
 handle(domains, 'POST', _, Req) ->
   JSON = parse_json(Req),
   #{<<"domain">> := #{<<"network_id">> := NetworkID}} = JSON,
-  {ok, Resp} = case JSON of
-    #{<<"domain">> := #{<<"ipv4_addr">> := Ipv4Addr}} ->
-      virtuerl_mgt:domain_create(#{network_id => NetworkID, ipv4_addr => Ipv4Addr});
-    _ ->
-      virtuerl_mgt:domain_create(#{network_id => NetworkID})
-  end,
-  #{id := DomainID, tap_name := TapName, ip_addr := IP} = Resp,
-  RespJSON = thoas:encode(#{id => DomainID, tap_name => iolist_to_binary(TapName), ip_addr => iolist_to_binary(virtuerl_net:format_ip(IP))}),
+  #{<<"domain">> := SubJSON} = JSON,
+  Addresses0 = maps:with([<<"ipv4_addr">>, <<"ipv6_addr">>], SubJSON),
+  DomainMap0 = maps:from_list([{binary_to_atom(K), V} || {K, V} <- maps:to_list(Addresses0)]),
+  DomainMap1 = DomainMap0#{network_id => NetworkID},
+  {ok, Resp} = virtuerl_mgt:domain_create(DomainMap1),
+  #{id := DomainID} = Resp,
+  RespJSON = thoas:encode(Resp),
   mochiweb_request:respond({201, [{"Content-Type", "application/json"}, {"Location", "/domains/" ++ binary_to_list(DomainID)}], RespJSON}, Req);
 handle(domain, 'GET', #{id := ID}, Req) ->
   io:format("DOMAIN GET: ~p~n", [ID]),
@@ -183,4 +182,7 @@ handle(domain, 'GET', #{id := ID}, Req) ->
       mochiweb_request:ok({[], thoas:encode(Dom)}, Req);
     notfound ->
       mochiweb_request:not_found(Req)
-  end.
+  end;
+handle(domain, 'DELETE', #{id := ID}, Req) ->
+  io:format("DOMAIN DELETE: ~p~n", [ID]),
+  mochiweb_request:respond({204, [{"Content-Type", "application/json"}], <<"">>}, Req).
