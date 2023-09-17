@@ -185,4 +185,10 @@ handle(domain, 'GET', #{id := ID}, Req) ->
   end;
 handle(domain, 'DELETE', #{id := ID}, Req) ->
   io:format("DOMAIN DELETE: ~p~n", [ID]),
-  mochiweb_request:respond({204, [{"Content-Type", "application/json"}], <<"">>}, Req).
+  Resp = virtuerl_mgt:domain_delete(#{id => list_to_binary(ID)}),
+  case Resp of
+    ok ->
+      mochiweb_request:respond({204, [{"Content-Type", "application/json"}], <<"">>}, Req);
+    _ ->
+      mochiweb_request:respond({500, [{"Content-Type", "text/plain"}], "Error"}, Req)
+  end.
