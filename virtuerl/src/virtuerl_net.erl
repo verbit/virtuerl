@@ -102,13 +102,19 @@ reload_net(Table) ->
   io:format("Actual: ~p~n", [Matched]),
   Domains = dets:match_object(Table, '_'),
 
-  TargetAddrs = sets:from_list([lists:sort(Cidrs) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
+  TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
   io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
   sync_networks(Matched, TargetAddrs),
   sync_taps(Domains),
 
   update_bird_conf(Domains),
   ok.
+
+network_cidrs_to_bride_cidrs(Cidrs) ->
+  lists:map(fun(Cidr) ->
+    {Addr, Prefixlen} = parse_cidr(Cidr),
+    iolist_to_binary(io_lib:format("~s/~B", [format_ip(bridge_addr(Addr)), Prefixlen]))
+            end, Cidrs).
 
 bridge_addr(<<Addr/binary>>) ->
   BitSize = bit_size(Addr),
@@ -206,7 +212,8 @@ sync_taps(Domains) ->
   TapsActual = sets:from_list([maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>)]),
   TapsTarget = sets:from_list([TapName || {_, #domain{tap_name = TapName}} <- Domains]),
   io:format("Taps to add: ~p~n", [sets:to_list(TapsTarget)]),
-  TapsMap = maps:from_list([{Tap, {bridge_addr(Addr), Prefixlen}} || {_, #domain{network_addrs = {Addr, Prefixlen}, tap_name = Tap}} <- Domains]),
+  TapsMap = maps:from_list([{Tap, network_cidrs_to_bride_cidrs(Cidrs)} || {_, #domain{network_addrs = Cidrs, tap_name = Tap}} <- Domains]),
+  io:format("TapsMap: ~p~n", [TapsMap]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
   lists:foreach(fun (E) ->
