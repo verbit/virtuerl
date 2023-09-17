@@ -89,7 +89,7 @@ get_cidrs(If) ->
     [] -> {unset, Ifname};
     AddrInfos when is_list(AddrInfos) ->
       Cidrs = [ iolist_to_binary([Ip, "/", integer_to_binary(Prefixlen)])
-        || #{<<"local">> := Ip, <<"prefixlen">> := Prefixlen} <- AddrInfos],
+        || #{<<"local">> := Ip, <<"prefixlen">> := Prefixlen, <<"scope">> := <<"global">>} <- AddrInfos],
       {lists:sort(Cidrs), Ifname}
   end.
 
@@ -184,7 +184,7 @@ add_bridges([], _) ->
 add_bridges([Cidrs|T], Ifnames) ->
   Ifname = generate_unique_bridge_name(Ifnames),
   AddrAddCmd = [io_lib:format("ip addr add ~s dev ~s~n", [Cidr, Ifname]) || Cidr <- Cidrs],
-  Cmd = lists:flatten([io_lib:format("ip link add name ~s type bridge~n", [Ifname]), AddrAddCmd]),
+  Cmd = lists:flatten([io_lib:format("ip link add name ~s type bridge~nip link set ~s up~n", [Ifname, Ifname]), AddrAddCmd]),
   io:format(Cmd),
   os:cmd(Cmd),
   add_bridges(T, Ifnames),
@@ -233,7 +233,7 @@ end, sets:to_list(TapsToDelete)),
 add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
 add_taps([]) -> ok;
 add_taps([{Tap, Bridge}|T]) ->
-  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s master ~s~n", [Tap, Tap, Bridge]),
+  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s master ~s~nip link set ~s up~n", [Tap, Tap, Bridge, Tap]),
   io:format(Cmd),
   os:cmd(Cmd),
   add_taps(T).

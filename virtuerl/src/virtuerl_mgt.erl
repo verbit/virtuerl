@@ -11,7 +11,7 @@
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3, handle_continue/2]).
--export([create_vm/0, domain_create/1, domain_get/1]).
+-export([create_vm/0, domain_create/1, domain_get/1, domain_delete/1]).
 
 -define(SERVER, ?MODULE).
 
@@ -141,7 +141,15 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
       {ok, DomRet};
     [] -> notfound
   end,
-  {reply, Reply, State}.
+  {reply, Reply, State};
+handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
+  {Table} = State,
+  Res = dets:delete(Table, DomainID),
+  dets:sync(Table),
+  ok = supervisor:terminate_child(virtuerl_sup, DomainID),
+  ok = supervisor:delete_child(virtuerl_sup, DomainID),
+  ok = gen_server:call(virtuerl_net, {net_update}),
+  {reply, Res, State}.
 
 handle_cast(_Request, State) ->
   {noreply, State}.
