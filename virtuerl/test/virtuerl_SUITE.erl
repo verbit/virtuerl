@@ -27,6 +27,10 @@ test_network(_Config) ->
   {ok, {{_, 201, _}, Headers, _}} = httpc:request(post, {"http://localhost:8080/networks", [], "application/json", NetJson}, [], []),
   Loc = proplists:get_value("location", Headers),
   NetUri = uri_string:resolve(Loc, "http://localhost:8080"),
+
+  {ok, {{_, 200, _}, _, NetBody}} = httpc:request(get, {NetUri, []}, [], []),
+  {ok, #{<<"cidrs">> := [<<"192.168.111.0/24">>, <<"2001:db8::/80">>]}} = thoas:decode(NetBody),
+
   {ok, {{_, 204, _}, _, _}} = httpc:request(delete, {NetUri, []}, [], []).
 
 test_domain(_Config) ->
