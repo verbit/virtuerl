@@ -478,10 +478,13 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             vres = requests.get(f"http://localhost:8080/networks/{domreq.network}")
             vres.raise_for_status()
             vresj = vres.json()
-            net = ipaddress.ip_network(vresj["cidr4"], strict=False)
+            cidrs = [ipaddress.ip_network(cidr, strict=False) for cidr in vresj["cidrs"]]
+            cidr4 = [cidr for cidr in cidrs if isinstance(cidr, ipaddress.IPv4Network)]
+            cidr6 = [cidr for cidr in cidrs if isinstance(cidr, ipaddress.IPv6Network)]
+            net = cidr4[0]
             gateway = net[1]
             if ipv6_address:
-                net6 = ipaddress.ip_network(vresj["cidr6"], strict=False)
+                net6 = cidr6[0]
                 gateway6 = net6[1]
 
             is_virtuerl_net = True
