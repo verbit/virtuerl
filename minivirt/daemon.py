@@ -1,5 +1,6 @@
 import ipaddress
 import os
+import re
 import string
 import threading
 import uuid
@@ -441,6 +442,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         if ipv6_address:
             req_net["domain"]["ipv6_addr"] = ipv6_address
 
+        mac = None
         try:
             res = requests.post("http://localhost:8080/domains", json=req_net)
             res.raise_for_status()
@@ -448,6 +450,8 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             dom_id = virtuerl_dom["id"]
             tap_name = virtuerl_dom["tap_name"]
             ip_addr = virtuerl_dom["ipv4_addr"]
+            mac = virtuerl_dom["mac_addr"]
+            mac = ":".join(re.findall("..", mac.lower()))
             if ipv6_address:
                 ip6_addr = virtuerl_dom["ipv6_addr"]
         except HTTPError as e:
@@ -521,9 +525,10 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         ip = ipaddress.ip_address(private_ip)
         ip6 = ipaddress.ip_address(ipv6_address) if ipv6_address else None
-        mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
-            0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
-        )
+        if mac is None:
+            mac = "{:02x}:{:02x}:{:02x}:{:02x}:{:02x}:{:02x}".format(
+                0x52, 0x54, 0x00, ip.packed[-3], ip.packed[-2], ip.packed[-1]
+            )
 
         if is_virtuerl_net:
             netxml = f"""<interface type='ethernet'>
