@@ -37,7 +37,7 @@ domains_list(Conf) ->
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
--record(domain, {id, network_id, network_addrs, ipv4_addr, ipv6_addr, tap_name}).
+-record(domain, {id, network_id, network_addrs, mac_addr, ipv4_addr, ipv6_addr, tap_name}).
 
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
@@ -120,7 +120,10 @@ handle_call({domain_create, Conf}, _From, State) ->
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #domain{tap_name=Tap} <- Domains]),
   TapName = generate_unique_tap_name(TapNames),
-  dets:insert(Table, {DomainID, Domain#domain{network_addrs =Cidrs, ipv4_addr=Ipv4Addr, ipv6_addr = Ipv6Addr, tap_name = TapName}}),
+  <<A:6, _:2, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
+  MacAddr = <<A:6, 2:2, B:40>>,
+
+  dets:insert(Table, {DomainID, Domain#domain{network_addrs =Cidrs, mac_addr=MacAddr, ipv4_addr=Ipv4Addr, ipv6_addr = Ipv6Addr, tap_name = TapName}}),
   dets:sync(Table),
 
   ok = gen_server:call(virtuerl_net, {net_update}),
@@ -132,12 +135,12 @@ handle_call({domain_create, Conf}, _From, State) ->
     worker,
     []
   }),
-  {reply, {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName)}, maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))}, State};
+  {reply, {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName), mac_addr => binary:encode_hex(MacAddr)}, maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))}, State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
-    [{_, #domain{network_id = NetworkID, ipv4_addr=IP, tap_name = TapName}}] ->
-      DomRet = #{network_id => NetworkID, ipv4_addr => virtuerl_net:format_ip_bitstring(IP), tap_name => iolist_to_binary(TapName)},
+    [{_, #domain{network_id = NetworkID, mac_addr = MacAddr, ipv4_addr=IP, tap_name = TapName}}] ->
+      DomRet = #{network_id => NetworkID, mac_addr => binary:encode_hex(MacAddr), ipv4_addr => virtuerl_net:format_ip_bitstring(IP), tap_name => iolist_to_binary(TapName)},
       {ok, DomRet};
     [] -> notfound
   end,

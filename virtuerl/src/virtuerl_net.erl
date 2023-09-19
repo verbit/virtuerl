@@ -73,7 +73,7 @@ update_net(Table) ->
   [io:format("~p~n", [Domain]) || Domain <- Domains],
   reload_net(Table).
 
--record(domain, {id, network_id, network_addrs, ipv4_addr, ipv6_addr, tap_name}).
+-record(domain, {id, network_id, network_addrs, mac_addr, ipv4_addr, ipv6_addr, tap_name}).
 
 handle_interface(If, Table) ->
   %% 1. Delete all devices without an address set
@@ -212,7 +212,7 @@ sync_taps(Domains) ->
   TapsActual = sets:from_list([maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>)]),
   TapsTarget = sets:from_list([TapName || {_, #domain{tap_name = TapName}} <- Domains]),
   io:format("Taps to add: ~p~n", [sets:to_list(TapsTarget)]),
-  TapsMap = maps:from_list([{Tap, network_cidrs_to_bride_cidrs(Cidrs)} || {_, #domain{network_addrs = Cidrs, tap_name = Tap}} <- Domains]),
+  TapsMap = maps:from_list([{Tap, {MacAddr, network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #domain{network_addrs = Cidrs, tap_name = Tap, mac_addr = MacAddr}} <- Domains]),
   io:format("TapsMap: ~p~n", [TapsMap]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
@@ -224,7 +224,7 @@ end, sets:to_list(TapsToDelete)),
 
   TapsToAdd = sets:subtract(TapsTarget, TapsActual),
 
-  TapsMapsToAdd = maps:map(fun (_, Net) -> maps:get(Net, Bridges) end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
+  TapsMapsToAdd = maps:map(fun (_, {MacAddr, Net}) -> {MacAddr, maps:get(Net, Bridges)} end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
   add_taps(TapsMapsToAdd),
 
   ok.
@@ -232,8 +232,10 @@ end, sets:to_list(TapsToDelete)),
 
 add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
 add_taps([]) -> ok;
-add_taps([{Tap, Bridge}|T]) ->
-  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s master ~s~nip link set ~s up~n", [Tap, Tap, Bridge, Tap]),
+add_taps([{Tap, {Mac, Bridge}}|T]) ->
+  <<A:16, B:16, C:16, D:16, E:16, F:16>> =  binary:encode_hex(Mac),
+  MacAddrString = <<A:16, $::8, B:16, $::8, C:16, $::8, D:16, $::8, E:16, $::8, F:16>>,
+  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s address ~s master ~s~nip link set ~s up~n", [Tap, Tap, MacAddrString, Bridge, Tap]),
   io:format(Cmd),
   os:cmd(Cmd),
   add_taps(T).

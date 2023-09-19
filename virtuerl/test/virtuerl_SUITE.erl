@@ -44,7 +44,12 @@ test_domain(_Config) ->
   {ok, {{_, 201, _}, DomainHeaders, DomainBody}} = httpc:request(post, {"http://localhost:8080/domains", [], "application/json", DomainJson}, [], []),
   DomainLoc = proplists:get_value("location", DomainHeaders),
   DomainUri = uri_string:resolve(DomainLoc, "http://localhost:8080"),
-  {ok, #{<<"ipv4_addr">> := <<"192.168.111.39">>, <<"ipv6_addr">> := <<"2001:db8::8">>}} = thoas:decode(DomainBody),
+  {ok, #{<<"mac_addr">> := MacAddr, <<"ipv4_addr">> := <<"192.168.111.39">>, <<"ipv6_addr">> := <<"2001:db8::8">>}} = thoas:decode(DomainBody),
+  <<_:6, Laa:2, _/binary>> = binary:decode_hex(MacAddr),
+  2 = Laa,
+
+%%  {ok, {{_, 200, _}, _, DomainBody1}} = httpc:request(DomainUri),
+%%  {ok, #{<<"mac_addr">> := MacAddr, <<"ipv4_addr">> := <<"192.168.111.39">>, <<"ipv6_addr">> := <<"2001:db8::8">>}} = thoas:decode(DomainBody1),
 
   {ok, {{_, 204, _}, _, _}} = httpc:request(delete, {DomainUri, []}, [], []),
   {ok, {{_, 204, _}, _, _}} = httpc:request(delete, {NetUri, []}, [], []).
