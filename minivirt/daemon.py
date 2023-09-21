@@ -349,7 +349,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             if network.cidr6:
                 net_json["cidr6"] = network.cidr6
             res = requests.post(
-                "http://localhost:8080/networks",
+                "http://localhost:8081/networks",
                 json={"network": net_json},
             )
             res.raise_for_status()
@@ -376,7 +376,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         except:
             pass
 
-        requests.delete(f"http://localhost:8080/networks/{request.uuid}")
+        requests.delete(f"http://localhost:8081/networks/{request.uuid}")
 
         return empty_pb2.Empty()
 
@@ -400,7 +400,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
             net = self.conn.networkLookupByName(domain_dict["network"])
             domain_dict["network"] = net.UUIDString()
         except:
-            res = requests.get(f"http://localhost:8080/domains/{uuid}")
+            res = requests.get(f"http://localhost:8081/domains/{uuid}")
             resj = res.json()
             domain_dict["network"] = resj["network_id"]
         state, _ = domain_lv.state()
@@ -444,7 +444,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         mac = None
         try:
-            res = requests.post("http://localhost:8080/domains", json=req_net)
+            res = requests.post("http://localhost:8081/domains", json=req_net)
             res.raise_for_status()
             virtuerl_dom = res.json()
             dom_id = virtuerl_dom["id"]
@@ -479,7 +479,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
                 raise e
             private_ip = ip_addr
 
-            vres = requests.get(f"http://localhost:8080/networks/{domreq.network}")
+            vres = requests.get(f"http://localhost:8081/networks/{domreq.network}")
             vres.raise_for_status()
             vresj = vres.json()
             cidrs = [ipaddress.ip_network(cidr, strict=False) for cidr in vresj["cidrs"]]
@@ -682,7 +682,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
         vol = pool.storageVolLookupByName(f"{name}-cloud-init.img")
         vol.delete()
 
-        requests.delete(f"http://localhost:8080/domains/{str(request.uuid)}")
+        requests.delete(f"http://localhost:8081/domains/{str(request.uuid)}")
 
         return empty_pb2.Empty()
 

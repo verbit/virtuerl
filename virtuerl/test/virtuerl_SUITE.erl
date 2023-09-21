@@ -24,9 +24,9 @@ end_per_suite(_Config) ->
 
 test_network(_Config) ->
   NetJson = thoas:encode(#{"network" => #{"cidr4" => "192.168.111.0/24", "cidr6" => "2001:db8::/80"}}),
-  {ok, {{_, 201, _}, Headers, _}} = httpc:request(post, {"http://localhost:8080/networks", [], "application/json", NetJson}, [], []),
+  {ok, {{_, 201, _}, Headers, _}} = httpc:request(post, {"http://localhost:8081/networks", [], "application/json", NetJson}, [], []),
   Loc = proplists:get_value("location", Headers),
-  NetUri = uri_string:resolve(Loc, "http://localhost:8080"),
+  NetUri = uri_string:resolve(Loc, "http://localhost:8081"),
 
   {ok, {{_, 200, _}, _, NetBody}} = httpc:request(get, {NetUri, []}, [], []),
   {ok, #{<<"cidrs">> := [<<"192.168.111.0/24">>, <<"2001:db8::/80">>]}} = thoas:decode(NetBody),
@@ -35,15 +35,15 @@ test_network(_Config) ->
 
 test_domain(_Config) ->
   NetJson = thoas:encode(#{"network" => #{"cidr4" => "192.168.111.0/24", "cidr6" => "2001:db8::/80"}}),
-  {ok, {{_, 201, _}, NetHeaders, NetBody}} = httpc:request(post, {"http://localhost:8080/networks", [], "application/json", NetJson}, [], []),
+  {ok, {{_, 201, _}, NetHeaders, NetBody}} = httpc:request(post, {"http://localhost:8081/networks", [], "application/json", NetJson}, [], []),
   NetLoc = proplists:get_value("location", NetHeaders),
-  NetUri = uri_string:resolve(NetLoc, "http://localhost:8080"),
+  NetUri = uri_string:resolve(NetLoc, "http://localhost:8081"),
   {ok, #{<<"id">> := NetId}} = thoas:decode(NetBody),
 
   DomainJson = thoas:encode(#{"domain" => #{"network_id" => NetId, "ipv4_addr" => "192.168.111.39"}}),
-  {ok, {{_, 201, _}, DomainHeaders, DomainBody}} = httpc:request(post, {"http://localhost:8080/domains", [], "application/json", DomainJson}, [], []),
+  {ok, {{_, 201, _}, DomainHeaders, DomainBody}} = httpc:request(post, {"http://localhost:8081/domains", [], "application/json", DomainJson}, [], []),
   DomainLoc = proplists:get_value("location", DomainHeaders),
-  DomainUri = uri_string:resolve(DomainLoc, "http://localhost:8080"),
+  DomainUri = uri_string:resolve(DomainLoc, "http://localhost:8081"),
   {ok, #{<<"mac_addr">> := MacAddr, <<"ipv4_addr">> := <<"192.168.111.39">>, <<"ipv6_addr">> := <<"2001:db8::8">>}} = thoas:decode(DomainBody),
   <<_:6, Laa:2, _/binary>> = binary:decode_hex(MacAddr),
   2 = Laa,
