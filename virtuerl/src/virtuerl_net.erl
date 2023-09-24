@@ -104,16 +104,64 @@ reload_net(Table) ->
 
   TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
   io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
+  update_nftables(Domains),
   sync_networks(Matched, TargetAddrs),
   sync_taps(Domains),
 
   update_bird_conf(Domains),
   ok.
 
+update_nftables(Domains) ->
+  BridgeAddrs = lists:flatten([network_cidrs_to_bride_addrs(Cidrs) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
+  BridgeAddrsTyped = lists:map(fun (Addr) ->
+    case binary:match(Addr, <<":">>) of
+      nomatch -> {ipv4, Addr};
+      _ -> {ipv6, Addr}
+    end
+                               end, BridgeAddrs),
+
+  DnsRules = [
+    case Family of
+      ipv4 ->
+        ["        ip daddr ", Addr, " ", Prot, " dport 53 dnat to ", Addr, ":5354\n"];
+      ipv6 ->
+        ["        ip6 daddr ", Addr, " ", Prot, " dport 53 dnat to [", Addr, "]:5354\n"]
+    end
+    || {Family, Addr} <- BridgeAddrsTyped, Prot <- ["tcp", "udp"]],
+
+  IoList = [
+    "table inet virtuerl\ndelete table inet virtuerl\n\n",
+    "table inet virtuerl {\n",
+    "    chain output {\n",
+    "        type nat hook output priority -105; policy accept;\n",
+    DnsRules,
+    "    }\n",
+
+    "    chain prerouting {\n",
+    "        type nat hook prerouting priority dstnat - 5; policy accept;\n",
+    DnsRules,
+    "    }\n",
+    "}\n"
+  ],
+  io:format("~s~n", [IoList]),
+
+  Path = iolist_to_binary(["/tmp/virtuerl/", "nftables_", virtuerl_util:uuid4(), ".conf"]),
+  ok = filelib:ensure_dir(Path),
+  ok = file:write_file(Path, IoList),
+
+  os:cmd(io_lib:format("nft -f ~s", [Path])),
+  file:delete(Path).
+
 network_cidrs_to_bride_cidrs(Cidrs) ->
   lists:map(fun(Cidr) ->
     {Addr, Prefixlen} = parse_cidr(Cidr),
     iolist_to_binary(io_lib:format("~s/~B", [format_ip(bridge_addr(Addr)), Prefixlen]))
+            end, Cidrs).
+
+network_cidrs_to_bride_addrs(Cidrs) ->
+  lists:map(fun(Cidr) ->
+    {Addr, _} = parse_cidr(Cidr),
+    iolist_to_binary(io_lib:format("~s", [format_ip(bridge_addr(Addr))]))
             end, Cidrs).
 
 bridge_addr(<<Addr/binary>>) ->
