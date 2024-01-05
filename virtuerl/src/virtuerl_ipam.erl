@@ -96,19 +96,13 @@ start_link() ->
 
 init([]) ->
 	io:format("starting IPAM service~n"),
-	{ok, StoreId} = khepri:start(),
+	{ok, StoreId} = khepri:start(filename:join(virtuerl_mgt:home_path(), "khepri")),
 	init([StoreId]);
 init([StoreId]) ->
 	{ok, StoreId}.
 
 terminate(_Reason, StoreId) ->
-	DefaultStoreId = khepri_cluster:get_default_store_id(),
-	case StoreId of
-		DefaultStoreId ->
-			khepri:stop(StoreId);
-		_ ->
-		ok
-	end.
+	khepri:stop(StoreId).
 
 handle_call(net_list, _From, StoreId) ->
 	case khepri:get_many(StoreId, [network, ?KHEPRI_WILDCARD_STAR, ?KHEPRI_WILDCARD_STAR]) of

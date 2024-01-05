@@ -5,6 +5,7 @@
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/aten/aten.iml" filepath="$PROJECT_DIR$/_build/default/lib/aten/aten.iml" />
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/cowboy/src/cowboy.iml" filepath="$PROJECT_DIR$/_build/default/lib/cowboy/src/cowboy.iml" />
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/ctx/ctx.iml" filepath="$PROJECT_DIR$/_build/default/lib/ctx/ctx.iml" />
+      <module fileurl="file://$PROJECT_DIR$/_build/default/lib/erlexec/erlexec.iml" filepath="$PROJECT_DIR$/_build/default/lib/erlexec/erlexec.iml" />
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/gen_batch_server/gen_batch_server.iml" filepath="$PROJECT_DIR$/_build/default/lib/gen_batch_server/gen_batch_server.iml" />
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/grpcbox/grpcbox.iml" filepath="$PROJECT_DIR$/_build/default/lib/grpcbox/grpcbox.iml" />
       <module fileurl="file://$PROJECT_DIR$/_build/default/lib/horus/horus.iml" filepath="$PROJECT_DIR$/_build/default/lib/horus/horus.iml" />
