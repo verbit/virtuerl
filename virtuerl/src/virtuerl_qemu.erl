@@ -8,9 +8,10 @@
 
 -behaviour(gen_server).
 
--export([start_link/1]).
--export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
-  code_change/3]).
+-export([start_link/1, callback_mode/0]).
+-export([init/1, terminate/2]).
+-export([handle_continue/2, handle_info/2]).
+-export([handle_call/3, handle_cast/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -20,51 +21,179 @@
 
 start_link(ID) ->
 %%  gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
-  Pid = spawn_link(fun() ->
-    io:format("QEMU: Starting VM with ID ~p~n", [ID]),
-    timer:sleep(20000),
-    io:format("QEMU: Exiting ~p~n", [ID]),
-    timer:sleep(500),
-    exit(failure)
+%%  Pid = spawn_link(fun() ->
+%%    io:format("QEMU: Starting VM with ID ~p~n", [ID]),
+%%    timer:sleep(20000),
+%%    io:format("QEMU: Exiting ~p~n", [ID]),
+%%    timer:sleep(500),
+%%    exit(failure)
+%%
+%%             end),
+%%  {ok, Pid}.
 
-             end),
-  {ok, Pid}.
+  gen_server:start_link(?MODULE, [ID], []).
 
-init([]) ->
-  {ok, Table} = dets:open_file(vms, []),
-  % TODO: erlexec: spawn bird -f
-  {ok, {Table}}.
+callback_mode() ->
+  handle_event_function.
 
-terminate(_Reason, {Table}) ->
+init([ID]) ->
+  {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
+  [{DomainId, #{mac_addr:=MacAddr, tap_name := TapName} = Domain}] = dets:lookup(Table, ID),
+  DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainId]),
+  ok = filelib:ensure_path(DomainHomePath),
+  RootVolumePath = filename:join(DomainHomePath, "root.qcow2"),
+  case filelib:is_regular(RootVolumePath) of
+    false ->
+      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"]),
+      exec:run(io_lib:format("qemu-img create -f qcow2 -b ~s -F qcow2 ~s", [filename:absname(BaseImagePath), RootVolumePath]));
+    _ -> noop
+  end,
+  process_flag(trap_exit, true),
+  ensure_cloud_config(Domain),
+  file:delete(filename:join(DomainHomePath, "qmp.sock")),
+  file:delete(filename:join(DomainHomePath, "serial.sock")),
+  Cmd = iolist_to_binary(["kvm -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -display none -m 512 -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -display none -qmp unix:qmp.sock,server=on,wait=off -serial unix:serial.sock,server=on,wait=off"]),
+  io:format("QEMU cmdline: ~s~n", [Cmd]),
+  {ok, Pid, OsPid} = exec:run_link(Cmd, [{cd, DomainHomePath}]),
+  State = #{table => Table, id => ID, domain => Domain, qemu_pid => {Pid, OsPid}, qmp_pid => undefined},
+  {ok, State, {continue, setup_qmp}}.
+
+handle_continue(setup_qmp, #{id := ID} = State) ->
+  QmpSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", ID, "qmp.sock"]),
+  io:format("waiting for qmp.sock ~p~n", [erlang:timestamp()]),
+%%  {ok, _} = exec:run(iolist_to_binary(["inotifywait -e create --include 'qmp\\.sock' ", ID]), [sync]),
+  ok = wait_for_socket(ID),
+  io:format("done waiting for qmp.sock ~p~n", [erlang:timestamp()]),
+  {ok, QmpPid} = virtuerl_qmp:start_link(QmpSocketPath, self()),
+  virtuerl_qmp:exec(QmpPid, cont),
+  {noreply, State#{qmp_pid => QmpPid}}.
+
+handle_info({qmp, Event}, #{table := Table, id := ID, domain := Domain} = State) ->
+  io:format("QMP: ~p~n", [Event]),
+  case Event of
+    #{<<"event">> := <<"STOP">>} ->
+      [{DomainId, Domain}] = dets:lookup(Table, ID),
+      DomainUpdated = Domain#{state => stopped},
+      ok = dets:insert(Table, {DomainId, DomainUpdated}),
+      ok = dets:sync(Table),
+      {stop, normal, State#{domain => DomainUpdated}};
+    _ -> {noreply, State}
+  end.
+
+shutdown_events() ->
+  receive
+    {qmp, Event} ->
+      io:format("shutdown QMP: ~p~n", [Event]),
+      shutdown_events()
+  after 5000 -> ok
+  end.
+
+exit_events() ->
+  receive
+    {'EXIT', _Pid, _Reason} ->
+      io:format("EXIT ~p ~p!~n", [_Pid, _Reason]),
+      exit_events()
+  after 10000 -> ok
+  end.
+
+terminate(_Reason, #{table := Table, id := ID, domain := Domain, qemu_pid := {Pid, OsPid}, qmp_pid := QmpPid}) ->
+  io:format("GRACEFUL SHUTDOWN: ~s (~p)~n", [ID, _Reason]),
+  case _Reason of
+    normal -> ok;
+    _ -> % supervisor sends "shutdown"
+      virtuerl_qmp:exec(QmpPid, system_powerdown),
+%%  shutdown_events(),
+      receive
+        {qmp, #{<<"event">> := <<"STOP">>}} -> ok
+      after 5000 -> timeout
+      end
+  end,
+%%  {ok, #{<<"return">> := #{}}} = thoas:decode(PowerdownRes),
+  ok = virtuerl_qmp:stop(QmpPid),
+  ok = exec:stop(Pid),
+  receive
+    {'EXIT', Pid, _} ->
+      io:format("QEMU OS process stopped!~n"),
+      ok;
+    {'EXIT', OsPid, _} ->
+      io:format("QEMU OS process stopped (OsPid)!~n"),
+      ok
+  after 5000 -> timeout
+  end,
+%%  exit_events(),
   dets:close(Table).
-
-handle_call({vm_create, Conf}, _From, State) ->
-  {reply, ok, State}.
-
-handle_cast({net_update}, State) ->
-  {Table} = State,
-  update_bird_conf(Table),
-  {noreply, State}.
-
-handle_info(_Info, State) ->
-  {noreply, State}.
-
-code_change(_OldVsn, State, _Extra) ->
-  {ok, State}.
 
 %%%===================================================================
 %%% Internal functions
 %%%===================================================================
 
-update_bird_conf(Table) ->
-  % 1. write config
-  %%  for VM in VMs:
-  %%    append VM.IP to static routes: VM.IP via $VM.network.bridge
-  % 2. birdc configure
-  % 3. profit?
-  VMs = dets:match_object(Table, '_'),
-  [io:format("~p~n", [VM]) || VM <- VMs],
-  reload_bird().
+wait_for_socket(ID) ->
+  QmpSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", ID, "qmp.sock"]),
+  io:format("checking...~n"),
+  case filelib:last_modified(QmpSocketPath) of
+    0 ->
+      timer:sleep(20),
+      wait_for_socket(ID);
+    _ -> ok
+  end.
 
-reload_bird() ->
+ensure_cloud_config(#{id := DomainID} = Domain) ->
+  case filelib:is_regular(filename:join([virtuerl_mgt:home_path(), "domains", DomainID, "cloud_config.iso"])) of
+    true -> ok;
+    false -> create_cloud_config(Domain)
+  end.
+
+create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs}) ->
+  NetConf = [
+    "version: 2\n",
+    "ethernets:\n",
+    "  primary:\n",
+    "    match:\n",
+    "      macaddress: \"", virtuerl_util:mac_to_str(MacAddr), "\"\n",
+    "    set-name: ens2\n",
+    "    dhcp4: false\n",
+    "    dhcp6: false\n",
+    "    addresses:\n", [[
+      "      - ", virtuerl_net:format_ip(IpAddr), "/", integer_to_binary(Prefixlen), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
+    "    routes:\n", [[
+      "      - to: default\n",
+      "        via: ", virtuerl_net:format_ip(virtuerl_net:bridge_addr(IpAddr, Prefixlen)), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
+    ""
+  ],
+  MetaData = [
+    "instance-id: ", DomainID, "\n",
+    "local-hostname: ", DomainID, "\n"
+  ],
+  % openssl passwd -6
+  UserData = [
+    "#cloud-config\n",
+    "users:\n",
+    "  - default\n",
+    "  - name: ilya\n",
+    "    passwd: $6$VAKAlO91OquUA1ON$4w2.omQG9OUt0KuMtCvYrJgervyK8WZrTMFUhJI2fXTsfMN5YvuxKaZbSJTXkJvq4qAiFHptt6zKg2hTMOrkH0\n",
+    "    lock_passwd: false\n",
+    "    shell: /bin/bash\n",
+    "    sudo: ALL=(ALL) NOPASSWD:ALL\n",
+    "    ssh_authorized_keys:\n",
+    "      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDCKxHNpVg1whPegPv0KcRQTOfyVIqLwvMfVLyT9OpBPXHDudsFz9soOgMUEyWm8ZJ+pJ9fRCg66B+D5/ZRTwJCBpyNncfXCwu8xEJgEeoIubObh6t6dHWqqxX/yhHAS5GIRUSypm78qg6V+SQ6SeJXSjOCLAbZmhyWgJrlDm9M6GTPQhPAztrgsCUrzxIpZ5el5BwJXrm3I+LOmofAUqgbLQz9HuGJzPpnfABDa9WoVfI0L7oTr0qGpWwx8l71b2s8AYl7GMD/bEkZKyi9SSwEVCHA88F7dYYrZ3+fMXE/mJf+v0ece2lIDT7Te1gtqiLu/izJNmqD+b6mtnnXxVxNOtynhv3t6uLE9kBX22SBCCRqPJzETGNXvYH6fATEe88dhLh8kTppLRB5UGUd/zztxuNBSpMwFXaq8SlTKURxvF8BuFIPCz0FW8fq+TA/xZfBYsiVt59jXgl6BQyEGY4bMuMtT2nD8QXwZ5vsj52mzKGJwBwduiaX302brHYUyQkuyLII5iqmCNZ5YLlMY76a61Yg9pWMeRwQscSO2k4a18GOo+sIrQVTyUQiT3KhRRaDNrZuCPicQRgkJuiS1fKt1cWjnOlyweLxSYbpKnoS0H7vt+NrtbU1u9FPknXQPQ0pxixPpV3zgUdfOLmisFH7WGVjwNVvZAlNc5uyqm0fbw== ilya@verbit.io\n",
+    ""
+  ],
+  DomainBasePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
+  IsoBasePath = filename:join(DomainBasePath, "iso"),
+  ok = filelib:ensure_path(IsoBasePath),
+  NetConfPath = filename:join(IsoBasePath, "network-config"),
+  ok = file:write_file(NetConfPath, NetConf),
+  MetaDataPath = filename:join(IsoBasePath, "meta-data"),
+  ok = file:write_file(MetaDataPath, MetaData),
+  UserDataPath = filename:join(IsoBasePath, "user-data"),
+  ok = file:write_file(UserDataPath, UserData),
+  IsoCmd = ["genisoimage -output ", filename:join(DomainBasePath, "cloud_config.iso"), " -volid cidata -joliet -rock ", UserDataPath, " ", MetaDataPath, " ", NetConfPath],
+  os:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
+  ok = file:del_dir_r(IsoBasePath),
   ok.
+
+handle_call(Request, From, State) ->
+  erlang:error(not_implemented).
+
+handle_cast(Request, State) ->
+  erlang:error(not_implemented).

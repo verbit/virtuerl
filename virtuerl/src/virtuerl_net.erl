@@ -13,7 +13,7 @@
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3]).
--export([parse_cidr/1, format_ip/1, format_ip_bitstring/1, parse_ip/1]).
+-export([parse_cidr/1, format_ip/1, format_ip_bitstring/1, parse_ip/1, bridge_addr/1, bridge_addr/2]).
 
 -define(SERVER, ?MODULE).
 
@@ -26,7 +26,7 @@ start_link() ->
 
 init([]) ->
   ?LOG_INFO(#{what => "Started", who => virtuerl_net}),
-  {ok, Table} = dets:open_file(vms, []),
+  {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
   update_net(Table),
   % TODO: erlexec: spawn bird -f
   {ok, {Table}}.
@@ -73,8 +73,6 @@ update_net(Table) ->
   [io:format("~p~n", [Domain]) || Domain <- Domains],
   reload_net(Table).
 
--record(domain, {id, network_id, network_addrs, mac_addr, ipv4_addr, ipv6_addr, tap_name}).
-
 handle_interface(If, Table) ->
   %% 1. Delete all devices without an address set
   Addrs = maps:get(<<"addr_info">>, If, []),
@@ -102,7 +100,7 @@ reload_net(Table) ->
   io:format("Actual: ~p~n", [Matched]),
   Domains = dets:match_object(Table, '_'),
 
-  TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
+  TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #{network_addrs := Cidrs}} <- Domains]),
   io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
   update_nftables(Domains),
   sync_networks(Matched, TargetAddrs),
@@ -112,7 +110,7 @@ reload_net(Table) ->
   ok.
 
 update_nftables(Domains) ->
-  BridgeAddrs = lists:flatten([network_cidrs_to_bride_addrs(Cidrs) || {_, #domain{network_addrs = Cidrs}} <- Domains]),
+  BridgeAddrs = lists:uniq(lists:flatten([network_cidrs_to_bride_addrs(Cidrs) || {_, #{network_addrs := Cidrs}} <- Domains])),
   BridgeAddrsTyped = lists:map(fun (Addr) ->
     case binary:match(Addr, <<":">>) of
       nomatch -> {ipv4, Addr};
@@ -168,6 +166,9 @@ bridge_addr(<<Addr/binary>>) ->
   BitSize = bit_size(Addr),
   <<AddrInt:BitSize>> = Addr,
   <<(AddrInt+1):BitSize>>.
+bridge_addr(<<Addr/binary>>, Prefixlen) ->
+  <<Prefix:Prefixlen,Rest/bits>> = Addr,
+  <<Prefix:Prefixlen,1:(bit_size(Rest))>>.
 
 parse_cidr(<<CIDR/binary>>) -> parse_cidr(binary_to_list(CIDR));
 parse_cidr(CIDR) ->
@@ -202,7 +203,7 @@ update_bird_conf(Domains) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
   Bridges = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
-  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}} || {_, #domain{network_addrs = {NetAddr, Prefixlen}, ipv4_addr = Addr}} <- Domains]),
+  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}} || {_, #{network_addrs := {NetAddr, Prefixlen}, ipv4_addr := Addr}} <- Domains]),
   AddrToBridgeMap = maps:map(fun (_, Net) -> maps:get(Net, Bridges) end, AddrMap),
 
   io:format("DOMAINS: ~p~n", [Domains]),
@@ -258,9 +259,10 @@ sync_taps(Domains) ->
   {ok, JSONTaps} = thoas:decode(OutputTaps),
   io:format("TAPS: ~p~n", [JSONTaps]),
   TapsActual = sets:from_list([maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>)]),
-  TapsTarget = sets:from_list([TapName || {_, #domain{tap_name = TapName}} <- Domains]),
-  io:format("Taps to add: ~p~n", [sets:to_list(TapsTarget)]),
-  TapsMap = maps:from_list([{Tap, {MacAddr, network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #domain{network_addrs = Cidrs, tap_name = Tap, mac_addr = MacAddr}} <- Domains]),
+  TapsTarget = sets:from_list([iolist_to_binary(TapName) || {_, #{tap_name := TapName}} <- Domains]), % TODO: persist tap_name as binary
+  io:format("Taps Target: ~p~n", [sets:to_list(TapsTarget)]),
+  io:format("Taps Actual: ~p~n", [sets:to_list(TapsActual)]),
+  TapsMap = maps:from_list([{iolist_to_binary(Tap), {MacAddr, network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #{network_addrs := Cidrs, tap_name := Tap, mac_addr := MacAddr}} <- Domains]),
   io:format("TapsMap: ~p~n", [TapsMap]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
@@ -281,8 +283,7 @@ end, sets:to_list(TapsToDelete)),
 add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
 add_taps([]) -> ok;
 add_taps([{Tap, {Mac, Bridge}}|T]) ->
-  <<A:16, B:16, C:16, D:16, E:16, F:16>> =  binary:encode_hex(Mac),
-  MacAddrString = <<A:16, $::8, B:16, $::8, C:16, $::8, D:16, $::8, E:16, $::8, F:16>>,
+  MacAddrString = virtuerl_util:mac_to_str(Mac),
   Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s address ~s master ~s~nip link set ~s up~n", [Tap, Tap, MacAddrString, Bridge, Tap]),
   io:format(Cmd),
   os:cmd(Cmd),
