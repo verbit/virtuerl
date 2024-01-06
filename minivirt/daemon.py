@@ -478,14 +478,14 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
 
         img_pool = self.conn.storagePoolLookupByName("restvirtimages")
         if not domreq.base_image:
-            base_img_name = "jammy-amd64-20220808.qcow2"
+            base_img_name = "debian-12-genericcloud-amd64-20240102-1614.qcow2"
             try:
                 base_img = img_pool.storageVolLookupByName(base_img_name)
             except:
                 from urllib.request import urlopen
 
                 res = urlopen(
-                    f"https://cloud-images.ubuntu.com/releases/22.04/release-20221117/ubuntu-22.04-server-cloudimg-amd64.img"
+                    f"https://cloud.debian.org/images/cloud/bookworm/20240102-1614/debian-12-genericcloud-amd64-20240102-1614.qcow2"
                 )
                 size = int(res.getheader("Content-length"))
                 base_img = img_pool.createXML(
