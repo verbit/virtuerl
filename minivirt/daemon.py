@@ -581,7 +581,7 @@ class DaemonService(daemon_pb2_grpc.DaemonServiceServicer):
     <disk type='file' device='cdrom'>
       <driver name='qemu' type='raw'/>
       <source file='{ccfg_vol.path()}'/>
-      <target dev='vde' bus='sata'/>
+      <target dev='vde' bus='virtio'/>
     </disk>
     <interface type='network'>
       <mac address='{mac}'/>
