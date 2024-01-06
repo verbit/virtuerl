@@ -39,7 +39,8 @@ jobs:
       - name: Setup Virtuerl
         working-directory: virtuerl
         run: |
-          rebar3 release
+          sudo apt install -y g++
+          sudo rebar3 release
 
           cat << EOF | sudo tee -a /etc/systemd/system/virtuerl.service
           [Unit]
@@ -47,8 +48,9 @@ jobs:
           After=network.target
 
           [Service]
+          Environment="SHELL=/bin/sh"
           WorkingDirectory=${PWD}/_build/default/rel/virtuerl/
-          ExecStart=bin/virtuerl foreground
+          ExecStart=${PWD}/_build/default/rel/virtuerl/bin/virtuerl foreground
           Restart=always
 
           [Install]
