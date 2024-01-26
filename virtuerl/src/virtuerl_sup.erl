@@ -29,7 +29,15 @@ init([]) ->
     SupFlags = #{strategy => one_for_one,
                  intensity => 300,
                  period => 5},
-    ChildSpecs = [{
+    ChildSpecs = [
+      {
+        virtuerl_pubsub,
+        {virtuerl_pubsub, start_link, []},
+        permanent,
+        infinity,
+        worker,
+        []
+      }, {
       virtuerl_ipam,
       {virtuerl_ipam, start_link, []},
       permanent,

@@ -47,6 +47,7 @@ ipam_put_net(NetworkDef) ->
 			Other
 	end.
 
+-spec ipam_list_nets() -> {ok, #{binary() => #{cidr4 | cidr6 := #{address := nonempty_binary(), prefixlen := integer()}}}}.
 ipam_list_nets() ->
 	gen_server:call(ipam, net_list).
 
@@ -195,6 +196,10 @@ handle_call({ip_put, NetworkId, IpAddr, DomainId}, _From, StoreId) ->
 		{error, ?khepri_error(node_not_found, _)} ->
 			{error, network_not_found}
 	end,
+	{reply, R, StoreId};
+
+handle_call({ip_delete, NetworkId, IpAddr}, _From, StoreId) ->
+	R = khepri:delete(StoreId, [network, NetworkId, ?KHEPRI_WILDCARD_STAR, IpAddr]),
 	{reply, R, StoreId};
 
 handle_call({ip_clear}, _From, StoreId) ->
