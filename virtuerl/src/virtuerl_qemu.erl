@@ -38,21 +38,23 @@ callback_mode() ->
 
 init([ID]) ->
   {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
-  [{DomainId, #{mac_addr:=MacAddr, tap_name := TapName} = Domain}] = dets:lookup(Table, ID),
+  [{DomainId, #{mac_addr:=MacAddr, tap_name := TapName} = DomainRaw}] = dets:lookup(Table, ID),
+  Domain = maps:merge(#{user_data => ""}, DomainRaw),
   DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainId]),
   ok = filelib:ensure_path(DomainHomePath),
   RootVolumePath = filename:join(DomainHomePath, "root.qcow2"),
   case filelib:is_regular(RootVolumePath) of
     false ->
-      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"]),
-      exec:run(io_lib:format("qemu-img create -f qcow2 -b ~s -F qcow2 ~s", [filename:absname(BaseImagePath), RootVolumePath]));
+%%      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"]),
+      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"]),
+      exec:run(lists:flatten(io_lib:format("qemu-img create -f qcow2 -b ~s -F qcow2 ~s", [filename:absname(BaseImagePath), RootVolumePath])), [sync]);
     _ -> noop
   end,
   process_flag(trap_exit, true),
   ensure_cloud_config(Domain),
   file:delete(filename:join(DomainHomePath, "qmp.sock")),
   file:delete(filename:join(DomainHomePath, "serial.sock")),
-  Cmd = iolist_to_binary(["kvm -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -display none -m 512 -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -display none -qmp unix:qmp.sock,server=on,wait=off -serial unix:serial.sock,server=on,wait=off"]),
+  Cmd = iolist_to_binary(["kvm -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -vnc :1 -display none -serial none -m 512 -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -qmp unix:qmp.sock,server=on,wait=off"]), % -serial unix:serial.sock,server=on,wait=off
   io:format("QEMU cmdline: ~s~n", [Cmd]),
   {ok, Pid, OsPid} = exec:run_link(Cmd, [{cd, DomainHomePath}]),
   State = #{table => Table, id => ID, domain => Domain, qemu_pid => {Pid, OsPid}, qmp_pid => undefined},
@@ -62,11 +64,27 @@ handle_continue(setup_qmp, #{id := ID} = State) ->
   QmpSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", ID, "qmp.sock"]),
   io:format("waiting for qmp.sock ~p~n", [erlang:timestamp()]),
 %%  {ok, _} = exec:run(iolist_to_binary(["inotifywait -e create --include 'qmp\\.sock' ", ID]), [sync]),
-  ok = wait_for_socket(ID),
-  io:format("done waiting for qmp.sock ~p~n", [erlang:timestamp()]),
-  {ok, QmpPid} = virtuerl_qmp:start_link(QmpSocketPath, self()),
-  virtuerl_qmp:exec(QmpPid, cont),
-  {noreply, State#{qmp_pid => QmpPid}}.
+  case wait_for_socket(QmpSocketPath) of
+    ok ->
+      {ok, QmpPid} = virtuerl_qmp:start_link(QmpSocketPath, self()),
+      virtuerl_qmp:exec(QmpPid, cont),
+      {noreply, State#{qmp_pid => QmpPid}, {continue, setup_serial}};
+    timeout ->
+      {stop, failure, State}
+  end;
+handle_continue(setup_serial, #{id := ID} = State) ->
+  {noreply, State}.
+%%  SerialSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", ID, "serial.sock"]),
+%%  io:format("waiting for serial.sock ~p~n", [erlang:timestamp()]),
+%%%%  {ok, _} = exec:run(iolist_to_binary(["inotifywait -e create --include 'qmp\\.sock' ", ID]), [sync]),
+%%  case wait_for_socket(SerialSocketPath) of
+%%    ok ->
+%%      % TODO: shall this be its own process instead?
+%%      {ok, SerialSocket} = gen_tcp:connect({local, SerialSocketPath}, 0, [local, {active, true}, {packet, line}, binary]),
+%%      {noreply, State#{serial_socket => SerialSocket}};
+%%    timeout ->
+%%      {stop, failure, State}
+%%  end.
 
 handle_info({qmp, Event}, #{table := Table, id := ID, domain := Domain} = State) ->
   io:format("QMP: ~p~n", [Event]),
@@ -78,7 +96,10 @@ handle_info({qmp, Event}, #{table := Table, id := ID, domain := Domain} = State)
       ok = dets:sync(Table),
       {stop, normal, State#{domain => DomainUpdated}};
     _ -> {noreply, State}
-  end.
+  end;
+handle_info({tcp, SerialSocket, Data}, #{table := Table, id := ID, domain := Domain, serial_socket := SerialSocket} = State) ->
+  virtuerl_pubsub:send({domain_out, ID, Data}),
+  {noreply, State}.
 
 shutdown_events() ->
   receive
@@ -127,14 +148,29 @@ terminate(_Reason, #{table := Table, id := ID, domain := Domain, qemu_pid := {Pi
 %%% Internal functions
 %%%===================================================================
 
-wait_for_socket(ID) ->
-  QmpSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", ID, "qmp.sock"]),
+wait_for_socket(SocketPath) ->
+  Self = self(),
+  WaiterPid = spawn(fun () ->
+    do_wait_for_socket(SocketPath, Self)
+                    end),
+  receive
+    {virtuerl, socket_available} ->
+      io:format("done waiting for ~s ~p~n", [SocketPath, erlang:timestamp()]),
+      ok
+  after 2000 ->
+    io:format("failed waiting"),
+    exit(WaiterPid, kill),
+    timeout
+  end.
+
+do_wait_for_socket(SocketPath, Requester) ->
   io:format("checking...~n"),
-  case filelib:last_modified(QmpSocketPath) of
+  case filelib:last_modified(SocketPath) of
     0 ->
       timer:sleep(20),
-      wait_for_socket(ID);
-    _ -> ok
+      do_wait_for_socket(SocketPath, Requester);
+    _ ->
+      Requester ! {virtuerl, socket_available}
   end.
 
 ensure_cloud_config(#{id := DomainID} = Domain) ->
@@ -143,7 +179,7 @@ ensure_cloud_config(#{id := DomainID} = Domain) ->
     false -> create_cloud_config(Domain)
   end.
 
-create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs}) ->
+create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs, user_data := UserData}) ->
   NetConf = [
     "version: 2\n",
     "ethernets:\n",
@@ -154,29 +190,15 @@ create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs}) ->
     "    dhcp4: false\n",
     "    dhcp6: false\n",
     "    addresses:\n", [[
-      "      - ", virtuerl_net:format_ip(IpAddr), "/", integer_to_binary(Prefixlen), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
+    "      - ", virtuerl_net:format_ip(IpAddr), "/", integer_to_binary(Prefixlen), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
     "    routes:\n", [[
-      "      - to: default\n",
-      "        via: ", virtuerl_net:format_ip(virtuerl_net:bridge_addr(IpAddr, Prefixlen)), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
+    "      - to: default\n",
+    "        via: ", virtuerl_net:format_ip(virtuerl_net:bridge_addr(IpAddr, Prefixlen)), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
     ""
   ],
   MetaData = [
     "instance-id: ", DomainID, "\n",
     "local-hostname: ", DomainID, "\n"
-  ],
-  % openssl passwd -6
-  UserData = [
-    "#cloud-config\n",
-    "users:\n",
-    "  - default\n",
-    "  - name: ilya\n",
-    "    passwd: $6$VAKAlO91OquUA1ON$4w2.omQG9OUt0KuMtCvYrJgervyK8WZrTMFUhJI2fXTsfMN5YvuxKaZbSJTXkJvq4qAiFHptt6zKg2hTMOrkH0\n",
-    "    lock_passwd: false\n",
-    "    shell: /bin/bash\n",
-    "    sudo: ALL=(ALL) NOPASSWD:ALL\n",
-    "    ssh_authorized_keys:\n",
-    "      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDCKxHNpVg1whPegPv0KcRQTOfyVIqLwvMfVLyT9OpBPXHDudsFz9soOgMUEyWm8ZJ+pJ9fRCg66B+D5/ZRTwJCBpyNncfXCwu8xEJgEeoIubObh6t6dHWqqxX/yhHAS5GIRUSypm78qg6V+SQ6SeJXSjOCLAbZmhyWgJrlDm9M6GTPQhPAztrgsCUrzxIpZ5el5BwJXrm3I+LOmofAUqgbLQz9HuGJzPpnfABDa9WoVfI0L7oTr0qGpWwx8l71b2s8AYl7GMD/bEkZKyi9SSwEVCHA88F7dYYrZ3+fMXE/mJf+v0ece2lIDT7Te1gtqiLu/izJNmqD+b6mtnnXxVxNOtynhv3t6uLE9kBX22SBCCRqPJzETGNXvYH6fATEe88dhLh8kTppLRB5UGUd/zztxuNBSpMwFXaq8SlTKURxvF8BuFIPCz0FW8fq+TA/xZfBYsiVt59jXgl6BQyEGY4bMuMtT2nD8QXwZ5vsj52mzKGJwBwduiaX302brHYUyQkuyLII5iqmCNZ5YLlMY76a61Yg9pWMeRwQscSO2k4a18GOo+sIrQVTyUQiT3KhRRaDNrZuCPicQRgkJuiS1fKt1cWjnOlyweLxSYbpKnoS0H7vt+NrtbU1u9FPknXQPQ0pxixPpV3zgUdfOLmisFH7WGVjwNVvZAlNc5uyqm0fbw== ilya@verbit.io\n",
-    ""
   ],
   DomainBasePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
   IsoBasePath = filename:join(DomainBasePath, "iso"),

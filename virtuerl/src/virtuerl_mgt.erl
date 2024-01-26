@@ -11,7 +11,7 @@
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3, handle_continue/2]).
--export([create_vm/0, domain_create/1, domain_get/1, domain_delete/1, domain_stop/1, domain_start/1]).
+-export([create_vm/0, domain_create/1, domain_get/1, domain_delete/1, domain_stop/1, domain_start/1, domains_list/0]).
 -export([home_path/0]).
 
 -define(SERVER, ?MODULE).
@@ -30,8 +30,9 @@ domain_delete(Conf) ->
 domain_get(Conf) ->
   gen_server:call(?SERVER, {domain_get, Conf}).
 
-domains_list(Conf) ->
-  gen_server:call(?SERVER, {domains_list, Conf}).
+-spec domains_list() -> #{}.
+domains_list() ->
+  gen_server:call(?SERVER, domains_list).
 
 domain_stop(Id) ->
   gen_server:call(?SERVER, {domain_update, #{id => Id, state => stopped}}).
@@ -60,7 +61,8 @@ init([]) ->
 handle_continue(setup_base, State) ->
   ok = filelib:ensure_path(filename:join(home_path(), "domains")),
 
-  BaseImagePath = filename:join(home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"),
+%%  BaseImagePath = filename:join(home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"),
+  BaseImagePath = filename:join(home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"),
   case filelib:is_regular(BaseImagePath) of
     true -> ok;
     false ->
@@ -108,12 +110,12 @@ generate_unique_tap_name(TapNames) ->
 
 handle_call({domain_create, Conf}, _From, State) ->
   {Table} = State,
-  #{network_id := NetworkID} = Conf,
   DomainID = virtuerl_util:uuid4(),
-  Domain = #{id => DomainID, network_id => NetworkID},  % TODO: save ipv4 addr as well
+  Domain = maps:merge(#{id => DomainID, name => DomainID}, Conf),  % TODO: save ipv4 addr as well
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
 
+  #{network_id := NetworkID} = Domain,
   {ok, #{cidrs := Cidrs}} = virtuerl_ipam:ipam_get_net(NetworkID),
   Keys = lists:map(fun(Cidr) ->
     {Ip, _} = virtuerl_net:parse_cidr(Cidr),
@@ -151,8 +153,8 @@ handle_call({domain_create, Conf}, _From, State) ->
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #{tap_name := Tap} <- Domains]),
   TapName = generate_unique_tap_name(TapNames),
-  <<A:6, _:2, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
-  MacAddr = <<A:6, 2:2, B:40>>,
+  <<A:5, _:3, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
+  MacAddr = <<A:5, 1:1, 2:2, B:40>>,
 
   dets:insert(Table, {DomainID, Domain#{network_addrs => Cidrs, mac_addr=>MacAddr, ipv4_addr=>Ipv4Addr, ipv6_addr => Ipv6Addr, cidrs => IpCidrs, tap_name => TapName}}),
   dets:sync(Table),
@@ -171,18 +173,22 @@ handle_call({domain_create, Conf}, _From, State) ->
 handle_call({domain_update, #{id := DomainID, state := RunState}}, _From, {Table} = State) ->
   Reply = case dets:lookup(Table, DomainID) of
             [{_, Domain}] ->
-              ok = dets:insert(Table, {DomainID, Domain#{state := RunState}}),
+              ok = dets:insert(Table, {DomainID, Domain#{state => RunState}}),
               ok = dets:sync(Table),
               ok;
             [] -> notfound
           end,
   {reply, Reply, State, {continue, sync_domains}};
+handle_call(domains_list, _From, State) ->
+  {Table} = State,
+  Domains = dets:match_object(Table, '_'),
+  {reply, [maps:merge(#{state => stopped, name => Id}, Domain) || {Id, Domain} <- Domains], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
-    [{_, #{network_id := NetworkID, mac_addr := MacAddr, ipv4_addr:=IP, tap_name := TapName}}] ->
-      DomRet = #{network_id => NetworkID, mac_addr => binary:encode_hex(MacAddr), ipv4_addr => virtuerl_net:format_ip_bitstring(IP), tap_name => iolist_to_binary(TapName)},
-      {ok, DomRet};
+    [{_, #{mac_addr := MacAddr, ipv4_addr:=IP, tap_name := TapName} = Domain}] ->
+      DomRet = Domain#{mac_addr := binary:encode_hex(MacAddr), ipv4_addr := virtuerl_net:format_ip_bitstring(IP), tap_name := iolist_to_binary(TapName)},
+      {ok, maps:merge(#{name => DomainID}, DomRet)};
     [] -> notfound
   end,
   {reply, Reply, State};
@@ -190,7 +196,9 @@ handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Res = dets:delete(Table, DomainID),
   dets:sync(Table),
+  io:format("terminating ~p~n", [DomainID]),
   ok = supervisor:terminate_child(virtuerl_sup, DomainID),
+  io:format("done terminating ~p~n", [DomainID]),
   ok = supervisor:delete_child(virtuerl_sup, DomainID),
   ok = gen_server:call(virtuerl_net, {net_update}),
   {reply, Res, State}.
