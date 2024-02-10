@@ -39,22 +39,24 @@ callback_mode() ->
 init([ID]) ->
   {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
   [{DomainId, #{mac_addr:=MacAddr, tap_name := TapName} = DomainRaw}] = dets:lookup(Table, ID),
-  Domain = maps:merge(#{user_data => ""}, DomainRaw),
+  Domain = maps:merge(#{user_data => "", vcpu => 1, memory => 512}, DomainRaw),
   DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainId]),
   ok = filelib:ensure_path(DomainHomePath),
   RootVolumePath = filename:join(DomainHomePath, "root.qcow2"),
   case filelib:is_regular(RootVolumePath) of
     false ->
-%%      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"]),
-      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"]),
-      exec:run(lists:flatten(io_lib:format("qemu-img create -f qcow2 -b ~s -F qcow2 ~s", [filename:absname(BaseImagePath), RootVolumePath])), [sync]);
+      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"]),
+%%      BaseImagePath = filename:join([virtuerl_mgt:home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"]),
+      exec:run(lists:flatten(io_lib:format("qemu-img create -f qcow2 -b ~s -F qcow2 ~s 20G", [filename:absname(BaseImagePath), RootVolumePath])), [sync]);
     _ -> noop
   end,
   process_flag(trap_exit, true),
   ensure_cloud_config(Domain),
   file:delete(filename:join(DomainHomePath, "qmp.sock")),
   file:delete(filename:join(DomainHomePath, "serial.sock")),
-  Cmd = iolist_to_binary(["kvm -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -vnc :1 -display none -serial none -m 512 -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -qmp unix:qmp.sock,server=on,wait=off"]), % -serial unix:serial.sock,server=on,wait=off
+  file:delete(filename:join(DomainHomePath, "vnc.sock")),
+  #{vcpu := Vcpu, memory := Memory} = Domain,
+  Cmd = iolist_to_binary(["kvm -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -vnc unix:vnc.sock -display none -serial none -smp ",integer_to_binary(Vcpu)," -m ",integer_to_binary(Memory)," -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -qmp unix:qmp.sock,server=on,wait=off"]), % -serial unix:serial.sock,server=on,wait=off
   io:format("QEMU cmdline: ~s~n", [Cmd]),
   {ok, Pid, OsPid} = exec:run_link(Cmd, [{cd, DomainHomePath}]),
   State = #{table => Table, id => ID, domain => Domain, qemu_pid => {Pid, OsPid}, qmp_pid => undefined},
@@ -179,7 +181,7 @@ ensure_cloud_config(#{id := DomainID} = Domain) ->
     false -> create_cloud_config(Domain)
   end.
 
-create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs, user_data := UserData}) ->
+create_cloud_config(#{id := DomainID, name := DomainName, mac_addr := MacAddr, cidrs := Cidrs, user_data := UserData}) ->
   NetConf = [
     "version: 2\n",
     "ethernets:\n",
@@ -189,6 +191,8 @@ create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs, user_
     "    set-name: ens2\n",
     "    dhcp4: false\n",
     "    dhcp6: false\n",
+    "    nameservers:\n",
+    "      addresses: [8.8.8.8, 8.8.4.4]\n",
     "    addresses:\n", [[
     "      - ", virtuerl_net:format_ip(IpAddr), "/", integer_to_binary(Prefixlen), "\n"] || {IpAddr, Prefixlen} <- Cidrs],
     "    routes:\n", [[
@@ -198,7 +202,7 @@ create_cloud_config(#{id := DomainID, mac_addr := MacAddr, cidrs := Cidrs, user_
   ],
   MetaData = [
     "instance-id: ", DomainID, "\n",
-    "local-hostname: ", DomainID, "\n"
+    "local-hostname: ", DomainName, "\n"
   ],
   DomainBasePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
   IsoBasePath = filename:join(DomainBasePath, "iso"),
