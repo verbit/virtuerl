@@ -8,6 +8,7 @@
 -behavior(gen_server).
 
 -export([req/1, init/1, handle_call/3, subnet/1, get_range/1, get_next/6, terminate/2, ipam_next_ip/1, start_server/1, stop_server/1, ipam_put_net/1, start_link/0, handle_cast/2, ipam_delete_net/1, ipam_create_net/1, ipam_list_nets/0, ipam_get_net/1, ipam_put_ip/3, assign_next/3]).
+-export([unassign/1]).
 
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
@@ -51,6 +52,8 @@ ipam_put_net(NetworkDef) ->
 ipam_list_nets() ->
 	gen_server:call(ipam, net_list).
 
+ipam_delete_net(ID) when is_list(ID) ->
+	ipam_delete_net(list_to_binary(ID));
 ipam_delete_net(ID) ->
 	case gen_server:call(ipam, {net_delete, ID}) of
 		{ok, Res} ->
@@ -81,6 +84,9 @@ assign_next(NetworkID, Tag, VMID) ->
 		Other ->
 			Other
 	end.
+
+unassign(DomainId) ->
+	gen_server:call(ipam, {unassign, DomainId}).
 
 ipam_next_ip(NetworkName) ->
 	case gen_server:call(ipam, {ip_next, NetworkName}) of
@@ -201,6 +207,10 @@ handle_call({ip_put, NetworkId, IpAddr, DomainId}, _From, StoreId) ->
 handle_call({ip_delete, NetworkId, IpAddr}, _From, StoreId) ->
 	R = khepri:delete(StoreId, [network, NetworkId, ?KHEPRI_WILDCARD_STAR, IpAddr]),
 	{reply, R, StoreId};
+
+handle_call({unassign, DomainId}, _From, StoreId) ->
+	ok = khepri:delete_many(StoreId, [network, ?KHEPRI_WILDCARD_STAR, ?KHEPRI_WILDCARD_STAR, #if_data_matches{pattern = DomainId}]),
+	{reply, ok, StoreId};
 
 handle_call({ip_clear}, _From, StoreId) ->
 	R = khepri:delete(StoreId, [network]),

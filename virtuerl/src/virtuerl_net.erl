@@ -142,7 +142,7 @@ update_nftables(Domains) ->
 
     "    chain postrouting {\n",
     "        type nat hook postrouting priority -5; policy accept;\n",
-    "        oifname != \"verlbr*\" iifname \"verlbr*\" masquerade\n",
+    "        oifname != \"verlbr*\" iifname \"verlbr*\" masquerade\n", % TODO: we need to base it on IPs
     "    }\n",
     "}\n"
   ],
@@ -258,7 +258,7 @@ generate_unique_bridge_name(Ifnames) ->
       generate_unique_bridge_name(Ifnames)
   end.
 
-to_vtap_map(MacAddr) ->
+to_vtap_mac(MacAddr) ->
   <<A:5, _:1, 2:2, B:40>> = MacAddr,
   <<A:5, 0:1, 2:2, B:40>>.
 
@@ -274,7 +274,7 @@ sync_taps(Domains) ->
   TapsTarget = sets:from_list([iolist_to_binary(TapName) || {_, #{tap_name := TapName}} <- Domains]), % TODO: persist tap_name as binary
   io:format("Taps Target: ~p~n", [sets:to_list(TapsTarget)]),
   io:format("Taps Actual: ~p~n", [sets:to_list(TapsActual)]),
-  TapsMap = maps:from_list([{iolist_to_binary(Tap), {to_vtap_map(MacAddr), network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #{network_addrs := Cidrs, tap_name := Tap, mac_addr := MacAddr}} <- Domains]),
+  TapsMap = maps:from_list([{iolist_to_binary(Tap), {to_vtap_mac(MacAddr), network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #{network_addrs := Cidrs, tap_name := Tap, mac_addr := MacAddr}} <- Domains]),
   io:format("TapsMap: ~p~n", [TapsMap]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),

@@ -61,8 +61,8 @@ init([]) ->
 handle_continue(setup_base, State) ->
   ok = filelib:ensure_path(filename:join(home_path(), "domains")),
 
-%%  BaseImagePath = filename:join(home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"),
-  BaseImagePath = filename:join(home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"),
+  BaseImagePath = filename:join(home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"),
+%%  BaseImagePath = filename:join(home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"),
   case filelib:is_regular(BaseImagePath) of
     true -> ok;
     false ->
@@ -111,7 +111,7 @@ generate_unique_tap_name(TapNames) ->
 handle_call({domain_create, Conf}, _From, State) ->
   {Table} = State,
   DomainID = virtuerl_util:uuid4(),
-  Domain = maps:merge(#{id => DomainID, name => DomainID}, Conf),  % TODO: save ipv4 addr as well
+  Domain = maps:merge(#{id => DomainID, name => DomainID, vcpu => 1, memory => 512}, Conf),  % TODO: save ipv4 addr as well
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
 
@@ -182,24 +182,27 @@ handle_call({domain_update, #{id := DomainID, state := RunState}}, _From, {Table
 handle_call(domains_list, _From, State) ->
   {Table} = State,
   Domains = dets:match_object(Table, '_'),
-  {reply, [maps:merge(#{state => stopped, name => Id}, Domain) || {Id, Domain} <- Domains], State};
+  {reply, [maps:merge(#{state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
     [{_, #{mac_addr := MacAddr, ipv4_addr:=IP, tap_name := TapName} = Domain}] ->
       DomRet = Domain#{mac_addr := binary:encode_hex(MacAddr), ipv4_addr := virtuerl_net:format_ip_bitstring(IP), tap_name := iolist_to_binary(TapName)},
-      {ok, maps:merge(#{name => DomainID}, DomRet)};
+      {ok, maps:merge(#{state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
     [] -> notfound
   end,
   {reply, Reply, State};
 handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
   {Table} = State,
+  ok = virtuerl_ipam:unassign(DomainID),
   Res = dets:delete(Table, DomainID),
   dets:sync(Table),
   io:format("terminating ~p~n", [DomainID]),
-  ok = supervisor:terminate_child(virtuerl_sup, DomainID),
+  supervisor:terminate_child(virtuerl_sup, DomainID),
   io:format("done terminating ~p~n", [DomainID]),
-  ok = supervisor:delete_child(virtuerl_sup, DomainID),
+  supervisor:delete_child(virtuerl_sup, DomainID),
+  DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
+  file:del_dir_r(DomainHomePath),
   ok = gen_server:call(virtuerl_net, {net_update}),
   {reply, Res, State}.
 

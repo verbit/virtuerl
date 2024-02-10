@@ -33,7 +33,7 @@
 -export([
   init/1, handle_info/2, handle_event/2,
   code_change/3, terminate/2]).
--export([start/1]).
+-export([start/2]).
 
 -behaviour(wx_object).
 
@@ -48,67 +48,14 @@
 -define(vncMSG_TYPE_PointerEvent, 5).
 -define(vncENCODING_RAW, 0).
 
--record(state, {win, socket, panel, tex_id, vnc_conf}).
+-record(state, {win, socket, panel, tex_id, vnc_conf, parent}).
 -record(vnc_conf, {width, height}).
 
-start(Parent) ->
-  wx_object:start_link(?MODULE, [Parent], []).
+start(Parent, DomainId) ->
+  wx_object:start_link(?MODULE, [Parent, DomainId], []).
 
 %% Init is called in the new process.
-init([Parent]) ->
-  {ok, Socket} = gen_tcp:connect("localhost", 5901, [{active, true}, binary]),
-  receive
-    {tcp, Socket, <<"RFB ", Major:3/binary, ".", Minor:3/binary, "\n">>} ->
-      io:format("Major: ~s / Minor: ~s~n", [Major, Minor]),
-      ok
-  after 2000 ->
-    timeout
-  end,
-
-  ok = gen_tcp:send(Socket, <<"RFB 003.008\n">>),
-  receive
-    {tcp, Socket, <<NumAuthTypes:8/integer, AuthType:NumAuthTypes/binary>>} ->
-      io:format("AuthType: ~p~n", [AuthType]),
-      case AuthType of
-        ?vncINVALID -> {error, auth_invalid};
-        ?vncNONE -> ok;
-        ?vncVNC_AUTH -> {error, auth_not_supported};
-        _ -> io:format("Unknown auth: ~p~n", [AuthType])
-      end
-  after 2000 ->
-    {error, timeout}
-  end,
-
-  ok = gen_tcp:send(Socket, <<?vncNONE>>),
-  receive
-    {tcp, Socket, <<SecurityResult:32/integer>>} ->
-      io:format("Security result: ~B~n", [SecurityResult]),
-      case SecurityResult of
-        ?vncOK -> ok;
-        ?vncFAILED -> error
-      end
-  after 2000 ->
-    {error, timeout}
-  end,
-
-  ok = gen_tcp:send(Socket, <<1>>),
-  VncConf = receive
-    {tcp, Socket, <<Width:16/integer, Height:16/integer,
-      BitsPerPixel:8/integer, Depth:8/integer, BigEndianFlag:8/integer, TrueColorFlag:8/integer,
-      RedMax:16/integer, GreenMax:16/integer, BlueMax:16/integer,
-      RedShift:8/integer, GreenShift:8/integer, BlueShift:8/integer,
-      _:3/binary,
-      NameLength:32/integer, Name:NameLength/binary>>} ->
-      io:format("~s: ~Bx~B~n~B/~B (BE: ~B, TC: ~B)~nR:(X>>~B)&~B  G:(X>>~B)&~B  B:(X>>~B)&~B~n", [Name, Width, Height, Depth, BitsPerPixel, BigEndianFlag, TrueColorFlag, RedShift, RedMax, GreenShift, GreenMax, BlueShift, BlueMax]),
-      #vnc_conf{width = Width, height = Height}
-  after 2000 ->
-    {error, timeout}
-  end,
-  #vnc_conf{width = VncWidth, height = VncHeight} = VncConf,
-%%  #vnc_conf{width = Width, height = Height} = #vnc_conf{width = 800, height = 600},
-  inet:setopts(Socket, [{active, once}]),
-  ok = gen_tcp:send(Socket, <<?vncMSG_TYPE_FramebufferUpdateRequest, 0, 0:16, 0:16, VncWidth:16, VncHeight:16>>),
-
+init([Parent, DomainId]) ->
   {Mx, My, _, _} = wxWindow:getTextExtent(Parent, "M"),
 %%  wxFrame:setClientSize(Frame, {60*Mx, 20*My}),
   Panel = wxGLCanvas:new(Parent, [{attribList, [?WX_GL_RGBA,?WX_GL_DOUBLEBUFFER,0]}]),
@@ -120,7 +67,17 @@ init([Parent]) ->
 
   wxGLCanvas:setCurrent(Panel, Context),
 
-gl:enable(?GL_TEXTURE_2D),
+  VncProxy = virtuerl_vnc_proxy:start(DomainId),
+  {VncWidth, VncHeight} = receive
+    {conf, TVncWidth, TVncHeight} -> {TVncWidth, TVncHeight}
+                          after 1000 ->
+      io:format("the foock?~n"),
+      {700, 400}
+  end,
+
+  VncProxy ! {framebuffer_update_request, 0, 0, 0, VncWidth, VncHeight},
+
+  gl:enable(?GL_TEXTURE_2D),
   [TexId] = gl:genTextures(1),
   io:format("TEXTURE ID: ~p~n", [TexId]),
   gl:bindTexture(?GL_TEXTURE_2D, TexId),
@@ -130,57 +87,29 @@ gl:enable(?GL_TEXTURE_2D),
   io:format("ERROR: ~p~n", [glu:errorString(Err)]),
   wxGLCanvas:connect(Panel, erase_background, [{callback, fun(_,_) -> ok end}]),
   wxGLCanvas:connect(Panel, paint),
-  {Panel, #state{socket=Socket, panel = Panel, tex_id = TexId, vnc_conf = VncConf}}.
-
-read_rects(0, _, Socket) ->
-  [];
-read_rects(NumRects, Data, Socket) ->
-  case Data of
-    <<X:16/integer, Y:16/integer, Width:16/integer, Height:16/integer, Encoding:32/signed-integer, Rest/binary>> ->
-      case Encoding of
-        ?vncENCODING_RAW ->
-          NumBytes = Width * Height * 4,
-          case NumBytes > byte_size(Rest) of
-            true ->
-              BytesToFetch = NumBytes - byte_size(Rest) + (NumRects - 1) * 12,
-              {ok, MoreData} = gen_tcp:recv(Socket, BytesToFetch),
-                  read_rects(NumRects, <<Data/binary, MoreData/binary>>, Socket);
-            false ->
-              <<PixelBytes:NumBytes/binary, ActualRest/binary>> = Rest,
-              Rect = {X, Y, Width, Height, PixelBytes},
-              Rects = read_rects(NumRects - 1, ActualRest, Socket),
-              [Rect | Rects]
-          end;
-        _ -> io:format("Unsupported encoding ~p~n", [Encoding])
-      end;
-    _ ->
-      {ok, MoreData} = gen_tcp:recv(Socket, 12 - byte_size(Data) + (NumRects - 1) * 12),
-      read_rects(NumRects, <<Data/binary, MoreData/binary>>, Socket)
-  end.
+  {Panel, #state{socket=VncProxy, parent = Parent, panel = Panel, tex_id = TexId, vnc_conf = {VncWidth, VncHeight}}}.
 
 %% Handled as in normal gen_server callbacks
-handle_info({tcp, Socket, <<?vncMSG_TYPE_FramebufferUpdate, _Padding, NumRects:16/integer, Rest/binary>>}, #state{panel = Panel, tex_id = TexId, vnc_conf = #vnc_conf{width = Width, height = Height}} = State) ->
-  {TimeRects, Rects} = timer:tc(fun() -> read_rects(NumRects, Rest, Socket) end),
-  {TimeRes, _} = timer:tc(fun() ->
+handle_info({framebuffer_update, Rects}, #state{socket = Proxy, panel = Panel, tex_id = TexId, vnc_conf = {VncWidth, VncHeight}} = State) ->
+%%  io:format("got framebuffer_update~n"),
     wx:batch(fun() ->
     gl:bindTexture(?GL_TEXTURE_2D, TexId),
     [gl:texSubImage2D(?GL_TEXTURE_2D, 0, X, Y, Width, Height, ?GL_BGRA, ?GL_UNSIGNED_BYTE, Data) || {X, Y, Width, Height, Data} <- Rects]
       end),
-    gl:flush()
-           end),
+    gl:flush(),
   wxPanel:refresh(Panel, [{eraseBackground, false}]),
 %%  io:format("Writing rects took ~p/~p~n", [TimeRects, TimeRes]),
 
-  inet:setopts(Socket, [{active, once}]),
-  ok = gen_tcp:send(Socket, <<?vncMSG_TYPE_FramebufferUpdateRequest, 1, 0:16, 0:16, Width:16, Height:16>>),
+
+  Proxy ! {framebuffer_update_request, 1, 0, 0, VncWidth, VncHeight},
   {noreply, State};
 
 handle_info(Msg, State) ->
   io:format("Got Info ~p~n",[Msg]),
   {noreply,State}.
 
-handle_event(#wx{event=#wxPaint{type = paint}, obj = _Obj}, State = #state{win=Frame, panel=Panel, tex_id = TexId, vnc_conf = #vnc_conf{width = Width, height = Height}}) ->
-  {W, H} = wxGLCanvas:getSize(_Obj),
+handle_event(#wx{event=#wxPaint{type = paint}, obj = _Obj}, State = #state{parent = Parent, win=Frame, panel=Panel, tex_id = TexId, vnc_conf = {Width, Height}}) ->
+  {W, H} = wxGLCanvas:getSize(Panel),
   Wscale = W / Width,
   Hscale = H / Height,
   {Scale, Xt, Yt} = case Wscale > Hscale of
@@ -213,7 +142,7 @@ handle_event(#wx{event=#wxPaint{type = paint}, obj = _Obj}, State = #state{win=F
 
   gl:'end'(),
   gl:flush(),
-  wxGLCanvas:swapBuffers(_Obj),
+  wxGLCanvas:swapBuffers(Panel),
   {noreply, State};
 handle_event(#wx{event=#wxKey{type = Type, keyCode = KeyCode, rawCode = Key}} = Event, State = #state{win=Frame, panel=Panel, socket = Socket}) ->
   io:format("Event ~p~n", [Event]),
@@ -221,7 +150,7 @@ handle_event(#wx{event=#wxKey{type = Type, keyCode = KeyCode, rawCode = Key}} = 
     key_down -> 1;
     key_up -> 0
   end,
-  ok = gen_tcp:send(Socket, <<?vncMSG_TYPE_KeyEvent, DownFlag, 0:16, Key:32>>),
+  Socket ! {key_event, DownFlag, Key},
   {noreply, State};
 handle_event(#wx{id = ?wxID_EXIT, event = #wxCommand{type = command_menu_selected}}, State =  #state{win=Frame}) ->
   io:format("~p Quitting window ~n",[self()]),
