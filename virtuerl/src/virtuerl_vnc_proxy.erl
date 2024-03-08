@@ -6,7 +6,7 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_vnc_proxy).
 
--export([start/1]).
+-export([start/2]).
 
 -define(SERVER, ?MODULE).
 -define(APPLICATION, virtuerl).
@@ -29,10 +29,10 @@
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
-start(DomainId) ->
+start(DomainId, Node) ->
   VncSocketPath = filename:join([virtuerl_mgt:home_path(), "domains", DomainId, "vnc.sock"]),
   Self = self(),
-  spawn(fun() -> init(VncSocketPath, Self) end).
+  spawn(Node, fun() -> init(VncSocketPath, Self) end).
 
 init(VncSocketPath, Sender) ->
   {ok, Socket} = gen_tcp:connect({local, VncSocketPath}, 0, [{active, true}, binary, local]),

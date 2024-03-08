@@ -68,7 +68,7 @@ handle_continue(setup_base, State) ->
     false ->
       TempImagePath = "/tmp/virtuerl/debian-12-genericcloud-amd64-20230910-1499.qcow2",
       ok = filelib:ensure_dir(TempImagePath),
-      httpc:request(get, "https://cloud.debian.org/images/cloud/bookworm/20230910-1499/debian-12-genericcloud-arm64-20230910-1499.qcow2", [],
+      {ok, _} = httpc:request(get, {"https://cloud.debian.org/images/cloud/bookworm/20230910-1499/debian-12-genericcloud-amd64-20230910-1499.qcow2", []}, [],
         [{stream, TempImagePath}]),
       file:rename(TempImagePath, BaseImagePath)
   end,

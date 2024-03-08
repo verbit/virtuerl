@@ -214,7 +214,7 @@ create_cloud_config(#{id := DomainID, name := DomainName, mac_addr := MacAddr, c
   UserDataPath = filename:join(IsoBasePath, "user-data"),
   ok = file:write_file(UserDataPath, UserData),
   IsoCmd = ["genisoimage -output ", filename:join(DomainBasePath, "cloud_config.iso"), " -volid cidata -joliet -rock ", UserDataPath, " ", MetaDataPath, " ", NetConfPath],
-  os:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
+  ok = virtuerl_util:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
   ok = file:del_dir_r(IsoBasePath),
   ok.
 
