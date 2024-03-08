@@ -29,20 +29,22 @@
 -module(virtuerl_ui).
 -include_lib("wx/include/wx.hrl").
 
--export([start/0,
+-export([start/0, start/1,
   init/1, handle_info/2, handle_event/2, handle_call/3,
   code_change/3, terminate/2]).
 
 -behaviour(wx_object).
 
--record(state, {win, info_panel, info, domain_panel, domain_info, toolbar, domain_list_box, domains, page, net_list_box}).
+-record(state, {win, info_panel, info, domain_panel, domain_info, toolbar, domain_list_box, domains, page, net_list_box, node}).
 
 start() ->
-  wx_object:start_link(?MODULE, [], []).
+  start(node()).
+start(Node) ->
+  wx_object:start_link(?MODULE, [Node], []).
 
 %% Init is called in the new process.
-init([]) ->
-  virtuerl_pubsub:subscribe(),
+init([Node]) ->
+%%  virtuerl_pubsub:subscribe(),
 
   wx:new(),
   Frame = wxFrame:new(wx:null(),
@@ -84,7 +86,7 @@ init([]) ->
 
   wxNotebook:addPage(Notebook, NetworkPanel, "Networks"),
 
-  {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
+  {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
   Choices = maps:keys(Nets),
   ListBox = wxListBox:new(NetworkSplitter, 42, [{choices, Choices}]),
   wxListBox:connect(ListBox, command_listbox_selected), % command_listbox_doubleclicked
@@ -108,7 +110,7 @@ init([]) ->
   wxNotebook:connect(Notebook, command_notebook_page_changed),
   wxNotebook:setSelection(Notebook, 1),
 
-  Domains = virtuerl_mgt:domains_list(),
+  Domains = erpc:call(Node, virtuerl_mgt, domains_list, []),
   ColumnNames = ["ID", "Name", "IPs", "CPU", "RAM"],
   ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_RIGHT],
   DomainsTuples = [{Id, Name, lists:join($,, [virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs]), integer_to_binary(Vcpu), [integer_to_binary(Memory), $M]} || #{id := Id, name := Name, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains],
@@ -152,7 +154,7 @@ init([]) ->
   wxWindow:raise(Frame),
   wxWindow:setFocus(Frame),
   wxWindow:layout(Frame),
-  {Frame, #state{toolbar = Toolbar, page = 1, win=Frame, net_list_box = ListBox, info_panel = Info, info=InfoGrid, domain_panel = DomainInfo, domain_info=DomainInfoGrid, domain_list_box=DomainListBox, domains = DomainsIds}}.
+  {Frame, #state{node = Node, toolbar = Toolbar, page = 1, win=Frame, net_list_box = ListBox, info_panel = Info, info=InfoGrid, domain_panel = DomainInfo, domain_info=DomainInfoGrid, domain_list_box=DomainListBox, domains = DomainsIds}}.
 
 create_toolbar(Frame, BaseNum) ->
   PlayIconDC = wxMemoryDC:new(),
@@ -233,8 +235,8 @@ handle_event(#wx{event = #wxBookCtrl{nSel = Index}}, State) ->
   {noreply, State#state{page = Index}};
 handle_event(#wx{id = 42, event = #wxCommand{type = command_listbox_selected,
   cmdString = Choice}},
-    State = #state{info_panel = Panel, info=Info, domains = DomainIds}) ->
-  {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
+    State = #state{info_panel = Panel, info=Info, domains = DomainIds, node = Node}) ->
+  {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
   Net = maps:get(list_to_binary(Choice), Nets),
   #{cidr4 := #{address := Address, prefixlen := Prefixlen}} = Net,
   wxFlexGridSizer:clear(Info, [{delete_windows, true}]),
@@ -244,8 +246,8 @@ handle_event(#wx{id = 42, event = #wxCommand{type = command_listbox_selected,
   {noreply, State};
 handle_event(#wx{event = #wxList{type = command_list_item_selected,
   itemIndex = ItemIndex}},
-    State = #state{domain_panel = DomainPanel, domain_info = DomainInfo, toolbar=Toolbar, domains = DomainIds}) ->
-  Domains = maps:from_list([{Id, Domain} || Domain = #{id := Id} <- virtuerl_mgt:domains_list()]),
+    State = #state{domain_panel = DomainPanel, domain_info = DomainInfo, toolbar=Toolbar, domains = DomainIds, node = Node}) ->
+  Domains = maps:from_list([{Id, Domain} || Domain = #{id := Id} <- erpc:call(Node, virtuerl_mgt, domains_list, [])]),
   wxGridBagSizer:clear(DomainInfo, [{delete_windows, true}]),
 
   DomainId = lists:nth(ItemIndex + 1, DomainIds),
@@ -277,7 +279,7 @@ handle_event(#wx{event = #wxList{type = command_list_item_selected,
 %%  wxGridBagSizer:add(DomainInfo, SerialOut, {3, 0}, [{span, {1, 2}}, {flag, ?wxEXPAND}]),
 %%  WebView = wxWebView:new(DomainPanel, 999, [{url, "http://0.0.0.0:9000/noVNC-1.4.0/vnc.html?port=5700&?path=&resize=scale&autoconnect=true"}]),
 %%  wxGridBagSizer:add(DomainInfo, WebView, {3, 0}, [{span, {1, 2}}, {flag, ?wxEXPAND}]),
-  VncWindow = virtuerl_vnc:start(DomainPanel, DomainId),
+  VncWindow = virtuerl_vnc:start(DomainPanel, DomainId, Node),
   wxGridBagSizer:add(DomainInfo, VncWindow, {0, 2}, [{span, {3, 1}}, {flag, ?wxEXPAND}]),
 
   wxGridBagSizer:addGrowableRow(DomainInfo, 2),
@@ -296,13 +298,13 @@ handle_event(#wx{event = #wxList{type = command_list_item_selected,
   wxPanel:layout(DomainPanel),
   io:format("dblclick ~p (~p)~n", [DomainId, Domain]),
   {noreply, State};
-handle_event(#wx{id = 4044, event = #wxCommand{type = command_button_clicked}}, #state{domain_list_box = DomainListBox, domains = DomainIds} = State) ->
+handle_event(#wx{id = 4044, event = #wxCommand{type = command_button_clicked}}, #state{domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
   SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
   DomainId = lists:nth(SelectedItem + 1, DomainIds),
-  {ok, Domain} = virtuerl_mgt:domain_get(#{id => DomainId}),
-  create_domain_dialog(Domain),
+  {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
+  create_domain_dialog(Node, Domain),
   {noreply, State};
-handle_event(#wx{id = 100, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds} = State) ->
+handle_event(#wx{id = 100, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
   io:format("~p~n", [Event]),
   SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
   DomainId = lists:nth(SelectedItem + 1, DomainIds),
@@ -310,9 +312,9 @@ handle_event(#wx{id = 100, obj = Toolbar, event = #wxCommand{type = command_menu
   io:format("~p~n", [Choice]),
   wxToolBar:enableTool(Toolbar, 100, false),
   wxToolBar:enableTool(Toolbar, 101, true),
-  ok = virtuerl_mgt:domain_start(Choice),
+  ok = erpc:call(Node, virtuerl_mgt, domain_start, [Choice]),
   {noreply, State};
-handle_event(#wx{id = 101, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds} = State) ->
+handle_event(#wx{id = 101, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
   io:format("~p~n", [Event]),
   SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
   DomainId = lists:nth(SelectedItem + 1, DomainIds),
@@ -320,9 +322,9 @@ handle_event(#wx{id = 101, obj = Toolbar, event = #wxCommand{type = command_menu
   io:format("~p~n", [Choice]),
   wxToolBar:enableTool(Toolbar, 100, true),
   wxToolBar:enableTool(Toolbar, 101, false),
-  ok = virtuerl_mgt:domain_stop(Choice),
+  ok = erpc:call(Node, virtuerl_mgt, domain_stop, [Choice]),
   {noreply, State};
-handle_event(#wx{id = 102, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds} = State) ->
+handle_event(#wx{id = 102, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
   io:format("~p~n", [Event]),
   SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
   DomainId = lists:nth(SelectedItem + 1, DomainIds),
@@ -330,19 +332,19 @@ handle_event(#wx{id = 102, obj = Toolbar, event = #wxCommand{type = command_menu
   io:format("~p~n", [Choice]),
 %%  wxToolBar:enableTool(Toolbar, 100, true),
 %%  wxToolBar:enableTool(Toolbar, 101, false),
-%%  ok = virtuerl_mgt:domain_stop(Choice),
-  virtuerl_mgt:domain_delete(#{id => DomainId}),
+%%  ok = erpc:call(Node, virtuerl_mgt, domain_stop, (Choice),
+  erpc:call(Node, virtuerl_mgt, domain_delete, [#{id => DomainId}]),
   {noreply, State};
-handle_event(#wx{id = 103, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds} = State) ->
-  create_domain_dialog(#{network_id => "", name=> "", user_data => "", vcpu => 2, memory => 1024}),
+handle_event(#wx{id = 103, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
+  create_domain_dialog(Node, #{network_id => "", name=> "", user_data => "", vcpu => 2, memory => 1024}),
   {noreply, State};
 %% BEGIN: Network Toolbar
-handle_event(#wx{id = 102, event = #wxCommand{type = command_menu_selected}}, #state{page = 0, net_list_box = ListBox} = State) ->
+handle_event(#wx{id = 102, event = #wxCommand{type = command_menu_selected}}, #state{page = 0, net_list_box = ListBox, node = Node} = State) ->
   NetId = wxListBox:getStringSelection(ListBox),
-  virtuerl_ipam:ipam_delete_net(NetId),
+  erpc:call(Node, virtuerl_ipam, ipam_delete_net, [NetId]),
   {noreply, State};
-handle_event(#wx{id = 103, event = #wxCommand{type = command_menu_selected}}, #state{page = 0} = State) ->
-  create_network_dialog(),
+handle_event(#wx{id = 103, event = #wxCommand{type = command_menu_selected}}, #state{page = 0, node = Node} = State) ->
+  create_network_dialog(Node),
   {noreply, State};
 %% END: Network Toolbar
 handle_event(#wx{event=#wxClose{}}, State = #state{win=Frame}) ->
@@ -365,7 +367,7 @@ code_change(_, _, State) ->
 terminate(_Reason, _State) ->
   ok.
 
-create_network_dialog() ->
+create_network_dialog(Node) ->
   Dialog = wxDialog:new(wx:null(), ?wxID_ANY, "Create Network", [{size, {1000, 500}}]),
   DialogSizer = wxBoxSizer:new(?wxVERTICAL),
   DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
@@ -381,13 +383,13 @@ create_network_dialog() ->
   case wxDialog:showModal(Dialog) of
     ?wxID_OK ->
       NetDef = virtuerl_net:parse_cidr(wxTextCtrl:getValue(CidrCtrl)),
-      {ok, NetId} = virtuerl_ipam:ipam_create_net([NetDef]);
+      {ok, NetId} = erpc:call(Node, virtuerl_ipam, ipam_create_net, [[NetDef]]);
     _ -> ok
   end,
   wxDialog:destroy(Dialog).
 
-create_domain_dialog(#{network_id := NetworkId, name:= DomainName, user_data := UserData, vcpu := Vcpu, memory := Memory} = Domain) ->
-  {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
+create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_data := UserData, vcpu := Vcpu, memory := Memory} = Domain) ->
+  {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
   Choices = maps:keys(Nets),
   Dialog = wxDialog:new(wx:null(), ?wxID_ANY, "Create Domain", [{size, {1000, 500}}]),
   DialogSizer = wxBoxSizer:new(?wxVERTICAL),
@@ -417,15 +419,15 @@ create_domain_dialog(#{network_id := NetworkId, name:= DomainName, user_data := 
   case wxDialog:showModal(Dialog) of
     ?wxID_OK ->
       io:format("true ~p~n", [wxChoice:getStringSelection(NetworkChoice)]),
-      virtuerl_mgt:domain_create(#{
+      erpc:call(Node, virtuerl_mgt, domain_create, [#{
         name => wxTextCtrl:getValue(NameCtrl),
         network_id => list_to_binary(wxChoice:getStringSelection(NetworkChoice)),
         user_data => wxStyledTextCtrl:getText(UserDataCtrl),
         vcpu => wxSpinCtrl:getValue(VcpuCtrl),
         memory => wxSpinCtrl:getValue(MemoryCtrl)
-      });
+      }]);
     _ -> ok
   end,
   wxDialog:destroy(Dialog);
-create_domain_dialog(Domain) ->
-  create_domain_dialog(Domain#{user_data => ""}).
+create_domain_dialog(Node, Domain) ->
+  create_domain_dialog(Node, Domain#{user_data => ""}).

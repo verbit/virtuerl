@@ -33,7 +33,7 @@
 -export([
   init/1, handle_info/2, handle_event/2,
   code_change/3, terminate/2]).
--export([start/2]).
+-export([start/3]).
 
 -behaviour(wx_object).
 
@@ -51,11 +51,11 @@
 -record(state, {win, socket, panel, tex_id, vnc_conf, parent}).
 -record(vnc_conf, {width, height}).
 
-start(Parent, DomainId) ->
-  wx_object:start_link(?MODULE, [Parent, DomainId], []).
+start(Parent, DomainId, Node) ->
+  wx_object:start_link(?MODULE, [Parent, DomainId, Node], []).
 
 %% Init is called in the new process.
-init([Parent, DomainId]) ->
+init([Parent, DomainId, Node]) ->
   {Mx, My, _, _} = wxWindow:getTextExtent(Parent, "M"),
 %%  wxFrame:setClientSize(Frame, {60*Mx, 20*My}),
   Panel = wxGLCanvas:new(Parent, [{attribList, [?WX_GL_RGBA,?WX_GL_DOUBLEBUFFER,0]}]),
@@ -67,7 +67,7 @@ init([Parent, DomainId]) ->
 
   wxGLCanvas:setCurrent(Panel, Context),
 
-  VncProxy = virtuerl_vnc_proxy:start(DomainId),
+  VncProxy = virtuerl_vnc_proxy:start(DomainId, Node),
   {VncWidth, VncHeight} = receive
     {conf, TVncWidth, TVncHeight} -> {TVncWidth, TVncHeight}
                           after 1000 ->

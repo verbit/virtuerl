@@ -10,7 +10,7 @@
 -author("ilya-stroeer").
 
 %% API
--export([uuid4/0, mac_to_str/1, delete_file/1]).
+-export([uuid4/0, mac_to_str/1, delete_file/1, cmd/1]).
 
 uuid4() ->
   ID = string:lowercase(binary:encode_hex(<<(rand:uniform(16#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)-1):128>>)),
@@ -27,4 +27,11 @@ delete_file(Filename) ->
     ok -> ok;
     {error, enoent} -> ok;
     Other -> Other
+  end.
+
+cmd(Cmd) ->
+  Port = open_port({spawn, Cmd}, [exit_status]),
+  receive
+    {Port, {exit_status, 0}} -> ok;
+    {Port, {exit_signal, _}} -> error
   end.
