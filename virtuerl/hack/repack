@@ -1,0 +1,47 @@
+#!/bin/bash
+
+scratch=$(mktemp -d -t tmp.XXXXXXXXXX)
+function finish {
+  rm -rf "$scratch"
+}
+trap finish EXIT
+
+pwd=$PWD
+archive=$1
+
+#list=( virtuerl/virtuerl*.tar.gz )
+#archive="${list[-1]}"
+
+tar xzf "$archive" --one-top-level="$scratch"
+# list=( virtuerl/releases/*/ )
+# release="${list[-1]}"
+# version="$(basename "$release")"
+relvsndir=$(find $scratch/releases/* -type d)
+version=$(basename $relvsndir)
+
+relnamepath=$(find $scratch/releases/ -maxdepth 1 -type f -name '*.rel')
+relname=$(basename $relnamepath .rel)
+
+# cp -R virtuerl/{lib,erts*} "$scratch"
+# mkdir -p "$scratch/releases"
+# cp -R "virtuerl/releases/$version/" "$scratch/releases/$version"
+# cp virtuerl/releases/{RELEASES,start_erl.data} "$scratch/releases/"
+mv "$scratch/releases/$version/$relname.rel" "$scratch/releases/$version/$relname-$version.rel"
+mv "$scratch/releases/$relname.rel" "$scratch/releases/$relname-$version.rel"
+
+# cp "$scratch/releases/$version/$relname-$version.rel" "$scratch/releases/$relname-$version.rel"
+
+# cp -R virtuerl/* "$scratch"
+cd "$scratch"
+# tree -I lib
+# exit
+
+
+mkdir -p bin/
+rm bin/*
+find erts* ! -name 'start_erl' ! -name 'erlexec' ! -name 'beam.smp' ! -name 'epmd' ! -name 'inet_gethost' ! -name 'erl_child_setup' ! -name 'heart' -type f -exec rm {} +
+find releases -type f \( -name 'vm.args' -o -name 'start_clean.boot' -o -name 'no_dot_erlang.boot' \) -exec rm {} +
+cp erts*/bin/start_erl bin/start_erl
+tree -I lib
+
+tar czf "$pwd/$relname-$version.tar.gz" *
