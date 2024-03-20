@@ -1,0 +1,25 @@
+name: Build
+on:
+  push:
+    branches-ignore:
+      - main
+jobs:
+  virtuerl:
+    name: virtuerl
+    runs-on: ubuntu-22.04
+    defaults:
+      run:
+        working-directory: virtuerl
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Install prerequisites
+        run: |
+          sudo apt update
+          sudo apt install rebar3
+      - name: Create tar
+        run: |
+          rebar3 tar
+          find _build/ -name '*.tar.gz' -exec hack/repack {} \;
