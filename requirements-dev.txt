@@ -1,5 +1,5 @@
 pytest==7.2.0
 isort[colors]==5.10.1
-black==22.6.0
+black==24.4.2
 fabric==2.7.1
 grpcio-tools==1.51.1
