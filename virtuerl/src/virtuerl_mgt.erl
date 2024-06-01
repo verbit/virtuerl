@@ -6,6 +6,10 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_mgt).
 
+-export([image_from_domain/2]).
+
+-export([domain_update/1]).
+
 -behaviour(gen_server).
 
 -export([start_link/0]).
@@ -22,10 +26,10 @@ create_vm() ->
 
 %%create_vm(#{cpus := NumCPUs, memory := Memory}) ->
 domain_create(Conf) ->
-  gen_server:call(?SERVER, {domain_create, Conf}).
+  gen_server:call(?SERVER, {domain_create, Conf}, infinity).
 
 domain_delete(Conf) ->
-  gen_server:call(?SERVER, {domain_delete, Conf}).
+  gen_server:call(?SERVER, {domain_delete, Conf}, infinity).
 
 domain_get(Conf) ->
   gen_server:call(?SERVER, {domain_get, Conf}).
@@ -34,11 +38,17 @@ domain_get(Conf) ->
 domains_list() ->
   gen_server:call(?SERVER, domains_list).
 
+domain_update(Conf) ->
+  gen_server:call(?SERVER, {domain_update, Conf}).
+
 domain_stop(Id) ->
   gen_server:call(?SERVER, {domain_update, #{id => Id, state => stopped}}).
 
 domain_start(Id) ->
   gen_server:call(?SERVER, {domain_update, #{id => Id, state => running}}).
+
+image_from_domain(DomainId, ImageName) ->
+  gen_server:call(?SERVER, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
 
 
 %%%===================================================================
@@ -60,19 +70,6 @@ init([]) ->
 
 handle_continue(setup_base, State) ->
   ok = filelib:ensure_path(filename:join(home_path(), "domains")),
-
-  BaseImagePath = filename:join(home_path(), "debian-12-genericcloud-amd64-20230910-1499.qcow2"),
-%%  BaseImagePath = filename:join(home_path(), "openSUSE-Leap-15.5.x86_64-NoCloud.qcow2"),
-  case filelib:is_regular(BaseImagePath) of
-    true -> ok;
-    false ->
-      TempImagePath = "/tmp/virtuerl/debian-12-genericcloud-amd64-20230910-1499.qcow2",
-      ok = filelib:ensure_dir(TempImagePath),
-      {ok, _} = httpc:request(get, {"https://cloud.debian.org/images/cloud/bookworm/20230910-1499/debian-12-genericcloud-amd64-20230910-1499.qcow2", []}, [],
-        [{stream, TempImagePath}]),
-      file:rename(TempImagePath, BaseImagePath)
-  end,
-
   {noreply, State, {continue, sync_domains}};
 
 
@@ -87,7 +84,7 @@ handle_continue(sync_domains, {Table} = State) ->
   ToAdd = sets:subtract(TargetDomains, RunningDomains),
   [supervisor:terminate_child(virtuerl_sup, Id) || Id <- sets:to_list(ToDelete)],
   [supervisor:delete_child(virtuerl_sup, Id) || Id <- sets:to_list(ToDelete)],
-  ok = gen_server:call(virtuerl_net, {net_update}),
+  ok = gen_server:call(virtuerl_net, {net_update}, infinity),
   [  supervisor:start_child(virtuerl_sup, {
     Id,
     {virtuerl_qemu, start_link, [Id]},
@@ -111,7 +108,14 @@ generate_unique_tap_name(TapNames) ->
 handle_call({domain_create, Conf}, _From, State) ->
   {Table} = State,
   DomainID = virtuerl_util:uuid4(),
-  Domain = maps:merge(#{id => DomainID, name => DomainID, vcpu => 1, memory => 512}, Conf),  % TODO: save ipv4 addr as well
+  Domain0 = maps:merge(#{id => DomainID, name => DomainID, vcpu => 4, memory => 4096,
+    os_type => "linux", created_at => erlang:system_time(millisecond)}, Conf),  % TODO: save ipv4/6 addr as well
+  Domain = case Domain0 of
+    #{os_type := "linux"} ->
+      maps:merge(#{base_image => "debian-12-genericcloud-amd64-20240211-1654.qcow2"}, Domain0);
+    #{os_type := "windows"} ->
+      maps:merge(#{setup_iso => "Win11_23H2_EnglishInternational_x64v2_noprompt.iso"}, Domain0)
+  end,
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
 
@@ -156,7 +160,14 @@ handle_call({domain_create, Conf}, _From, State) ->
   <<A:5, _:3, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
   MacAddr = <<A:5, 1:1, 2:2, B:40>>,
 
-  dets:insert(Table, {DomainID, Domain#{network_addrs => Cidrs, mac_addr=>MacAddr, ipv4_addr=>Ipv4Addr, ipv6_addr => Ipv6Addr, cidrs => IpCidrs, tap_name => TapName}}),
+  dets:insert(Table, {DomainID,
+    Domain#{
+      network_addrs => Cidrs,
+      mac_addr=>MacAddr,
+      ipv4_addr=>Ipv4Addr,
+      ipv6_addr => Ipv6Addr,
+      cidrs => IpCidrs,
+      tap_name => TapName}}),
   dets:sync(Table),
 
   ok = gen_server:call(virtuerl_net, {net_update}),
@@ -164,16 +175,20 @@ handle_call({domain_create, Conf}, _From, State) ->
   supervisor:start_child(virtuerl_sup, {
     DomainID,
     {virtuerl_qemu, start_link, [DomainID]},
-    permanent,
+    transient,
     infinity,
     worker,
     []
   }),
-  {reply, {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName), mac_addr => binary:encode_hex(MacAddr)}, maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))}, State};
-handle_call({domain_update, #{id := DomainID, state := RunState}}, _From, {Table} = State) ->
+  {reply,
+    {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName), mac_addr => binary:encode_hex(MacAddr)},
+      maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))},
+    State};
+handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} = State) ->
+  DomainUpdate = maps:remove(id, DomainUpdate0),
   Reply = case dets:lookup(Table, DomainID) of
             [{_, Domain}] ->
-              ok = dets:insert(Table, {DomainID, Domain#{state => RunState}}),
+              ok = dets:insert(Table, {DomainID, maps:merge(Domain, DomainUpdate)}),
               ok = dets:sync(Table),
               ok;
             [] -> notfound
@@ -187,24 +202,63 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
     [{_, #{mac_addr := MacAddr, ipv4_addr:=IP, tap_name := TapName} = Domain}] ->
-      DomRet = Domain#{mac_addr := binary:encode_hex(MacAddr), ipv4_addr := virtuerl_net:format_ip_bitstring(IP), tap_name := iolist_to_binary(TapName)},
+      DomRet = Domain#{
+        mac_addr := binary:encode_hex(MacAddr),
+        ipv4_addr := virtuerl_net:format_ip_bitstring(IP),
+        tap_name := iolist_to_binary(TapName)},
       {ok, maps:merge(#{state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
     [] -> notfound
   end,
   {reply, Reply, State};
 handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
   {Table} = State,
-  ok = virtuerl_ipam:unassign(DomainID),
-  Res = dets:delete(Table, DomainID),
-  dets:sync(Table),
-  io:format("terminating ~p~n", [DomainID]),
-  supervisor:terminate_child(virtuerl_sup, DomainID),
-  io:format("done terminating ~p~n", [DomainID]),
-  supervisor:delete_child(virtuerl_sup, DomainID),
-  DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
-  file:del_dir_r(DomainHomePath),
-  ok = gen_server:call(virtuerl_net, {net_update}),
-  {reply, Res, State}.
+  Res = case dets:lookup(Table, DomainID) of
+    [] -> {error, notfound};
+    [{_, Domain}] ->
+        dets:insert(Table, {DomainID, Domain#{state => deleting}}),
+        dets:sync(Table),
+        spawn_link(fun () ->
+          io:format("terminating ~p~n", [DomainID]),
+          supervisor:terminate_child(virtuerl_sup, DomainID),
+          io:format("done terminating ~p~n", [DomainID]),
+          supervisor:delete_child(virtuerl_sup, DomainID),
+          DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
+          file:del_dir_r(DomainHomePath),
+          ok = virtuerl_ipam:unassign(DomainID),
+          ok = gen_server:call(virtuerl_net, {net_update}),
+          dets:delete(Table, DomainID),
+          virtuerl_pubsub:send({domain_deleted, DomainID})
+        end),
+        ok
+  end,
+  {reply, Res, State};
+handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, {Table} = State) ->
+  case dets:lookup(Table, DomainID) of
+    [] -> gen_server:reply(_From, {error, notfound});
+    [{_, Domain}] ->
+      spawn(fun() ->
+        #{state := DomState} = Domain,
+        case DomState of
+          running -> domain_stop(DomainID);
+          _ -> ok
+        end,
+
+        ImgPath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID, "root.qcow2"]),
+        ImgName = string:concat(ImageName, ".qcow2"),
+        DestPath = filename:join(["/tmp/virtuerl", ImgName]),
+        ok = filelib:ensure_dir(DestPath),
+        {ok, _} = file:copy(ImgPath, DestPath),
+        ok = file:rename(DestPath, filename:join([virtuerl_mgt:home_path(), ImgName])),
+
+        case DomState of
+          running -> domain_start(DomainID);
+          _ -> ok
+        end,
+
+        gen_server:reply(_From, ok)
+      end)
+  end,
+  {noreply, State}.
 
 handle_cast(_Request, State) ->
   {noreply, State}.

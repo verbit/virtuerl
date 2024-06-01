@@ -1,5 +1,5 @@
 %%%-------------------------------------------------------------------
-%%% @author ilya-stroeer
+%%% @author ilya
 %%% @copyright (C) 2023, <COMPANY>
 %%% @doc
 %%%
@@ -7,10 +7,10 @@
 %%% Created : 02. Sep 2023 4:05 PM
 %%%-------------------------------------------------------------------
 -module(virtuerl_util).
--author("ilya-stroeer").
+-author("ilya").
 
 %% API
--export([uuid4/0, mac_to_str/1, delete_file/1, cmd/1]).
+-export([uuid4/0, mac_to_str/1, delete_file/1, cmd/1, ends_with/2]).
 
 uuid4() ->
   ID = string:lowercase(binary:encode_hex(<<(rand:uniform(16#FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF)-1):128>>)),
@@ -28,6 +28,10 @@ delete_file(Filename) ->
     {error, enoent} -> ok;
     Other -> Other
   end.
+
+ends_with(Str, Suffix) ->
+  Suf = string:slice(Str, string:length(Str) - string:length(Suffix)),
+  string:equal(Suf, Suffix).
 
 cmd(Cmd) ->
   Port = open_port({spawn, Cmd}, [exit_status]),

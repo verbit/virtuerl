@@ -45,6 +45,13 @@ init([]) ->
       worker,
       []
       }, {
+      virtuerl_img,
+      {virtuerl_img, start_link, []},
+      permanent,
+      infinity,
+      worker,
+      []
+      }, {
       virtuerl_mgt,
       {virtuerl_mgt, start_link, []},
       permanent,

@@ -20,6 +20,7 @@ start(_StartType, _StartArgs) ->
 %%    io:format("RESULT: ~p~n", [Res]),
 %%    {ok, _} = Res,
 %%    exec:debug(4),
+    httpc:set_options([{ipfamily, inet6fb4}]),
     virtuerl_sup:start_link().
 
 start() ->
