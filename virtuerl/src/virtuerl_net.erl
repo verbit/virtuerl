@@ -6,6 +6,12 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_net).
 
+-export([update_net/0]).
+
+-export([format_cidr/1]).
+
+-export([normalize_net/1]).
+
 -behaviour(gen_server).
 
 -include_lib("kernel/include/logger.hrl").
@@ -23,6 +29,9 @@
 
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+
+update_net() ->
+  gen_server:call(?SERVER, {net_update}).
 
 init([]) ->
   ?LOG_INFO(#{what => "Started", who => virtuerl_net}),
@@ -69,8 +78,6 @@ update_net(Table) ->
   %%    append VM.IP to static routes: VM.IP via $VM.network.bridge
   % 2. birdc configure
   % 3. profit?
-  Domains = dets:match_object(Table, '_'),
-  [io:format("~p~n", [Domain]) || Domain <- Domains],
   reload_net(Table).
 
 handle_interface(If, Table) ->
@@ -94,14 +101,14 @@ get_cidrs(If) ->
 reload_net(Table) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
-  io:format("~p~n", [JSON]),
+  % io:format("~p~n", [JSON]),
   Matched = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
 %%  lists:foreach(fun(L) -> handle_interface(L, Table) end, Matched),
-  io:format("Actual: ~p~n", [Matched]),
+  % io:format("Actual: ~p~n", [Matched]),
   Domains = dets:match_object(Table, '_'),
 
   TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #{network_addrs := Cidrs}} <- Domains]),
-  io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
+  % io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
   update_nftables(Domains),
   sync_networks(Matched, TargetAddrs),
   sync_taps(Domains),
@@ -127,9 +134,57 @@ update_nftables(Domains) ->
     end
     || {Family, Addr} <- BridgeAddrsTyped, Prot <- ["tcp", "udp"]],
 
+
+  ToRule = fun (#{protocols := Protos, target_ports := Ports}, Cidrs) ->
+    ProtosStr = string:join(Protos, ","),
+    Ports0 = [
+    case Port of
+      Num when is_integer(Num) ->
+        integer_to_list(Num);
+      Str when is_list(Str) orelse is_binary(Str) ->
+        Str
+    end
+    || Port <- Ports],  % FIXME: validate ports?
+    PortsStr = ["{", string:join(Ports0, ","), "}"],
+
+    TagIp = fun ({Ip, _}) ->
+      Tag = case bit_size(Ip) of
+        32 ->
+          "ip";
+        128 ->
+          "ip6"
+      end,
+      {Tag, Ip}
+    end,
+    TaggedIps = lists:map(TagIp, Cidrs),
+
+    [["        meta l4proto {", ProtosStr, "} ", Tag, " daddr ", virtuerl_net:format_ip(Ip), " th dport ", PortsStr, " accept\n"]
+      || {Tag, Ip} <- TaggedIps]
+  end,
+  ForwardRules = [ToRule(InboundRule, Cidrs) || {_Id, #{cidrs := Cidrs, inbound_rules := InboundRules0}} <- Domains, InboundRule <- InboundRules0],
+  % lists:flatten(List),
+
   IoList = [
     "table inet virtuerl\ndelete table inet virtuerl\n\n",
     "table inet virtuerl {\n",
+    "    chain input {\n",
+    "        type filter hook input priority filter; policy accept;\n",
+    "        ct state established,related accept\n",
+    ForwardRules,
+    "        oifname \"verlbr*\" reject\n",
+    "    }\n",
+    "\n",
+    "    chain forward {\n",
+    "        type filter hook forward priority filter; policy accept;\n",
+    "        iifname \"verlbr*\" accept\n",
+    "        ct state established,related accept\n",
+    ForwardRules,
+    "        oifname \"verlbr*\" reject\n",
+    "    }\n",
+    "\n",
+    "\n",
+    "\n",
+    "\n",
     "    chain output {\n",
     "        type nat hook output priority -105; policy accept;\n",
     DnsRules,
@@ -142,11 +197,12 @@ update_nftables(Domains) ->
 
     "    chain postrouting {\n",
     "        type nat hook postrouting priority -5; policy accept;\n",
-    "        oifname != \"verlbr*\" iifname \"verlbr*\" masquerade\n", % TODO: we need to base it on IPs
+    "        iifname \"verlbr*\" ip saddr { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 } masquerade\n",
+    "        iifname \"verlbr*\" ip6 saddr fc00::/7 ip6 daddr != fc00::/7 masquerade\n",
     "    }\n",
     "}\n"
   ],
-  io:format("~s~n", [IoList]),
+  % io:format("~s~n", [IoList]),
 
   Path = iolist_to_binary(["/tmp/virtuerl/", "nftables_", virtuerl_util:uuid4(), ".conf"]),
   ok = filelib:ensure_dir(Path),
@@ -179,6 +235,10 @@ bridge_addr(<<Addr/binary>>, Prefixlen) ->
   <<Prefix:Prefixlen,Rest/bits>> = Addr,
   <<Prefix:Prefixlen,1:(bit_size(Rest))>>.
 
+normalize_net({<<Addr/binary>>, Prefixlen}) ->
+  <<Prefix:Prefixlen,Rest/bits>> = Addr,
+  {<<Prefix:Prefixlen,0:(bit_size(Rest))>>, Prefixlen}.
+
 parse_cidr(<<CIDR/binary>>) -> parse_cidr(binary_to_list(CIDR));
 parse_cidr(CIDR) ->
   [IP, Prefixlen] = string:split(CIDR, "/", trailing),
@@ -200,6 +260,9 @@ format_ip(<<A:16, B:16, C:16, D:16, E:16, F:16, G:16, H:16>>) ->
 format_ip_bitstring(IP) ->
   list_to_binary(format_ip(IP)).
 
+format_cidr({<<Addr/binary>>, Prefixlen}) ->
+  io_lib:format("~s/~B", [format_ip(Addr), Prefixlen]).
+
 format_bird_route(<<IP/binary>>) ->
   io_lib:format("~s/~B", [format_ip(IP), bit_size(IP)]).
 
@@ -212,11 +275,12 @@ update_bird_conf(Domains) ->
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
   Bridges = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
-  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}} || {_, #{network_addrs := {NetAddr, Prefixlen}, ipv4_addr := Addr}} <- Domains]),
+  AddrMap = maps:from_list([{Addr, {bridge_addr(NetAddr), Prefixlen}}
+    || {_, #{network_addrs := {NetAddr, Prefixlen}, ipv4_addr := Addr}} <- Domains]),
   AddrToBridgeMap = maps:map(fun (_, Net) -> maps:get(Net, Bridges) end, AddrMap),
 
-  io:format("DOMAINS: ~p~n", [Domains]),
-  io:format("AddrToBridgeMap: ~p~n", [AddrToBridgeMap]),
+  % io:format("DOMAINS: ~p~n", [Domains]),
+  % io:format("AddrToBridgeMap: ~p~n", [AddrToBridgeMap]),
   file:write_file("birderl.conf", lists:join("\n",
     ["protocol static {", "  ipv4;"] ++ build_routes(AddrToBridgeMap) ++ ["}\n"] )),
   reload_bird(Domains).
@@ -269,13 +333,14 @@ sync_taps(Domains) ->
 
   OutputTaps = os:cmd("ip -j link"),
   {ok, JSONTaps} = thoas:decode(OutputTaps),
-  io:format("TAPS: ~p~n", [JSONTaps]),
+  % io:format("TAPS: ~p~n", [JSONTaps]),
   TapsActual = sets:from_list([maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>)]),
   TapsTarget = sets:from_list([iolist_to_binary(TapName) || {_, #{tap_name := TapName}} <- Domains]), % TODO: persist tap_name as binary
-  io:format("Taps Target: ~p~n", [sets:to_list(TapsTarget)]),
-  io:format("Taps Actual: ~p~n", [sets:to_list(TapsActual)]),
-  TapsMap = maps:from_list([{iolist_to_binary(Tap), {to_vtap_mac(MacAddr), network_cidrs_to_bride_cidrs(Cidrs)}} || {_, #{network_addrs := Cidrs, tap_name := Tap, mac_addr := MacAddr}} <- Domains]),
-  io:format("TapsMap: ~p~n", [TapsMap]),
+  % io:format("Taps Target: ~p~n", [sets:to_list(TapsTarget)]),
+  % io:format("Taps Actual: ~p~n", [sets:to_list(TapsActual)]),
+  TapsMap = maps:from_list([{iolist_to_binary(Tap), {to_vtap_mac(MacAddr), network_cidrs_to_bride_cidrs(Cidrs)}}
+    || {_, #{network_addrs := Cidrs, tap_name := Tap, mac_addr := MacAddr}} <- Domains]),
+  % io:format("TapsMap: ~p~n", [TapsMap]),
 
   TapsToDelete = sets:subtract(TapsActual, TapsTarget),
   lists:foreach(fun (E) ->
@@ -296,7 +361,8 @@ add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
 add_taps([]) -> ok;
 add_taps([{Tap, {Mac, Bridge}}|T]) ->
   MacAddrString = virtuerl_util:mac_to_str(Mac),
-  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s address ~s master ~s~nip link set ~s up~n", [Tap, Tap, MacAddrString, Bridge, Tap]),
+  Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s address ~s master ~s~nip link set ~s up~n",
+    [Tap, Tap, MacAddrString, Bridge, Tap]),
   io:format(Cmd),
   os:cmd(Cmd),
   add_taps(T).

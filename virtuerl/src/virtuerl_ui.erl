@@ -138,11 +138,13 @@ init([Node]) ->
 
   DomainButtonsSizer = wxBoxSizer:new(?wxHORIZONTAL),
   DomainDupBtn = wxButton:new(DomainInfo, 4044, [{label, "Duplicate"}]),
-
   wxButton:connect(DomainDupBtn, command_button_clicked),
   DomainDelBtn = wxButton:new(DomainInfo, ?wxID_ANY, [{label, "Delete"}]),
+  DomainEditBtn = wxButton:new(DomainInfo, 4046, [{label, "Edit"}]),
+  wxButton:connect(DomainEditBtn, command_button_clicked),
   wxSizer:add(DomainButtonsSizer, DomainDupBtn),
   wxSizer:add(DomainButtonsSizer, DomainDelBtn),
+  wxSizer:add(DomainButtonsSizer, DomainEditBtn),
   wxSizer:add(DomainInfoSizer, DomainButtonsSizer, [{flag, ?wxALIGN_RIGHT}]),
 
   wxSplitterWindow:splitHorizontally(DomainSplitter, DomainListBox, DomainInfo, [{sashPosition, 25 * Mx}]),
@@ -238,10 +240,18 @@ handle_event(#wx{id = 42, event = #wxCommand{type = command_listbox_selected,
     State = #state{info_panel = Panel, info=Info, domains = DomainIds, node = Node}) ->
   {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
   Net = maps:get(list_to_binary(Choice), Nets),
-  #{cidr4 := #{address := Address, prefixlen := Prefixlen}} = Net,
+  Cidrs = case Net of
+    #{cidr4 := Cidr4, cidr6 := Cidr6} ->
+      [Cidr4, Cidr6];
+    #{cidr4 := Cidr4} ->
+      [Cidr4];
+    #{cidr6 := Cidr6} ->
+      [Cidr6]
+  end,
+  CidrsStr = [binary_to_list(iolist_to_binary([IpAddr, "/", integer_to_binary(Prefixlen)])) || #{address:=IpAddr,prefixlen:=Prefixlen} <- Cidrs],
   wxFlexGridSizer:clear(Info, [{delete_windows, true}]),
   wxSizer:add(Info, wxStaticText:new(Panel, -1, "CIDR")),
-  wxSizer:add(Info, wxStaticText:new(Panel, -1, iolist_to_binary([Address, "/", integer_to_binary(Prefixlen)]))),
+  wxSizer:add(Info, wxStaticText:new(Panel, -1, string:join(CidrsStr, ","))),
   io:format("dblclick ~p (~p)~n", [Choice, Net]),
   {noreply, State};
 handle_event(#wx{event = #wxList{type = command_list_item_selected,
@@ -304,6 +314,12 @@ handle_event(#wx{id = 4044, event = #wxCommand{type = command_button_clicked}}, 
   {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
   create_domain_dialog(Node, Domain),
   {noreply, State};
+handle_event(#wx{id = 4046, event = #wxCommand{type = command_button_clicked}}, #state{domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
+  SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
+  DomainId = lists:nth(SelectedItem + 1, DomainIds),
+  {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
+  update_domain_dialog(Node, Domain),
+  {noreply, State};
 handle_event(#wx{id = 100, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
   io:format("~p~n", [Event]),
   SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
@@ -336,7 +352,7 @@ handle_event(#wx{id = 102, obj = Toolbar, event = #wxCommand{type = command_menu
   erpc:call(Node, virtuerl_mgt, domain_delete, [#{id => DomainId}]),
   {noreply, State};
 handle_event(#wx{id = 103, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = Event, #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State) ->
-  create_domain_dialog(Node, #{network_id => "", name=> "", user_data => "", vcpu => 2, memory => 1024}),
+  create_domain_dialog(Node, #{network_id => "", name=> "", user_data => "", vcpu => 2, memory => 1024, inbound_rules => [], os_type => "linux"}),
   {noreply, State};
 %% BEGIN: Network Toolbar
 handle_event(#wx{id = 102, event = #wxCommand{type = command_menu_selected}}, #state{page = 0, net_list_box = ListBox, node = Node} = State) ->
@@ -370,27 +386,30 @@ terminate(_Reason, _State) ->
 create_network_dialog(Node) ->
   Dialog = wxDialog:new(wx:null(), ?wxID_ANY, "Create Network", [{size, {1000, 500}}]),
   DialogSizer = wxBoxSizer:new(?wxVERTICAL),
-  DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
+  % DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
+  DialogGridSizer = wxBoxSizer:new(?wxHORIZONTAL),
   wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "CIDR")),
-  CidrCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY),
+  CidrCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY, [{style, ?wxTE_MULTILINE}]),
   wxSizer:add(DialogGridSizer, CidrCtrl, [{flag, ?wxEXPAND}, {proportion, 1}]),
-  wxSizer:add(DialogSizer, DialogGridSizer),
+  wxSizer:add(DialogSizer, DialogGridSizer, [{flag, ?wxEXPAND}, {proportion, 1}]),
   ButtonSizer = wxDialog:createStdDialogButtonSizer(Dialog, ?wxOK bor ?wxCANCEL),
   wxSizer:add(DialogSizer, ButtonSizer),
   wxPanel:setSizer(Dialog, DialogSizer),
-%%  wxWindow:layout(DialogSizer),
 
   case wxDialog:showModal(Dialog) of
     ?wxID_OK ->
-      NetDef = virtuerl_net:parse_cidr(wxTextCtrl:getValue(CidrCtrl)),
-      {ok, NetId} = erpc:call(Node, virtuerl_ipam, ipam_create_net, [[NetDef]]);
+      NetDef = [
+        virtuerl_net:parse_cidr(string:trim(IpStr, both))
+        || IpStr <- string:split(wxTextCtrl:getValue(CidrCtrl), ",", all)],
+      {ok, NetId} = erpc:call(Node, virtuerl_ipam, ipam_create_net, [NetDef]);
     _ -> ok
   end,
   wxDialog:destroy(Dialog).
 
-create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_data := UserData, vcpu := Vcpu, memory := Memory} = Domain) ->
+create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_data := UserData, vcpu := Vcpu, memory := Memory, inbound_rules := InboundRules} = Domain) ->
   {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
-  Choices = maps:keys(Nets),
+  NetworkChoices = maps:keys(Nets),
+  ImageChoices = erpc:call(Node, virtuerl_img, list_images, []),
   Dialog = wxDialog:new(wx:null(), ?wxID_ANY, "Create Domain", [{size, {1000, 500}}]),
   DialogSizer = wxBoxSizer:new(?wxVERTICAL),
   DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
@@ -398,7 +417,7 @@ create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_da
   NameCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY, [{value, DomainName}]),
   wxSizer:add(DialogGridSizer, NameCtrl, [{flag, ?wxEXPAND}, {proportion, 1}]),
   wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Network")),
-  NetworkChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, Choices}]),
+  NetworkChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, NetworkChoices}]),
   wxChoice:setStringSelection(NetworkChoice, NetworkId),
   wxSizer:add(DialogGridSizer, NetworkChoice),
   wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "CPU")),
@@ -407,7 +426,29 @@ create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_da
   wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Memory")),
   MemoryCtrl = wxSpinCtrl:new(Dialog, [{min, 128}, {max, 131072}, {initial, Memory}]),
   wxSizer:add(DialogGridSizer, MemoryCtrl),
+  wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "OS")),
+  OsChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, ["linux", "windows"]}]),
+  wxChoice:setStringSelection(OsChoice, "linux"),
+  wxSizer:add(DialogGridSizer, OsChoice),
+  wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Image")),
+  ImageChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, ImageChoices}]),
+  [DefaultImage|_] = ImageChoices,
+  wxChoice:setStringSelection(ImageChoice, DefaultImage),
+  wxSizer:add(DialogGridSizer, ImageChoice),
+
   wxSizer:add(DialogSizer, DialogGridSizer),
+
+  % Inbound Rules
+  % wxBoxSizer:new(?wxHORIZONTAL),
+  InboundRulesInitial = string:join([ string:join([string:join(Protos, ","), string:join([case Port of
+    Num when is_integer(Num) ->
+      integer_to_list(Num);
+    Str when is_list(Str) orelse is_binary(Str) ->
+      Str
+  end || Port <- Ports], ","), string:join(Sources, ",")], ";") || #{protocols := Protos, target_ports := Ports, sources := Sources} <- InboundRules], "\n"),
+  InboundRulesCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY, [{style, ?wxTE_MULTILINE}, {value, InboundRulesInitial}]),
+  wxSizer:add(DialogSizer, InboundRulesCtrl, [{flag, ?wxEXPAND}, {proportion, 1}]),
+
   UserDataCtrl = wxStyledTextCtrl:new(Dialog),
   wxStyledTextCtrl:setLexer(UserDataCtrl, ?wxSTC_LEX_YAML),
   wxStyledTextCtrl:setText(UserDataCtrl, UserData),
@@ -418,16 +459,73 @@ create_domain_dialog(Node, #{network_id := NetworkId, name:= DomainName, user_da
 
   case wxDialog:showModal(Dialog) of
     ?wxID_OK ->
-      io:format("true ~p~n", [wxChoice:getStringSelection(NetworkChoice)]),
+      InboundRulesVal = wxTextCtrl:getValue(InboundRulesCtrl),
+      Rules0 = [string:trim(Rule) || Rule <- string:split(InboundRulesVal, "\n", all)],
+      Rules1 = [Rule || Rule <- Rules0, not string:is_empty(Rule)],
+      Rules2 = [[string:trim(Elem) || Elem <- string:split(Rule, ";", all)] || Rule <- Rules1],
+      Rules3 = [case Rule of [Protos, Ports, Sources] -> #{
+        protocols => nonempty_splitrim(Protos, ","),
+        target_ports => nonempty_splitrim(Ports, ","),
+        sources => nonempty_splitrim(Sources, ",")
+        } end || Rule <- Rules2],
+      io:format("inbound rules: ~p~n", [Rules3]),
       erpc:call(Node, virtuerl_mgt, domain_create, [#{
         name => wxTextCtrl:getValue(NameCtrl),
+        os_type => wxChoice:getStringSelection(OsChoice),
+        base_image => wxChoice:getStringSelection(ImageChoice),
         network_id => list_to_binary(wxChoice:getStringSelection(NetworkChoice)),
         user_data => wxStyledTextCtrl:getText(UserDataCtrl),
         vcpu => wxSpinCtrl:getValue(VcpuCtrl),
-        memory => wxSpinCtrl:getValue(MemoryCtrl)
+        memory => wxSpinCtrl:getValue(MemoryCtrl),
+        inbound_rules => Rules3
       }]);
     _ -> ok
   end,
-  wxDialog:destroy(Dialog);
-create_domain_dialog(Node, Domain) ->
-  create_domain_dialog(Node, Domain#{user_data => ""}).
+  wxDialog:destroy(Dialog).
+
+update_domain_dialog(Node, #{id := DomainId, state := RunState, inbound_rules := InboundRules} = Domain) ->
+  Dialog = wxDialog:new(wx:null(), ?wxID_ANY, "Edit Domain", [{size, {1000, 500}}]),
+  DialogSizer = wxBoxSizer:new(?wxVERTICAL),
+
+  % Inbound Rules
+  % wxBoxSizer:new(?wxHORIZONTAL),
+  InboundRulesInitial = string:join([ string:join([string:join(Protos, ","), string:join([case Port of
+    Num when is_integer(Num) ->
+      integer_to_list(Num);
+    Str when is_list(Str) orelse is_binary(Str) ->
+      Str
+  end || Port <- Ports], ","), string:join(Sources, ",")], ";") || #{protocols := Protos, target_ports := Ports, sources := Sources} <- InboundRules], "\n"),
+  InboundRulesCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY, [{style, ?wxTE_MULTILINE}, {value, InboundRulesInitial}]),
+  wxSizer:add(DialogSizer, InboundRulesCtrl, [{flag, ?wxEXPAND}, {proportion, 1}]),
+
+  ButtonSizer = wxDialog:createStdDialogButtonSizer(Dialog, ?wxOK bor ?wxCANCEL),
+  wxSizer:add(DialogSizer, ButtonSizer),
+  wxPanel:setSizer(Dialog, DialogSizer),
+
+  case wxDialog:showModal(Dialog) of
+    ?wxID_OK ->
+      InboundRulesVal = wxTextCtrl:getValue(InboundRulesCtrl),
+      Rules0 = [string:trim(Rule) || Rule <- string:split(InboundRulesVal, "\n", all)],
+      Rules1 = [Rule || Rule <- Rules0, not string:is_empty(Rule)],
+      Rules2 = [[string:trim(Elem) || Elem <- string:split(Rule, ";", all)] || Rule <- Rules1],
+      Rules3 = [case Rule of [Protos, Ports, Sources] -> #{
+        protocols => nonempty_splitrim(Protos, ","),
+        target_ports => nonempty_splitrim(Ports, ","),
+        sources => nonempty_splitrim(Sources, ",")
+        } end || Rule <- Rules2],
+      io:format("inbound rules: ~p~n", [Rules3]),
+      erpc:call(Node, virtuerl_mgt, domain_update, [#{
+        id => DomainId,
+        state => RunState,
+        inbound_rules => Rules3
+      }]);
+    _ -> ok
+  end,
+  wxDialog:destroy(Dialog).
+
+
+nonempty_splitrim(Str, Delim) ->
+  Res = [string:trim(Elem) || Elem <- string:split(Str, Delim, all)],
+  [Elem || Elem <- Res, not string:is_empty(Elem)].
+
+

@@ -36,6 +36,7 @@ req(Msg) ->
 
 -record(network, {last_insert, from, to, address, prefixlen}).
 
+-spec ipam_create_net([{binary(), integer()}]) -> {ok, binary()}.
 ipam_create_net(NetworkDef) ->
 	ID = virtuerl_util:uuid4(),
 	ipam_put_net({ID, NetworkDef}).
