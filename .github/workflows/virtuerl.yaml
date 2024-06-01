@@ -18,8 +18,8 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt update
-          sudo apt install rebar3
+          sudo apt install -y rebar3 g++ tree
       - name: Create tar
         run: |
-          rebar3 tar
-          find _build/ -name '*.tar.gz' -exec hack/repack {} \;
+          sudo rebar3 tar
+          sudo find _build/ -name '*.tar.gz' -exec hack/repack {} \;
