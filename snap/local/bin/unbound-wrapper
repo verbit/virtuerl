@@ -1,3 +1,0 @@
-#!/bin/sh -e
-
-exec unbound -d -p -c "$SNAP/etc/unbound/minivirt.conf"

@@ -1,43 +1,57 @@
-# RESTvirt
+virtuerl
+=====
 
-Manage libvirt through a REST API.
+An OTP application
 
-# Installation
-
-```shell
-apt install --no-install-recommends dnsmasq-base libvirt-daemon-system qemu-kvm qemu-utils
-snap install minivirt
-sudo snap connect minivirt:network-control
-sudo snap connect minivirt:firewall-control
-sudo snap connect minivirt:libvirt
+# Required packages
+```sh
+sudo apt install ovmf swtpm
 ```
 
-## Getting Started
+# Windows Guests
 
-```shell
-git clone git@github.com:verbit/restvirt.git
-cd restvirt
+## Disable boot prompt
+```sh
+sudo mount -o loop Win11_23H2_EnglishInternational_x64v2.iso /mnt/win
 
-apt install python3-dev libvirt-dev
-pip install -r requirements.txt
-
-mkdir /etc/restvirt
-
-# start controller
-python main.py controller
-
-#start daemon
-apt install libvirt-daemon-system
-python main.py daemon
+genisoimage \
+    --allow-limited-size \
+    -no-emul-boot \
+    -b "boot/etfsboot.com" \
+    -boot-load-seg 0 \
+    -boot-load-size 8 \
+    -eltorito-alt-boot \
+    -no-emul-boot \
+    -e "efi/microsoft/boot/efisys_noprompt.bin" \
+    -boot-load-size 1 \
+    -iso-level 4 \
+    -udf \
+    -o "win.iso" \
+    /mnt/win/
 ```
 
-## Code Generation
-```shell
-python -m grpc_tools.protoc --python_out=. --grpc_python_out=. -Iprotos/ protos/minivirt/*.proto
+# Running
+
+On the server
+
+Make sure IP forwarding is enabled (`/etc/sysctl.conf`)
+```
+# Uncomment the next line to enable packet forwarding for IPv4
+net.ipv4.ip_forward=1
+# Uncomment the next line to enable packet forwarding for IPv6
+net.ipv6.conf.all.forwarding=1
+```
+Run `sysctl -w` to commit changes.
+
+```sh
+sudo -s ./erts-13.1.5/bin/erl -mode embedded -boot releases/0.7.0+build.61.ref8fc0b7e/start -config releases/0.7.0+build.61.ref8fc0b7e/sys.config -proto_dist inet6_tcp -name verbit@verbit.in-berlin.de -setcookie abcdef
 ```
 
-## Known Issues
-
-* AppArmor
-  * https://ubuntu.com/server/docs/virtualization-libvirt
-  * https://bugs.launchpad.net/ubuntu/+source/libvirt/+bug/1677398
+Locally
+```sh
+rebar3 compile
+erl -name moi -proto_dist inet6_tcp -setcookie abcdef -pa _build/default/lib/*/ebin -hidden
+(moi@t460s.lan)1> net_adm:ping('virtuerl@a.in6.dev').
+pong
+(moi@t460s.lan)2> virtuerl_ui:start('virtuerl@a.in6.dev').
+```

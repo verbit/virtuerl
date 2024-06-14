@@ -1,3 +1,0 @@
-#!/bin/sh -e
-
-exec bird -f -c "$SNAP_DATA/etc/bird/minivirt.conf" -s "$SNAP_DATA/var/run/bird/bird.ctl"
