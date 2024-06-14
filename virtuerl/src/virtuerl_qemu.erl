@@ -95,7 +95,7 @@ handle_continue(setup_base, #{id := DomainId, domain := Domain} = State) ->
           ];
     _ -> []
   end,
-  Cmd = iolist_to_binary(["kvm -machine type=q35 -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -vnc unix:vnc.sock -display none -smp ",integer_to_binary(Vcpu)," -m ",integer_to_binary(Memory),
+  Cmd = iolist_to_binary(["kvm -machine type=q35 -no-shutdown -S -nic tap,ifname=",TapName,",script=no,downscript=no,model=virtio-net-pci,mac=",virtuerl_util:mac_to_str(MacAddr), " -vnc unix:vnc.sock -display none -cpu host -smp ",integer_to_binary(Vcpu)," -m ",integer_to_binary(Memory),
   " -chardev socket,id=chrtpm,path=swtpm.sock -tpmdev emulator,id=tpm0,chardev=chrtpm -device tpm-tis,tpmdev=tpm0",
   " -drive if=pflash,format=raw,file=/usr/share/OVMF/OVMF_CODE_4M.ms.fd,readonly=on",
   " -drive if=pflash,format=raw,file=OVMF_VARS_4M.ms.fd",
