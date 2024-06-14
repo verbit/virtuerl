@@ -6,6 +6,8 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_qemu).
 
+-include_lib("kernel/include/logger.hrl").
+
 -behaviour(gen_server).
 
 -export([start_link/1, callback_mode/0]).
@@ -98,7 +100,7 @@ handle_continue(setup_base, #{id := DomainId, domain := Domain} = State) ->
   " -drive if=pflash,format=raw,file=/usr/share/OVMF/OVMF_CODE_4M.ms.fd,readonly=on",
   " -drive if=pflash,format=raw,file=OVMF_VARS_4M.ms.fd",
   " -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -qmp unix:qmp.sock,server=on,wait=off -serial unix:serial.sock,server=on,wait=off", CdromOpts]), % -serial unix:serial.sock,server=on,wait=off
-  io:format("QEMU cmdline: ~s~n", [Cmd]),
+  ?LOG_DEBUG(#{domain => DomainId, qemu_cmd => Cmd}),
   {ok, Pid, OsPid} = exec:run_link(Cmd, [{cd, DomainHomePath}]),
   {noreply, State#{qemu_pid => {Pid, OsPid}}, {continue, setup_qmp}};
 handle_continue(setup_qmp, #{id := ID} = State) ->
@@ -128,7 +130,7 @@ handle_continue(setup_serial, #{id := ID} = State) ->
 %%  end.
 
 handle_info({qmp, Event}, #{table := Table, id := ID, domain := Domain} = State) ->
-  io:format("QMP: ~p~n", [Event]),
+  ?LOG_INFO(#{domain => ID, qmp => Event}),
   case Event of
     #{<<"event">> := <<"STOP">>} ->
       [{DomainId, Domain}] = dets:lookup(Table, ID),
@@ -164,28 +166,34 @@ exit_events() ->
   end.
 
 terminate(_Reason, #{table := Table, id := ID, domain := Domain, qemu_pid := {Pid, OsPid}, qmp_pid := QmpPid}) ->
-  io:format("GRACEFUL SHUTDOWN: ~s (~p)~n", [ID, _Reason]),
+  ?LOG_DEBUG(#{domain => ID, event => graceful_shutdown, reason => _Reason}),
   case _Reason of
     normal -> ok;
     _ -> % supervisor sends "shutdown"
       virtuerl_qmp:exec(QmpPid, system_powerdown),
+      ?LOG_DEBUG(#{domain => ID, message => "waiting for guest to shutdown"}),
 %%  shutdown_events(),
       receive
         {qmp, #{<<"event">> := <<"STOP">>}} -> ok
-      after 5000 -> timeout
+      after 5000 ->
+        ?LOG_WARNING(#{domain => ID, message => "timed-out waiting for guest to shutdown"}),
+        {error, timeout}
       end
   end,
 %%  {ok, #{<<"return">> := #{}}} = thoas:decode(PowerdownRes),
   ok = virtuerl_qmp:stop(QmpPid),
   ok = exec:stop(Pid),
+  ?LOG_DEBUG(#{domain => ID, message => "waiting for QEMU process to stop"}),
   receive
     {'EXIT', Pid, _} ->
-      io:format("QEMU OS process stopped! (~p)~n", [Pid]),
+      ?LOG_DEBUG("QEMU OS process stopped! (~p)~n", [Pid]),
       ok;
     {'EXIT', OsPid, _} ->
-      io:format("QEMU OS process stopped (OsPid)!~n"),
+      ?LOG_DEBUG("QEMU OS process stopped (OsPid)!~n"),
       ok
-  after 5000 -> timeout
+  after 5000 ->
+    ?LOG_WARNING(#{domain => ID, message => "timed-out waiting for QEMU process to stop"}),
+    {error, timeout}
   end,
 %%  exit_events(),
   dets:close(Table).
@@ -201,16 +209,16 @@ wait_for_socket(SocketPath) ->
                     end),
   receive
     {virtuerl, socket_available} ->
-      io:format("done waiting for ~s ~p~n", [SocketPath, erlang:timestamp()]),
+      ?LOG_DEBUG("done waiting for ~s ~p~n", [SocketPath, erlang:timestamp()]),
       ok
   after 2000 ->
-    io:format("failed waiting"),
+    ?LOG_DEBUG("failed waiting"),
     exit(WaiterPid, kill),
     timeout
   end.
 
 do_wait_for_socket(SocketPath, Requester) ->
-  io:format("checking...~n"),
+  ?LOG_DEBUG("checking...~n"),
   case filelib:last_modified(SocketPath) of
     0 ->
       timer:sleep(20),

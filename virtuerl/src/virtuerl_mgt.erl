@@ -6,6 +6,8 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_mgt).
 
+-include_lib("kernel/include/logger.hrl").
+
 -export([image_from_domain/2]).
 
 -export([domain_update/1]).
@@ -118,6 +120,7 @@ handle_call({domain_create, Conf}, _From, State) ->
   end,
   dets:insert_new(Table, {DomainID, Domain}),
   dets:sync(Table),
+  ?LOG_NOTICE(#{event => domain_requested, domain => Domain}),
 
   #{network_id := NetworkID} = Domain,
   {ok, #{cidrs := Cidrs}} = virtuerl_ipam:ipam_get_net(NetworkID),
@@ -156,19 +159,21 @@ handle_call({domain_create, Conf}, _From, State) ->
 
   Domains = dets:match_object(Table, '_'),
   TapNames = sets:from_list([Tap || #{tap_name := Tap} <- Domains]),
-  TapName = generate_unique_tap_name(TapNames),
+  TapName = generate_unique_tap_name(TapNames),  % TODO: TapName should be generated on a per-deployment basis
   <<A:5, _:3, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
   MacAddr = <<A:5, 1:1, 2:2, B:40>>,
 
-  dets:insert(Table, {DomainID,
-    Domain#{
+  DomainWithIps = Domain#{
       network_addrs => Cidrs,
       mac_addr=>MacAddr,
       ipv4_addr=>Ipv4Addr,
       ipv6_addr => Ipv6Addr,
       cidrs => IpCidrs,
-      tap_name => TapName}}),
+      tap_name => TapName},
+  dets:insert(Table, {DomainID, DomainWithIps}),
   dets:sync(Table),
+  ?LOG_NOTICE(#{event => domain_ready, domain => DomainWithIps}),
+  virtuerl_pubsub:send({domain_created, DomainID}),
 
   ok = gen_server:call(virtuerl_net, {net_update}),
 
@@ -190,8 +195,9 @@ handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} =
             [{_, Domain}] ->
               ok = dets:insert(Table, {DomainID, maps:merge(Domain, DomainUpdate)}),
               ok = dets:sync(Table),
+              virtuerl_pubsub:send({domain_updated, DomainID}),
               ok;
-            [] -> notfound
+            [] -> {error, notfound}
           end,
   {reply, Reply, State, {continue, sync_domains}};
 handle_call(domains_list, _From, State) ->
