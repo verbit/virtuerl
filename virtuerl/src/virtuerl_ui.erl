@@ -27,6 +27,7 @@
 %%%            Dan rewrote it to show wx_object behaviour
 %%%-------------------------------------------------------------------
 -module(virtuerl_ui).
+-include_lib("kernel/include/logger.hrl").
 -include_lib("wx/include/wx.hrl").
 
 -export([start/0, start/1,
@@ -223,8 +224,8 @@ handle_info({domain_out, _Id, Text}, #state{domain_panel = DomainPanel} = State)
   wxStyledTextCtrl:appendText(SerialOut, Text),
   wxStyledTextCtrl:scrollToLine(SerialOut, wxStyledTextCtrl:getLineCount(SerialOut)),
   {noreply,State};
-handle_info(Msg, #state{domain_panel = DomainPanel} = State) ->
-  io:format("Got Info ~p~n",[Msg]),
+handle_info(Msg, State) ->
+  ?LOG_INFO(#{info => Msg}),
   {noreply, State}.
 
 handle_call(Msg, _From, State) ->

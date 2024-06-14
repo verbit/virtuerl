@@ -6,6 +6,8 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_qmp).
 
+-include_lib("kernel/include/logger.hrl").
+
 -behaviour(gen_server).
 
 -export([start_link/2, handle_cast/2]).
@@ -80,10 +82,9 @@ qmp_translator(QmpSocketPath, Receiver) ->
 qmp_loop(QmpSocket, Receiver) ->
   receive
     {tcp, _Socket, RawData} ->
-      io:format("qmp_loop/tcp/raw: ~p~n", [RawData]),
       Lines = re:split(RawData, "\r?\n", [trim]),
       Jsons = lists:map(fun (Line) -> {ok, Json} = thoas:decode(Line), Json end, Lines),
-      io:format("qmp_loop/tcp: ~p~n", [Jsons]),
+      ?LOG_DEBUG(#{qmp_raw => RawData, qmp_parsed => Jsons}),
       [Receiver ! {qmp, Json} || Json <- Jsons],
       qmp_loop(QmpSocket, Receiver);
     {qmp, Command} when is_atom(Command) ->
