@@ -21,6 +21,15 @@ start(_StartType, _StartArgs) ->
 %%    {ok, _} = Res,
 %%    exec:debug(4),
     httpc:set_options([{ipfamily, inet6fb4}]),
+
+    case filelib:is_file("virtuerl.config") of
+        true ->
+            {ok, [Conf]} = file:consult("virtuerl.config"),
+            application:set_env(Conf);
+        false ->
+            ok
+    end,
+
     virtuerl_sup:start_link().
 
 start() ->

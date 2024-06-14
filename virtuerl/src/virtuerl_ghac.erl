@@ -19,11 +19,17 @@
     % repo="restvirt",
     % token="230b9671f90e4ff0f1f722776a6ef7e4620d97d0",
 
--define(HEADERS, [{"User-Agent", "terstegen"}, {"Authorization", "Bearer 230b9671f90e4ff0f1f722776a6ef7e4620d97d0"}]).
--define(BASE_URL, "https://api.github.com/repos/verbit/restvirt").
+base_url() ->
+  {ok, Org} = application:get_key(gh_org),
+  {ok, Repo} = application:get_key(gh_repo),
+  ["https://api.github.com/repos/", Org, "/", Repo].
+
+headers() ->
+  {ok, Token} = application:get_key(gh_pat),
+  [{"User-Agent", "terstegen"}, {"Authorization", ["Bearer ", Token]}].
 
 pending_jobs() ->
-  {ok, {{_, 200, _}, _Headers, RunsRaw}} = httpc:request(get, {[?BASE_URL, "/actions/runs?status=queued"], ?HEADERS}, [], []),
+  {ok, {{_, 200, _}, _Headers, RunsRaw}} = httpc:request(get, {[base_url(), "/actions/runs?status=queued"], headers()}, [], []),
   {ok, RunsJson} = thoas:decode(RunsRaw),
   #{<<"workflow_runs">> := WorkflowRuns} = RunsJson,
   RunIds = [RunId || #{<<"id">> := RunId} = Run <- WorkflowRuns],
@@ -32,12 +38,12 @@ pending_jobs() ->
   NumJobs.
 
 list_jobs(RunId) ->
-  {ok, {{_, 200, _}, _Headers, JobsRaw}} = httpc:request(get, {[?BASE_URL, "/actions/runs/", RunId, "/jobs"], ?HEADERS}, [], []),
+  {ok, {{_, 200, _}, _Headers, JobsRaw}} = httpc:request(get, {[base_url(), "/actions/runs/", RunId, "/jobs"], headers()}, [], []),
   {ok, JobsJson} = thoas:decode(JobsRaw),
   JobsJson.
 
 list_runners() ->
-  {ok, {{_, 200, _}, _Headers, RunnersRaw}} = httpc:request(get, {[?BASE_URL, "/actions/runners"], ?HEADERS}, [], []),
+  {ok, {{_, 200, _}, _Headers, RunnersRaw}} = httpc:request(get, {[base_url(), "/actions/runners"], headers()}, [], []),
   {ok, RunnersJson} = thoas:decode(RunnersRaw),
   #{<<"runners">> := Runners} = RunnersJson,
   [Runner || #{<<"status">> := Status} = Runner <- Runners, Status == <<"online">>].
@@ -49,7 +55,7 @@ list_domains() ->
     string:prefix(Name, "actions-base") == nomatch].
 
 create_runner(NetId) ->
-  {ok, {{_, 201, _}, _Headers, TokenRaw}} = httpc:request(post, {[?BASE_URL, "/actions/runners/registration-token"], ?HEADERS, "application/json", ""}, [], []),
+  {ok, {{_, 201, _}, _Headers, TokenRaw}} = httpc:request(post, {[base_url(), "/actions/runners/registration-token"], headers(), "application/json", ""}, [], []),
   {ok, #{<<"token">> := Token}} = thoas:decode(TokenRaw),
 
   {ok, _} = virtuerl_mgt:domain_create(#{
