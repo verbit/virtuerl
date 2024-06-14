@@ -15,7 +15,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt update
-          sudo apt install -y rebar3 g++ tree nftables
+          sudo apt install -y rebar3 g++ tree nftables ovmf swtpm
       - name: Test
         run: |
           sudo rebar3 ct
