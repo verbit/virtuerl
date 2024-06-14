@@ -19,6 +19,9 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y rebar3 g++ tree
+      - name: Test
+        run: |
+          sudo rebar3 ct
       - name: Create tar
         run: |
           sudo rebar3 tar
