@@ -15,17 +15,14 @@
   code_change/3]).
 
 -define(SERVER, ?MODULE).
-    % owner="verbit",
-    % repo="restvirt",
-    % token="230b9671f90e4ff0f1f722776a6ef7e4620d97d0",
 
 base_url() ->
-  {ok, Org} = application:get_key(gh_org),
-  {ok, Repo} = application:get_key(gh_repo),
+  {ok, Org} = application:get_env(gh_org),
+  {ok, Repo} = application:get_env(gh_repo),
   ["https://api.github.com/repos/", Org, "/", Repo].
 
 headers() ->
-  {ok, Token} = application:get_key(gh_pat),
+  {ok, Token} = application:get_env(gh_pat),
   [{"User-Agent", "terstegen"}, {"Authorization", ["Bearer ", Token]}].
 
 pending_jobs() ->
@@ -38,7 +35,7 @@ pending_jobs() ->
   NumJobs.
 
 list_jobs(RunId) ->
-  {ok, {{_, 200, _}, _Headers, JobsRaw}} = httpc:request(get, {[base_url(), "/actions/runs/", RunId, "/jobs"], headers()}, [], []),
+  {ok, {{_, 200, _}, _Headers, JobsRaw}} = httpc:request(get, {[base_url(), "/actions/runs/", integer_to_list(RunId), "/jobs"], headers()}, [], []),
   {ok, JobsJson} = thoas:decode(JobsRaw),
   JobsJson.
 
