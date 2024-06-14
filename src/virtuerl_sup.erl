@@ -77,7 +77,7 @@ init([]) ->
     ],
     OptionalChildSpecs = case application:get_env(gh_pat) of
       undefined -> [];
-      _ -> [{virtuerl_ghac, {virtuerl_ghac, start_link, []}, permanent, infinity, worker}]
+      _ -> [{virtuerl_ghac, {virtuerl_ghac, start_link, []}, permanent, infinity, worker, []}]
     end,
     {ok, {SupFlags, ChildSpecs ++ OptionalChildSpecs}}.
 
