@@ -20,8 +20,9 @@
           domain_panel,
           domain_info,
           toolbar,
-          domain_list_box,
           domains,
+          domain_list_box,
+          domain_ids,
           page,
           net_list_box,
           node
@@ -38,7 +39,7 @@ start(Node) ->
 
 %% Init is called in the new process.
 init([Node]) ->
-    %%  virtuerl_pubsub:subscribe(),
+    virtuerl_pubsub:subscribe(),
 
     wx:new(),
     Frame = wxFrame:new(wx:null(), -1, "Hello World", []),
@@ -100,41 +101,16 @@ init([Node]) ->
     wxNotebook:connect(Notebook, command_notebook_page_changed),
     wxNotebook:setSelection(Notebook, 1),
 
-    Domains = erpc:call(Node, virtuerl_mgt, domains_list, []),
     ColumnNames = ["ID", "Name", "IPs", "CPU", "RAM"],
     ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_RIGHT],
-    DomainsTuples = [ {Id,
-                       Name,
-                       lists:join($,,
-                                  [ virtuerl_net:format_ip(Ip)
-                                    || {Ip, _Prefixlen} <- Cidrs ]),
-                       integer_to_binary(Vcpu),
-                       [integer_to_binary(Memory), $M]}
-                      || #{id := Id, name := Name, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
-    DomainsIds = [ Id || {Id, _Name, _, _, _} <- DomainsTuples ],
     DomainListBox = wxListCtrl:new(DomainSplitter, [{style, ?wxLC_REPORT}]),
     lists:foreach(
       fun({Idx, Name}) ->
               wxListCtrl:insertColumn(DomainListBox, Idx, Name, [{format, lists:nth(Idx + 1, ColumnAlignment)}])
       end,
       lists:enumerate(0, ColumnNames)),
-    lists:foreach(
-      fun(Idx) ->
-              Item = wxListItem:new(),
-              wxListItem:setId(Item, Idx),
-              wxListCtrl:insertItem(DomainListBox, Item)
-      end,
-      lists:seq(1, length(DomainsTuples))),
-    lists:foreach(
-      fun(ColIdx) ->
-              lists:foreach(
-                fun({RowIdx, Dom}) ->
-                        wxListCtrl:setItem(DomainListBox, RowIdx, ColIdx - 1, element(ColIdx, Dom))
-                end,
-                lists:enumerate(0, DomainsTuples))
-      end,
-      lists:seq(1, length(ColumnNames))),
     wxListCtrl:connect(DomainListBox, command_list_item_selected),  % command_listbox_doubleclicked
+    update_domains(Node, DomainListBox),
 
     DomainInfo = wxPanel:new(DomainSplitter),
     DomainInfoSizer = wxBoxSizer:new(?wxVERTICAL),
@@ -174,8 +150,7 @@ init([Node]) ->
        info = InfoGrid,
        domain_panel = DomainInfo,
        domain_info = DomainInfoGrid,
-       domain_list_box = DomainListBox,
-       domains = DomainsIds
+       domain_list_box = DomainListBox
       }}.
 
 
@@ -245,9 +220,63 @@ handle_info({domain_out, _Id, Text}, #state{domain_panel = DomainPanel} = State)
     wxStyledTextCtrl:appendText(SerialOut, Text),
     wxStyledTextCtrl:scrollToLine(SerialOut, wxStyledTextCtrl:getLineCount(SerialOut)),
     {noreply, State};
+handle_info({domain_created, _Id}, #state{node = Node, domain_list_box = DomainListBox} = State) ->
+    update_domains(Node, DomainListBox),
+    {noreply, State};
+handle_info({domain_deleted, _Id}, #state{node = Node, domain_list_box = DomainListBox} = State) ->
+    update_domains(Node, DomainListBox),
+    {noreply, State};
 handle_info(Msg, State) ->
     ?LOG_INFO(#{info => Msg}),
     {noreply, State}.
+
+
+update_domains(Node, DomainListBox) ->
+    Domains = erpc:call(Node, virtuerl_mgt, domains_list, []),
+    DomainsTuples = [ {Id,
+                       Name,
+                       lists:join($,, [ virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs ]),
+                       integer_to_binary(Vcpu),
+                       [integer_to_binary(Memory), $M]}
+                      || #{id := Id, name := Name, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
+
+    SelDomIdRes = selected_domain_id(DomainListBox),
+    true = wxListCtrl:deleteAllItems(DomainListBox),
+    wx:foreach(
+      fun(Idx) ->
+              Item = wxListItem:new(),
+              wxListItem:setId(Item, Idx),
+              wxListCtrl:insertItem(DomainListBox, Item)
+      end,
+      lists:seq(1, length(DomainsTuples))),
+    wx:foreach(
+      fun({RowIdx, Dom}) ->
+              wx:foreach(
+                fun(ColIdx) ->
+                        wxListCtrl:setItem(DomainListBox, RowIdx, ColIdx - 1, element(ColIdx, Dom))
+                end,
+                lists:seq(1, 5)),
+              {DomId, _, _, _, _} = Dom,
+              case SelDomIdRes of
+                  {_Idx, DomId} ->
+                      wxListCtrl:setItemState(DomainListBox,
+                                              RowIdx,
+                                              ?wxLIST_STATE_FOCUSED bor ?wxLIST_STATE_SELECTED,
+                                              ?wxLIST_STATE_FOCUSED bor ?wxLIST_STATE_SELECTED);
+                  _ -> ok
+              end
+      end,
+      lists:enumerate(0, DomainsTuples)).
+
+
+-spec selected_domain_id(wxListCtrl:wxListCtrl()) -> {integer(), binary()} | none.
+selected_domain_id(DomainListBox) ->
+    SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
+    % _DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    case SelectedItem of
+        -1 -> none;
+        Num -> {Num, iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}]))}
+    end.
 
 
 handle_call(Msg, _From, State) ->
@@ -275,15 +304,13 @@ handle_event(#wx{id = 42, event = #wxCommand{type = command_listbox_selected, cm
     wxFlexGridSizer:clear(Info, [{delete_windows, true}]),
     wxSizer:add(Info, wxStaticText:new(Panel, -1, "CIDR")),
     wxSizer:add(Info, wxStaticText:new(Panel, -1, string:join(CidrsStr, ","))),
-    io:format("dblclick ~p (~p)~n", [Choice, Net]),
     {noreply, State};
 handle_event(#wx{event = #wxList{type = command_list_item_selected, itemIndex = ItemIndex}}, State) ->
-    #state{domain_panel = DomainPanel, domain_info = DomainInfo, toolbar = Toolbar, domains = DomainIds, node = Node} = State,
-    Domains = maps:from_list([ {Id, Domain} || Domain = #{id := Id} <- erpc:call(Node, virtuerl_mgt, domains_list, []) ]),
-    wxGridBagSizer:clear(DomainInfo, [{delete_windows, true}]),
+    #state{domain_panel = DomainPanel, domain_info = DomainInfo, toolbar = Toolbar, domain_list_box = DomainListBox, node = Node} = State,
+    wxGridBagSizer:clear(DomainInfo, [{delete_windows, true}]),  % TODO: this breaks VNC module
 
-    DomainId = lists:nth(ItemIndex + 1, DomainIds),
-    Domain = maps:get(DomainId, Domains),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, ItemIndex, [{col, 0}])),
+    {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
     #{state := DomainState, network_id := NetworkId} = Domain,
     case DomainState of
         running ->
@@ -334,48 +361,47 @@ handle_event(#wx{event = #wxList{type = command_list_item_selected, itemIndex = 
     wxGridBagSizer:addGrowableRow(DomainInfo, LastRowIndex),
     wxGridBagSizer:addGrowableCol(DomainInfo, 2),
     wxPanel:layout(DomainPanel),
-    io:format("dblclick ~p (~p)~n", [DomainId, Domain]),
     {noreply, State};
 handle_event(#wx{id = 4044, event = #wxCommand{type = command_button_clicked}}, State) ->
-    #state{domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State,
+    #state{domain_list_box = DomainListBox, node = Node} = State,
     SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
-    DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}])),
     {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
     create_domain_dialog(Node, Domain, create),
     {noreply, State};
 handle_event(#wx{id = 4046, event = #wxCommand{type = command_button_clicked}}, State) ->
-    #state{domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State,
+    #state{domain_list_box = DomainListBox, node = Node} = State,
     SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
-    DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}])),
     {ok, Domain} = erpc:call(Node, virtuerl_mgt, domain_get, [#{id => DomainId}]),
     create_domain_dialog(Node, Domain, update),
     {noreply, State};
 handle_event(#wx{id = 100, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = _Event, State) ->
-    #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State,
+    #state{page = 1, domain_list_box = DomainListBox, node = Node} = State,
     SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
-    DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}])),
     Choice = DomainId,
     wxToolBar:enableTool(Toolbar, 100, false),
     wxToolBar:enableTool(Toolbar, 101, true),
     ok = erpc:call(Node, virtuerl_mgt, domain_start, [Choice]),
     {noreply, State};
 handle_event(#wx{id = 101, obj = Toolbar, event = #wxCommand{type = command_menu_selected}} = _Event, State) ->
-    #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State,
+    #state{page = 1, domain_list_box = DomainListBox, node = Node} = State,
     SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
-    DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}])),
     Choice = DomainId,
     wxToolBar:enableTool(Toolbar, 100, true),
     wxToolBar:enableTool(Toolbar, 101, false),
     ok = erpc:call(Node, virtuerl_mgt, domain_stop, [Choice]),
     {noreply, State};
 handle_event(#wx{id = 102, obj = _Toolbar, event = #wxCommand{type = command_menu_selected}} = _Event, State) ->
-    #state{page = 1, domain_list_box = DomainListBox, domains = DomainIds, node = Node} = State,
+    #state{page = 1, domain_list_box = DomainListBox, node = Node} = State,
     SelectedItem = wxListCtrl:getNextItem(DomainListBox, -1, [{state, ?wxLIST_STATE_SELECTED}]),
-    DomainId = lists:nth(SelectedItem + 1, DomainIds),
+    DomainId = iolist_to_binary(wxListCtrl:getItemText(DomainListBox, SelectedItem, [{col, 0}])),
     erpc:call(Node, virtuerl_mgt, domain_delete, [#{id => DomainId}]),
     {noreply, State};
 handle_event(#wx{id = 103, obj = _Toolbar, event = #wxCommand{type = command_menu_selected}} = _Event, State) ->
-    #state{page = 1, domain_list_box = _DomainListBox, domains = _DomainIds, node = Node} = State,
+    #state{page = 1, domain_list_box = _DomainListBox, domain_ids = _DomainIds, node = Node} = State,
     Domain = #{
                network_id => "",
                name => "",
