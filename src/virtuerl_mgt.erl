@@ -207,10 +207,9 @@ handle_call(domains_list, _From, State) ->
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
-    [{_, #{mac_addr := MacAddr, ipv4_addr:=IP, tap_name := TapName} = Domain}] ->
+    [{_, #{mac_addr := MacAddr, tap_name := TapName} = Domain}] ->
       DomRet = Domain#{
         mac_addr := binary:encode_hex(MacAddr),
-        ipv4_addr := virtuerl_net:format_ip_bitstring(IP),
         tap_name := iolist_to_binary(TapName)},
       {ok, maps:merge(#{state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
     [] -> notfound
