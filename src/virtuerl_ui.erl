@@ -51,8 +51,8 @@ init([Node]) ->
     wxFrame:setMenuBar(Frame, MenuBar),
     wxFrame:connect(Frame, command_menu_selected),
 
-    {Mx, My, _, _} = wxMiniFrame:getTextExtent(Frame, "M"),
-    wxFrame:setClientSize(Frame, {60 * Mx, 20 * My}),
+    {Mx, My, _, _} = wxFrame:getTextExtent(Frame, "M"),
+    wxFrame:setClientSize(Frame, {80 * Mx, 30 * My}),
 
     Toolbar = create_toolbar(Frame, 100),
 
@@ -101,12 +101,23 @@ init([Node]) ->
     wxNotebook:connect(Notebook, command_notebook_page_changed),
     wxNotebook:setSelection(Notebook, 1),
 
-    ColumnNames = ["ID", "Name", "IPs", "CPU", "RAM"],
-    ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_RIGHT],
     DomainListBox = wxListCtrl:new(DomainSplitter, [{style, ?wxLC_REPORT}]),
+    ColumnNames = ["ID", "Name", "CPU", "RAM", "IPs"],
+    ColumnWidths = [ case P of
+                         Str when is_list(Str) ->
+                             {Width, _, _, _} = wxListCtrl:getTextExtent(DomainListBox, P),
+                             Width;
+                         Other -> Other
+                     end
+                     || P <- ["mmmmmm", "virtual-machine", ?wxLIST_AUTOSIZE_USEHEADER, "mmmmmm M", "444.444.444.444,mmmm:mmmm:mmmm:mmmm"] ],
+    ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_LEFT],
     lists:foreach(
       fun({Idx, Name}) ->
-              wxListCtrl:insertColumn(DomainListBox, Idx, Name, [{format, lists:nth(Idx + 1, ColumnAlignment)}])
+              wxListCtrl:insertColumn(DomainListBox,
+                                      Idx,
+                                      Name,
+                                      [{format, lists:nth(Idx + 1, ColumnAlignment)},
+                                       {width, lists:nth(Idx + 1, ColumnWidths)}])
       end,
       lists:enumerate(0, ColumnNames)),
     wxListCtrl:connect(DomainListBox, command_list_item_selected),  % command_listbox_doubleclicked
@@ -130,7 +141,7 @@ init([Node]) ->
     wxSizer:add(DomainButtonsSizer, DomainEditBtn),
     wxSizer:add(DomainInfoSizer, DomainButtonsSizer, [{flag, ?wxALIGN_RIGHT}]),
 
-    wxSplitterWindow:splitHorizontally(DomainSplitter, DomainListBox, DomainInfo, [{sashPosition, 25 * Mx}]),
+    wxSplitterWindow:splitHorizontally(DomainSplitter, DomainListBox, DomainInfo, [{sashPosition, 7 * My}]),
     % END Domains
 
     ok = wxFrame:setStatusText(Frame, "Hello World!", []),
@@ -235,9 +246,9 @@ update_domains(Node, DomainListBox) ->
     Domains = erpc:call(Node, virtuerl_mgt, domains_list, []),
     DomainsTuples = [ {Id,
                        Name,
-                       lists:join($,, [ virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs ]),
                        integer_to_binary(Vcpu),
-                       [integer_to_binary(Memory), $M]}
+                       [integer_to_binary(Memory), " M"],
+                       lists:join($,, [ virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs ])}
                       || #{id := Id, name := Name, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
 
     SelDomIdRes = selected_domain_id(DomainListBox),
