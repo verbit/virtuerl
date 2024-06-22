@@ -55,6 +55,9 @@ create_runner(NetId) ->
   {ok, {{_, 201, _}, _Headers, TokenRaw}} = httpc:request(post, {[base_url(), "/actions/runners/registration-token"], headers(), "application/json", ""}, [], []),
   {ok, #{<<"token">> := Token}} = thoas:decode(TokenRaw),
 
+  {ok, Org} = application:get_env(gh_org),
+  {ok, Repo} = application:get_env(gh_repo),
+
   {ok, _} = virtuerl_mgt:domain_create(#{
     network_id => NetId,
     name => io_lib:format("actions-~s", [virtuerl_util:uuid4()]),
@@ -73,7 +76,7 @@ create_runner(NetId) ->
 "      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDCKxHNpVg1whPegPv0KcRQTOfyVIqLwvMfVLyT9OpBPXHDudsFz9soOgMUEyWm8ZJ+pJ9fRCg66B+D5/ZRTwJCBpyNncfXCwu8xEJgEeoIubObh6t6dHWqqxX/yhHAS5GIRUSypm78qg6V+SQ6SeJXSjOCLAbZmhyWgJrlDm9M6GTPQhPAztrgsCUrzxIpZ5el5BwJXrm3I+LOmofAUqgbLQz9HuGJzPpnfABDa9WoVfI0L7oTr0qGpWwx8l71b2s8AYl7GMD/bEkZKyi9SSwEVCHA88F7dYYrZ3+fMXE/mJf+v0ece2lIDT7Te1gtqiLu/izJNmqD+b6mtnnXxVxNOtynhv3t6uLE9kBX22SBCCRqPJzETGNXvYH6fATEe88dhLh8kTppLRB5UGUd/zztxuNBSpMwFXaq8SlTKURxvF8BuFIPCz0FW8fq+TA/xZfBYsiVt59jXgl6BQyEGY4bMuMtT2nD8QXwZ5vsj52mzKGJwBwduiaX302brHYUyQkuyLII5iqmCNZ5YLlMY76a61Yg9pWMeRwQscSO2k4a18GOo+sIrQVTyUQiT3KhRRaDNrZuCPicQRgkJuiS1fKt1cWjnOlyweLxSYbpKnoS0H7vt+NrtbU1u9FPknXQPQ0pxixPpV3zgUdfOLmisFH7WGVjwNVvZAlNc5uyqm0fbw== ilya@verbit.io\n",
 "\n",
 "runcmd:\n",
-"  - cd /opt/actions-runner && RUNNER_ALLOW_RUNASROOT=1 ./config.sh --unattended --url https://github.com/verbit/restvirt --token ", Token, " --ephemeral\n",
+"  - cd /opt/actions-runner && RUNNER_ALLOW_RUNASROOT=1 ./config.sh --unattended --url https://github.com/", Org, "/", Repo, " --token ", Token, " --ephemeral\n",
 "  - cd /opt/actions-runner && ./svc.sh install\n",
 "  - cd /opt/actions-runner && ./svc.sh start\n"
     ]
