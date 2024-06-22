@@ -39,7 +39,7 @@ start(Node) ->
 
 %% Init is called in the new process.
 init([Node]) ->
-    virtuerl_pubsub:subscribe(),
+    erpc:call(Node, virtuerl_pubsub, subscribe, [self()]),
 
     wx:new(),
     Frame = wxFrame:new(wx:null(), -1, "Hello World", []),
