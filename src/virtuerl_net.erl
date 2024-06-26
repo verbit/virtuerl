@@ -134,6 +134,20 @@ update_nftables(Domains) ->
     end
     || {Family, Addr} <- BridgeAddrsTyped, Prot <- ["tcp", "udp"]],
 
+  ToIpString = fun (#{source_port := SourcePort, target_port := TargetPort, protos := Protos}, {Ip, _}) ->
+    {Tag, IpStr} = case bit_size(Ip) of
+      32 -> {"ipv4", ["ip to ", virtuerl_net:format_ip(Ip)]};
+      128 -> {"ipv6", ["ip6 to [", virtuerl_net:format_ip(Ip), "]"]}
+    end,
+    ["        iifname != \"verlbr*\" oifname != \"verlbr*\" meta nfproto ", Tag, " meta l4proto {", string:join(lists:map(fun atom_to_list/1, Protos), ", ") , "} th dport ", integer_to_list(SourcePort) , " dnat ", IpStr, ":", integer_to_list(TargetPort), "\n"]
+  end,
+  PortFwdRules = [
+    [
+      ToIpString(PortFwd, Cidr)
+      || PortFwd <- PortFwds, Cidr <- Cidrs]
+    || {_Id, #{cidrs := Cidrs, port_fwds := PortFwds}} <- Domains
+  ],
+  io:format("PortFwd: ~p~n", [PortFwdRules]),
 
   ToRule = fun (#{protocols := Protos, target_ports := Ports}, Cidrs) ->
     ProtosStr = string:join(Protos, ","),
@@ -193,6 +207,7 @@ update_nftables(Domains) ->
     "    chain prerouting {\n",
     "        type nat hook prerouting priority dstnat - 5; policy accept;\n",
     DnsRules,
+    PortFwdRules,
     "    }\n",
 
     "    chain postrouting {\n",

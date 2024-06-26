@@ -22,6 +22,7 @@
           toolbar,
           domains,
           domain_list_box,
+          port_fwd_panel,
           domain_ids,
           page,
           net_list_box,
@@ -97,7 +98,10 @@ init([Node]) ->
     wxSizer:add(DomainsSizer, DomainSplitter, [{flag, ?wxEXPAND}, {proportion, 1}]),
     wxPanel:setSizer(DomainPanel, DomainsSizer),
 
+    PortFwdPanel = virtuerl_ui_fwd:start_link(Notebook, Toolbar, Node),
+
     wxNotebook:addPage(Notebook, DomainPanel, "Domains"),
+    wxNotebook:addPage(Notebook, PortFwdPanel, "Port Forwarding"),
     wxNotebook:connect(Notebook, command_notebook_page_changed),
     wxNotebook:setSelection(Notebook, 1),
 
@@ -161,7 +165,8 @@ init([Node]) ->
        info = InfoGrid,
        domain_panel = DomainInfo,
        domain_info = DomainInfoGrid,
-       domain_list_box = DomainListBox
+       domain_list_box = DomainListBox,
+       port_fwd_panel = PortFwdPanel
       }}.
 
 
@@ -220,7 +225,6 @@ create_toolbar(Frame, BaseNum) ->
     wxToolBar:addTool(Toolbar, BaseNum + 3, "test123", AddIcon, AddIconDisabled),
     wxToolBar:enableTool(Toolbar, BaseNum + 3, true),
     wxToolBar:realize(Toolbar),
-    wxToolBar:connect(Toolbar, command_menu_selected),
     Toolbar.
 
 
@@ -296,7 +300,11 @@ handle_call(Msg, _From, State) ->
 
 
 %% Async Events are handled in handle_event as in handle_info
-handle_event(#wx{event = #wxBookCtrl{nSel = Index}}, State) ->
+handle_event(#wx{event = #wxBookCtrl{nSel = Index}}, #state{toolbar = Toolbar, port_fwd_panel = PortFwdPanel} = State) ->
+    case Index of
+        2 -> wx_object:call(PortFwdPanel, selected);
+        _ -> wxToolBar:connect(Toolbar, command_menu_selected)
+    end,
     {noreply, State#state{page = Index}};
 handle_event(#wx{id = 42, event = #wxCommand{type = command_listbox_selected, cmdString = Choice}}, State) ->
     #state{info_panel = Panel, info = Info, node = Node} = State,

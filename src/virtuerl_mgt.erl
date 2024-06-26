@@ -17,7 +17,7 @@
 -export([start_link/0]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2,
   code_change/3, handle_continue/2]).
--export([create_vm/0, domain_create/1, domain_get/1, domain_delete/1, domain_stop/1, domain_start/1, domains_list/0]).
+-export([create_vm/0, domain_create/1, domain_get/1, domain_delete/1, domain_stop/1, domain_start/1, domains_list/0, add_port_fwd/2]).
 -export([home_path/0]).
 
 -define(SERVER, ?MODULE).
@@ -51,6 +51,10 @@ domain_start(Id) ->
 
 image_from_domain(DomainId, ImageName) ->
   gen_server:call(?SERVER, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
+
+-spec add_port_fwd(binary(), #{protos := [tcp | udp], source_port := integer(), target_port := integer()}) -> term().
+add_port_fwd(DomainId, PortFwd) ->
+  gen_server:call(?SERVER, {add_port_fwd, DomainId, PortFwd}).
 
 
 %%%===================================================================
@@ -196,6 +200,21 @@ handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} =
               ok = dets:insert(Table, {DomainID, maps:merge(Domain, DomainUpdate)}),
               ok = dets:sync(Table),
               virtuerl_pubsub:send({domain_updated, DomainID}),
+              ok;
+            [] -> {error, notfound}
+          end,
+  {reply, Reply, State, {continue, sync_domains}};
+handle_call({add_port_fwd, DomId, PortFwd}, _From, {Table} = State) ->
+    Reply = case dets:lookup(Table, DomId) of
+            [{_, Domain}] ->
+              NewFwds = case Domain of
+                #{port_fwds := Fwds} -> Fwds;
+                _ -> []
+              end,
+              DomainUpdate = #{port_fwds => [PortFwd | NewFwds]},
+              ok = dets:insert(Table, {DomId, maps:merge(Domain, DomainUpdate)}),
+              ok = dets:sync(Table),
+              virtuerl_pubsub:send({domain_updated, DomId}),
               ok;
             [] -> {error, notfound}
           end,
