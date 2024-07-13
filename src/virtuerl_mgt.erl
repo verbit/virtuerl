@@ -114,7 +114,7 @@ generate_unique_tap_name(TapNames) ->
 handle_call({domain_create, Conf}, _From, State) ->
   {Table} = State,
   DomainID = virtuerl_util:uuid4(),
-  Domain0 = maps:merge(#{id => DomainID, name => DomainID, vcpu => 4, memory => 4096,
+  Domain0 = maps:merge(#{id => DomainID, node => localhost, name => DomainID, vcpu => 4, memory => 4096,
     os_type => "linux", created_at => erlang:system_time(millisecond)}, Conf),  % TODO: save ipv4/6 addr as well
   Domain = case Domain0 of
     #{os_type := "linux"} ->
@@ -222,7 +222,7 @@ handle_call({add_port_fwd, DomId, PortFwd}, _From, {Table} = State) ->
 handle_call(domains_list, _From, State) ->
   {Table} = State,
   Domains = dets:match_object(Table, '_'),
-  {reply, [maps:merge(#{state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains], State};
+  {reply, [maps:merge(#{node => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
   {Table} = State,
   Reply = case dets:lookup(Table, DomainID) of
@@ -230,7 +230,7 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
       DomRet = Domain#{
         mac_addr := binary:encode_hex(MacAddr),
         tap_name := iolist_to_binary(TapName)},
-      {ok, maps:merge(#{state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
+      {ok, maps:merge(#{node => localhost, state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
     [] -> notfound
   end,
   {reply, Reply, State};

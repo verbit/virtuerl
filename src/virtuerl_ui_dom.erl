@@ -25,15 +25,17 @@ init([Node, Parent, Toolbar]) ->
     wxPanel:setSizer(DomainPanel, DomainsSizer),
 
     DomainListBox = wxListCtrl:new(DomainSplitter, [{style, ?wxLC_REPORT}]),
-    ColumnNames = ["ID", "Name", "CPU", "RAM", "IPs"],
+    ColumnNames = ["ID", "Name", "Node", "CPU", "RAM", "IPs"],
     ColumnWidths = [ case P of
                          Str when is_list(Str) ->
                              {Width, _, _, _} = wxListCtrl:getTextExtent(DomainListBox, P),
                              Width;
                          Other -> Other
                      end
-                     || P <- ["mmmmmm", "virtual-machine", ?wxLIST_AUTOSIZE_USEHEADER, "mmmmmm M", "444.444.444.444,mmmm:mmmm:mmmm:mmmm"] ],
-    ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_LEFT],
+                     || P <- ["mmmmmm", "virtual-machine", "host-machine.example.com", ?wxLIST_AUTOSIZE_USEHEADER,
+                              "mmmmmm M", "444.444.444.444,mmmm:mmmm:mmmm:mmmm"] ],
+    ColumnAlignment = [?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_LEFT, ?wxLIST_FORMAT_RIGHT,
+                       ?wxLIST_FORMAT_RIGHT, ?wxLIST_FORMAT_LEFT],
     lists:foreach(
       fun({Idx, Name}) ->
               wxListCtrl:insertColumn(DomainListBox,
@@ -216,10 +218,11 @@ update_domains(Node, DomainListBox) ->
     Domains = erpc:call(Node, virtuerl_mgt, domains_list, []),
     DomainsTuples = [ {Id,
                        Name,
+                       case HostNode of Atom when is_atom(Atom) -> atom_to_list(Atom); Str -> Str end,
                        integer_to_binary(Vcpu),
                        [integer_to_binary(Memory), " M"],
                        lists:join($,, [ virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs ])}
-                      || #{id := Id, name := Name, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
+                      || #{id := Id, name := Name, node := HostNode, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
 
     SelDomIdRes = selected_domain_id(DomainListBox),
     true = wxListCtrl:deleteAllItems(DomainListBox),
@@ -237,7 +240,7 @@ update_domains(Node, DomainListBox) ->
                         wxListCtrl:setItem(DomainListBox, RowIdx, ColIdx - 1, element(ColIdx, Dom))
                 end,
                 lists:seq(1, 5)),
-              {DomId, _, _, _, _} = Dom,
+              {DomId, _, _, _, _, _} = Dom,
               case SelDomIdRes of
                   {_Idx, DomId} ->
                       wxListCtrl:setItemState(DomainListBox,
@@ -284,6 +287,10 @@ create_domain_dialog(Node, Domain, Op) ->
     Dialog = wxDialog:new(wx:null(), ?wxID_ANY, Title, [{size, {1000, 500}}]),
     DialogSizer = wxBoxSizer:new(?wxVERTICAL),
     DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
+    wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Host")),
+    HostChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, ["localhost"]}]),
+    wxChoice:setStringSelection(HostChoice, "localhost"),
+    wxSizer:add(DialogGridSizer, HostChoice),
     wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Name")),
     NameCtrl = wxTextCtrl:new(Dialog, ?wxID_ANY, [{value, DomainName}]),
     wxSizer:add(DialogGridSizer, NameCtrl, [{flag, ?wxEXPAND}, {proportion, 1}]),
@@ -339,6 +346,7 @@ create_domain_dialog(Node, Domain, Op) ->
         create ->
             ok;
         update ->
+            wxChoice:disable(HostChoice),
             wxTextCtrl:disable(NameCtrl),
             wxChoice:disable(NetworkChoice),
             wxSpinCtrl:disable(VcpuCtrl),
@@ -368,6 +376,7 @@ create_domain_dialog(Node, Domain, Op) ->
                               virtuerl_mgt,
                               domain_create,
                               [#{
+                                 host => list_to_atom(wxChoice:getStringSelection(HostChoice)),
                                  name => wxTextCtrl:getValue(NameCtrl),
                                  os_type => wxChoice:getStringSelection(OsChoice),
                                  base_image => wxChoice:getStringSelection(ImageChoice),
