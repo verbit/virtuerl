@@ -1,7 +1,7 @@
 virtuerl
 =====
 
-An OTP application
+A minimalistic VM manager.
 
 # Required packages
 ```sh
@@ -44,14 +44,14 @@ net.ipv6.conf.all.forwarding=1
 Run `sysctl -w` to commit changes.
 
 ```sh
-sudo -s ./erts-13.1.5/bin/erl -mode embedded -boot releases/0.7.0+build.61.ref8fc0b7e/start -config releases/0.7.0+build.61.ref8fc0b7e/sys.config -proto_dist inet6_tcp -name verbit@verbit.in-berlin.de -setcookie abcdef
+sudo -s ./erts-13.1.5/bin/erl -mode embedded -boot releases/0.0.0/start -config releases/0.0.0/sys.config -proto_dist inet6_tcp -name virtuerl@myserver.com -setcookie abcdef
 ```
 
 Locally
 ```sh
 rebar3 compile
 erl -name moi -proto_dist inet6_tcp -setcookie abcdef -pa _build/default/lib/*/ebin -hidden
-(moi@t460s.lan)1> net_adm:ping('virtuerl@a.in6.dev').
+(moi@t460s.lan)1> net_adm:ping('virtuerl@myserver.com').
 pong
-(moi@t460s.lan)2> virtuerl_ui:start('virtuerl@a.in6.dev').
+(moi@t460s.lan)2> virtuerl_ui:start('virtuerl@myserver.com').
 ```
