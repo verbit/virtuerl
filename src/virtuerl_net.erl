@@ -6,7 +6,7 @@
 %%%-------------------------------------------------------------------
 -module(virtuerl_net).
 
--export([update_net/0]).
+-export([update_net/2]).
 
 -export([format_cidr/1]).
 
@@ -30,30 +30,25 @@
 start_link() ->
   gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
 
-update_net() ->
-  gen_server:call(?SERVER, {net_update}).
+update_net(Node, Domains) ->
+  gen_server:call({?SERVER, Node}, {net_update, Domains}, infinity).
 
 init([]) ->
   ?LOG_INFO(#{what => "Started", who => virtuerl_net}),
-  {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
-  update_net(Table),
-  % TODO: erlexec: spawn bird -f
-  {ok, {Table}}.
+  {ok, {}}.
 
-terminate(_Reason, {Table}) ->
-  dets:close(Table).
+terminate(_Reason, State) ->
+  ok.
 
 handle_call({vm_create, Conf}, _From, State) ->
   {reply, ok, State};
 
-handle_call({net_update}, _From, State) ->
-  {Table} = State,
-  update_net(Table),
+handle_call({net_update, Domains}, _From, State) ->
+  reload_net(Domains),
   {reply, ok, State}.
 
-handle_cast({net_update}, State) ->
-  {Table} = State,
-  update_net(Table),
+handle_cast({net_update, Domains}, State) ->
+  reload_net(Domains),
   {noreply, State}.
 
 handle_info(_Info, State) ->
@@ -71,14 +66,6 @@ startswith(Str, Pre) ->
     nomatch -> false;
     _ -> true
   end.
-
-update_net(Table) ->
-  % 1. write config
-  %%  for VM in VMs:
-  %%    append VM.IP to static routes: VM.IP via $VM.network.bridge
-  % 2. birdc configure
-  % 3. profit?
-  reload_net(Table).
 
 handle_interface(If, Table) ->
   %% 1. Delete all devices without an address set
@@ -98,14 +85,14 @@ get_cidrs(If) ->
       {lists:sort(Cidrs), Ifname}
   end.
 
-reload_net(Table) ->
+reload_net(Domains0) ->
+  Domains = [{Id, Dom} || #{id := Id} = Dom <- Domains0],
   Output = os:cmd("ip -j addr"),
   {ok, JSON} = thoas:decode(Output),
   % io:format("~p~n", [JSON]),
   Matched = maps:from_list([get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>)]),
 %%  lists:foreach(fun(L) -> handle_interface(L, Table) end, Matched),
   % io:format("Actual: ~p~n", [Matched]),
-  Domains = dets:match_object(Table, '_'),
 
   TargetAddrs = sets:from_list([lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #{network_addrs := Cidrs}} <- Domains]),
   % io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),

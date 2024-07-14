@@ -80,25 +80,40 @@ handle_continue(setup_base, State) ->
 
 
 handle_continue(sync_domains, {Table} = State) ->
-  TargetDomains = sets:from_list([Id || {Id, Domain} <- dets:match_object(Table, '_'),
+  TargetDomains = maps:from_list(
+    [{Id, case maps:get(node, Domain, localhost) of localhost -> node(); Else -> Else end}
+    || {Id, Domain} <- dets:match_object(Table, '_'),
     case Domain of
       #{state := stopped} -> false;
       _ -> true
     end]),
-  RunningDomains = sets:from_list([Id || {Id, _, _, _} <- supervisor:which_children(virtuerl_sup), is_binary(Id)]),
-  ToDelete = sets:subtract(RunningDomains, TargetDomains),
-  ToAdd = sets:subtract(TargetDomains, RunningDomains),
-  [supervisor:terminate_child(virtuerl_sup, Id) || Id <- sets:to_list(ToDelete)],
-  [supervisor:delete_child(virtuerl_sup, Id) || Id <- sets:to_list(ToDelete)],
-  ok = gen_server:call(virtuerl_net, {net_update}, infinity),
-  [  supervisor:start_child(virtuerl_sup, {
+  AllNodes = nodes([this, visible]),
+  RunningDomains = maps:from_list(lists:flatten(
+    [
+      [{Id, Node} || {Id, _, _, _} <- supervisor:which_children({virtuerl_sup, Node}), is_binary(Id)]
+      || Node <- AllNodes
+    ]
+  )),
+  ToDelete = maps:without(maps:keys(TargetDomains), RunningDomains),
+  ToAdd = maps:without(maps:keys(RunningDomains), TargetDomains),
+  [supervisor:terminate_child({virtuerl_sup, Node}, Id) || {Id, Node} <- maps:to_list(ToDelete)],
+  [supervisor:delete_child({virtuerl_sup, Node}, Id) || {Id, Node} <- maps:to_list(ToDelete)],
+
+  % lists:foreach(fun () -> ok end, List)
+  DomsByNode = maps:groups_from_list(
+    fun ({_Id, Dom}) -> case maps:get(node, Dom, localhost) of localhost -> node(); Else -> Else end end,
+    fun ({_Id, Dom}) -> Dom end,
+    dets:match_object(Table, '_')),
+  [virtuerl_net:update_net(Node, Doms)|| {Node, Doms} <- maps:to_list(DomsByNode)],
+
+  [  supervisor:start_child({virtuerl_sup, Node}, {
     Id,
     {virtuerl_qemu, start_link, [Id]},
     transient,
     infinity,
     worker,
     []
-}) || Id <- sets:to_list(ToAdd)],
+}) || {Id, Node} <- maps:to_list(ToAdd)],
   {noreply, State}.
 
 
@@ -179,20 +194,11 @@ handle_call({domain_create, Conf}, _From, State) ->
   ?LOG_NOTICE(#{event => domain_ready, domain => DomainWithIps}),
   virtuerl_pubsub:send({domain_created, DomainID}),
 
-  ok = gen_server:call(virtuerl_net, {net_update}),
-
-  supervisor:start_child(virtuerl_sup, {
-    DomainID,
-    {virtuerl_qemu, start_link, [DomainID]},
-    transient,
-    infinity,
-    worker,
-    []
-  }),
   {reply,
     {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName), mac_addr => binary:encode_hex(MacAddr)},
       maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))},
-    State};
+    State,
+    {continue, sync_domains}};
 handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} = State) ->
   DomainUpdate = maps:remove(id, DomainUpdate0),
   Reply = case dets:lookup(Table, DomainID) of
@@ -242,14 +248,21 @@ handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
         dets:insert(Table, {DomainID, Domain#{state => deleting}}),
         dets:sync(Table),
         spawn_link(fun () ->
+          TargetNode = case Domain of
+            #{node := localhost} -> node();
+            #{node := Else} -> Else;
+            _ -> node()
+          end,
           io:format("terminating ~p~n", [DomainID]),
-          supervisor:terminate_child(virtuerl_sup, DomainID),
+          supervisor:terminate_child({virtuerl_sup, TargetNode}, DomainID),
           io:format("done terminating ~p~n", [DomainID]),
-          supervisor:delete_child(virtuerl_sup, DomainID),
+          supervisor:delete_child({virtuerl_sup, TargetNode}, DomainID),
           DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
           file:del_dir_r(DomainHomePath),
           ok = virtuerl_ipam:unassign(DomainID),
-          ok = gen_server:call(virtuerl_net, {net_update}),
+          % TODO: we don't really have to delete unused tap here as they will be deleted before the next domain is created
+          %   however, it's of course cleaner to do so here, so consider adding it back
+          % ok = gen_server:call(virtuerl_net, {net_update}),
           dets:delete(Table, DomainID),
           virtuerl_pubsub:send({domain_deleted, DomainID})
         end),
