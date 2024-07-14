@@ -1,0 +1,16 @@
+{application, virtuerl_ghac,
+ [{description, "An OTP application"},
+  {vsn, git},
+  {registered, []},
+  {mod, {virtuerl_ghac_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    inets,
+    thoas,
+    virtuerl]},
+  {env, []},
+  {modules, []},
+
+  {licenses, ["Apache-2.0"]},
+  {links, []}]}.

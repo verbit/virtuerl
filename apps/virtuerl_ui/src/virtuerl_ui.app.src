@@ -1,0 +1,14 @@
+{application, virtuerl_ui,
+ [{description, "wxWidgets-based UI for virtuerl"},
+  {vsn, git},
+  {registered, []},
+  %{mod, {virtuerl_ui_app, []}},
+  {applications,
+   [kernel,
+    stdlib,
+    wx]},
+  {env, []},
+  {modules, []},
+
+  {licenses, ["Apache-2.0"]},
+  {links, []}]}.
