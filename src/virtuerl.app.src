@@ -9,11 +9,9 @@
     inets,
     mochiweb,
     thoas,
-    erlexec
-   ]},
-  {env,[]},
+    erlexec]},
+  {env, []},
   {modules, []},
 
   {licenses, ["Apache-2.0"]},
-  {links, []}
- ]}.
+  {links, []}]}.
