@@ -107,7 +107,12 @@ start_link() ->
 
 init([]) ->
     io:format("starting IPAM service~n"),
+    StoreId = khepri_cluster:get_default_store_id(),
     {ok, StoreId} = khepri:start(filename:join(virtuerl_mgt:home_path(), "khepri")),
+    case application:get_env(khepri_bootstrap) of
+        {ok, Node} -> ok = khepri_cluster:join({StoreId, Node});
+        undefined -> ok
+    end,
     init([StoreId]);
 init([StoreId]) ->
     {ok, StoreId}.
