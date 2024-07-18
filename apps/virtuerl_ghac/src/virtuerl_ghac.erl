@@ -11,6 +11,8 @@
          terminate/2,
          code_change/3]).
 
+-include_lib("kernel/include/logger.hrl").
+
 -define(SERVER, ?MODULE).
 
 
@@ -89,7 +91,7 @@ create_runner(NetId) ->
 
 
 sync_runners(NetId, DomainList, RunnerList) ->
-    io:format("Syncing...~nDomains: ~p~nRunners: ~p~n", [DomainList, RunnerList]),
+    ?LOG_DEBUG(#{msg => "syncing domains <-> runners"}),
 
     Domains = maps:from_list([ {DomId, Domain} || #{id := DomId} = Domain <- DomainList ]),
     Runners = maps:from_list([ {Name, Runner} || #{<<"name">> := Name} = Runner <- RunnerList ]),
@@ -104,7 +106,10 @@ sync_runners(NetId, DomainList, RunnerList) ->
     RemDomains = maps:without(ToDeleteIds, Domains),
 
     RequiredRunners = max(0, pending_jobs() + 2 - maps:size(RemDomains)),
-    io:format("Required new runners: ~p~n", [RequiredRunners]),
+    case RequiredRunners of
+        0 -> ok;
+        _ -> ?LOG_DEBUG(#{msg => "new runners required", domains => DomainList, runners => RunnerList, required => RequiredRunners})
+    end,
     [ create_runner(NetId) || _ <- lists:seq(1, RequiredRunners) ],
 
     ok.
@@ -131,7 +136,7 @@ init([]) ->
     {ok, NetId} = case maps:keys(Filtered) of
                       [Res] -> {ok, Res};
                       [] ->
-                          io:format("ghac: creating network for actions worker~n"),
+                          ?LOG_NOTICE(#{msg => "ghac: creating network for actions worker"}),
                           {ok, Id} = virtuerl_ipam:ipam_create_net([{<<192:8, 168:8, 24:8, 0:8>>, 24}, {<<16#fdbe:16, 16#3c6a:16, 16#3aef:16, 0:80>>, 48}]),
                           {ok, Id};
                       _ -> error
@@ -166,7 +171,7 @@ handle_continue(ensure_base, {NetId} = State) ->
     ok = case lists:filter(fun(ImgName) -> string:equal(ImgName, "actions-base.qcow2") end, virtuerl_img:list_images()) of
              [_ImgFound] -> ok;
              [] ->
-                 io:format("ghac: creating base image domain~n"),
+                 ?LOG_NOTICE(#{msg => "ghac: creating base image domain"}),
                  % create image
                  {ok, #{id := DomId}} =
                      virtuerl_mgt:domain_create(
