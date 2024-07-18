@@ -27,6 +27,8 @@
 -define(SERVER,      ?MODULE).
 -define(APPLICATION, virtuerl).
 
+-record(state, {table, idmap}).
+
 
 create_vm() ->
     gen_server:call(?SERVER, {domain_create, {default}}).
@@ -88,7 +90,8 @@ init([]) ->
     {ok, Table} = dets:open_file(domains, [{file, filename:join(home_path(), "domains.dets")}]),
     %%  virtuerl_ipam:ipam_put_net({default, <<192:8, 168:8, 10:8, 0:8>>, 28}),
     %%  application:ensure_all_started(grpcbox),
-    {ok, {Table}, {continue, setup_base}}.
+    net_kernel:monitor_nodes(true),
+    {ok, #state{table = Table, idmap = #{}}, {continue, setup_base}}.
 %%  {ok, {Table}}.
 
 
@@ -96,10 +99,11 @@ handle_continue(setup_base, State) ->
     ok = filelib:ensure_path(filename:join(home_path(), "domains")),
     {noreply, State, {continue, sync_domains}};
 
-handle_continue(sync_domains, {Table} = State) ->
+handle_continue(sync_domains, #state{table = Table, idmap = IdMap} = State) ->
+    Domains = dets:match_object(Table, '_'),
     TargetDomains = maps:from_list(
-                      [ {Id, case maps:get(node, Domain, localhost) of localhost -> node(); Else -> Else end}
-                        || {Id, Domain} <- dets:match_object(Table, '_'),
+                      [ {Id, case maps:get(host, Domain, localhost) of localhost -> node(); Else -> Else end}
+                        || {Id, Domain} <- Domains,
                            case Domain of
                                #{state := stopped} -> false;
                                _ -> true
@@ -115,19 +119,23 @@ handle_continue(sync_domains, {Table} = State) ->
 
     % lists:foreach(fun () -> ok end, List)
     DomsByNode = maps:groups_from_list(
-                   fun({_Id, Dom}) -> case maps:get(node, Dom, localhost) of localhost -> node(); Else -> Else end end,
+                   fun({_Id, Dom}) -> case maps:get(host, Dom, localhost) of localhost -> node(); Else -> Else end end,
                    fun({_Id, Dom}) -> Dom end,
-                   dets:match_object(Table, '_')),
-    [ virtuerl_net:update_net(Node, Doms) || {Node, Doms} <- maps:to_list(DomsByNode) ],
+                   Domains),
+    [ virtuerl_net:update_net(Node, Doms) || {Node, Doms} <- maps:to_list(DomsByNode), lists:member(Node, AllNodes) ],
 
-    [ supervisor:start_child({virtuerl_sup, Node},
-                             {Id,
-                              {virtuerl_qemu, start_link, [Id]},
-                              transient,
-                              infinity,
-                              worker,
-                              []}) || {Id, Node} <- maps:to_list(ToAdd) ],
-    {noreply, State}.
+    VmPids = [ {Id,
+                supervisor:start_child({virtuerl_sup, Node},
+                                       {Id,
+                                        {virtuerl_qemu, start_link, [maps:get(Id, maps:from_list(Domains))]},
+                                        transient,
+                                        infinity,
+                                        worker,
+                                        []})} || {Id, Node} <- maps:to_list(ToAdd), lists:member(Node, AllNodes) ],
+    VmPidToDomId = maps:from_list([ {VmPid, DomId} || {DomId, {ok, VmPid}} <- VmPids ]),
+    [ monitor(process, VmPid) || {_, {ok, VmPid}} <- VmPids ],
+
+    {noreply, State#state{idmap = maps:merge(IdMap, VmPidToDomId)}}.
 
 
 generate_unique_tap_name(TapNames) ->
@@ -141,7 +149,7 @@ generate_unique_tap_name(TapNames) ->
 
 
 handle_call({domain_create, Conf}, _From, State) ->
-    {Table} = State,
+    #state{table = Table} = State,
     DomainID = virtuerl_util:uuid4(),
     Domain0 = maps:merge(#{
                            id => DomainID,
@@ -221,7 +229,7 @@ handle_call({domain_create, Conf}, _From, State) ->
                      maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))},
      State,
      {continue, sync_domains}};
-handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} = State) ->
+handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, #state{table = Table} = State) ->
     DomainUpdate = maps:remove(id, DomainUpdate0),
     Reply = case dets:lookup(Table, DomainID) of
                 [{_, Domain}] ->
@@ -232,7 +240,7 @@ handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, {Table} =
                 [] -> {error, notfound}
             end,
     {reply, Reply, State, {continue, sync_domains}};
-handle_call({add_port_fwd, DomId, PortFwd}, _From, {Table} = State) ->
+handle_call({add_port_fwd, DomId, PortFwd}, _From, #state{table = Table} = State) ->
     Reply = case dets:lookup(Table, DomId) of
                 [{_, Domain}] ->
                     NewFwds = case Domain of
@@ -248,11 +256,11 @@ handle_call({add_port_fwd, DomId, PortFwd}, _From, {Table} = State) ->
             end,
     {reply, Reply, State, {continue, sync_domains}};
 handle_call(domains_list, _From, State) ->
-    {Table} = State,
+    #state{table = Table} = State,
     Domains = dets:match_object(Table, '_'),
     {reply, [ maps:merge(#{node => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains ], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
-    {Table} = State,
+    #state{table = Table} = State,
     Reply = case dets:lookup(Table, DomainID) of
                 [{_, #{mac_addr := MacAddr, tap_name := TapName} = Domain}] ->
                     DomRet = Domain#{
@@ -264,7 +272,7 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
             end,
     {reply, Reply, State};
 handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
-    {Table} = State,
+    #state{table = Table} = State,
     Res = case dets:lookup(Table, DomainID) of
               [] -> {error, notfound};
               [{_, Domain}] ->
@@ -272,8 +280,8 @@ handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
                   dets:sync(Table),
                   spawn_link(fun() ->
                                      TargetNode = case Domain of
-                                                      #{node := localhost} -> node();
-                                                      #{node := Else} -> Else;
+                                                      #{host := localhost} -> node();
+                                                      #{host := Else} -> Else;
                                                       _ -> node()
                                                   end,
                                      io:format("terminating ~p~n", [DomainID]),
@@ -292,7 +300,7 @@ handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
                   ok
           end,
     {reply, Res, State};
-handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, {Table} = State) ->
+handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, #state{table = Table} = State) ->
     case dets:lookup(Table, DomainID) of
         [] -> gen_server:reply(_From, {error, notfound});
         [{_, Domain}] ->
@@ -325,11 +333,28 @@ handle_cast(_Request, State) ->
     {noreply, State}.
 
 
-handle_info(_Info, State) ->
+handle_info({nodedown, _Node}, State) ->
+    {noreply, State};
+handle_info({nodeup, _Node}, State) ->
+    {noreply, State, {continue, sync_domains}};
+handle_info({'DOWN', _, process, Pid, Reason}, #state{table = Table, idmap = IdMap} = State) ->
+    NewIdMap = case IdMap of
+                   #{Pid := DomId} ->
+                       [{DomId, Domain}] = dets:lookup(Table, DomId),
+                       ok = dets:insert(Table, {DomId, Domain#{state => stopped}}),
+                       ok = dets:sync(Table),
+                       maps:remove(Pid, IdMap);
+                   #{} ->
+                       ?LOG_WARNING(#{module => ?MODULE, msg => "process down but not in registry", pid => Pid, reason => Reason}),
+                       IdMap
+               end,
+    {noreply, State#state{idmap = NewIdMap}};
+handle_info(Info, State) ->
+    ?LOG_NOTICE(#{module => ?MODULE, msg => "unhandled info message", info => Info}),
     {noreply, State}.
 
 
-terminate(_Reason, {Table}) ->
+terminate(_Reason, #state{table = Table}) ->
     dets:close(Table),
     ok.
 
