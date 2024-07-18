@@ -8,15 +8,14 @@
 -include_lib("kernel/include/logger.hrl").
 
 
-start_link(ID) ->
-    gen_server:start_link(?MODULE, [ID], []).
+start_link(Dom) ->
+    gen_server:start_link(?MODULE, [Dom], []).
 
 
-init([ID]) ->
-    {ok, Table} = dets:open_file(domains, [{file, filename:join(virtuerl_mgt:home_path(), "domains.dets")}]),
-    [{DomainId, #{mac_addr := MacAddr, tap_name := TapName} = DomainRaw}] = dets:lookup(Table, ID),
-    Domain = maps:merge(#{user_data => "", vcpu => 2, memory => 4096}, DomainRaw),
-    State = #{table => Table, id => ID, domain => Domain, qemu_pid => undefined, qmp_pid => undefined},
+init([Dom]) ->
+    #{id := DomainId} = Dom,
+    Domain = maps:merge(#{user_data => "", vcpu => 2, memory => 4096}, Dom),
+    State = #{id => DomainId, domain => Domain, qemu_pid => undefined, qmp_pid => undefined},
     {ok, State, {continue, setup_swtpm}}.
 
 
@@ -115,18 +114,15 @@ handle_continue(setup_serial, #{id := ID} = State) ->
 %%  end.
 
 
-handle_info({qmp, Event}, #{table := Table, id := ID, domain := Domain} = State) ->
+handle_info({qmp, Event}, #{id := ID, domain := Domain} = State) ->
     ?LOG_INFO(#{domain => ID, qmp => Event}),
     case Event of
         #{<<"event">> := <<"STOP">>} ->
-            [{DomainId, Domain}] = dets:lookup(Table, ID),
             DomainUpdated = Domain#{state => stopped},
-            ok = dets:insert(Table, {DomainId, DomainUpdated}),
-            ok = dets:sync(Table),
             {stop, normal, State#{domain => DomainUpdated}};
         _ -> {noreply, State}
     end;
-handle_info({tcp, SerialSocket, Data}, #{table := Table, id := ID, domain := Domain, serial_socket := SerialSocket} = State) ->
+handle_info({tcp, SerialSocket, Data}, #{id := ID, domain := Domain, serial_socket := SerialSocket} = State) ->
     virtuerl_pubsub:send({domain_out, ID, Data}),
     {noreply, State};
 
@@ -144,7 +140,7 @@ handle_cast(Request, State) ->
     erlang:error(not_implemented).
 
 
-terminate(_Reason, #{table := Table, id := ID, domain := Domain, qemu_pid := {Pid, OsPid}, qmp_pid := QmpPid}) ->
+terminate(_Reason, #{id := ID, domain := Domain, qemu_pid := {Pid, OsPid}, qmp_pid := QmpPid}) ->
     ?LOG_DEBUG(#{domain => ID, event => graceful_shutdown, reason => _Reason}),
     case _Reason of
         normal -> ok;
@@ -174,8 +170,7 @@ terminate(_Reason, #{table := Table, id := ID, domain := Domain, qemu_pid := {Pi
         5000 ->
             ?LOG_WARNING(#{domain => ID, message => "timed-out waiting for QEMU process to stop"}),
             {error, timeout}
-    end,
-    dets:close(Table).
+    end.
 
 
 %%%===================================================================
