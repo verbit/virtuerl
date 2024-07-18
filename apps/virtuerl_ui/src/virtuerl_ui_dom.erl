@@ -239,7 +239,7 @@ update_domains(Node, DomainListBox) ->
                 fun(ColIdx) ->
                         wxListCtrl:setItem(DomainListBox, RowIdx, ColIdx - 1, element(ColIdx, Dom))
                 end,
-                lists:seq(1, 5)),
+                lists:seq(1, 6)),
               {DomId, _, _, _, _, _} = Dom,
               case SelDomIdRes of
                   {_Idx, DomId} ->
