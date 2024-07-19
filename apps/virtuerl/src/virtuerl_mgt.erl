@@ -91,13 +91,9 @@ init([]) ->
     %%  virtuerl_ipam:ipam_put_net({default, <<192:8, 168:8, 10:8, 0:8>>, 28}),
     %%  application:ensure_all_started(grpcbox),
     net_kernel:monitor_nodes(true),
-    {ok, #state{table = Table, idmap = #{}}, {continue, setup_base}}.
+    {ok, #state{table = Table, idmap = #{}}, {continue, sync_domains}}.
 %%  {ok, {Table}}.
 
-
-handle_continue(setup_base, State) ->
-    ok = filelib:ensure_path(filename:join(home_path(), "domains")),
-    {noreply, State, {continue, sync_domains}};
 
 handle_continue(sync_domains, #state{table = Table, idmap = IdMap} = State) ->
     Domains = dets:match_object(Table, '_'),
