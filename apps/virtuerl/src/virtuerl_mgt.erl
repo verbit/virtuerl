@@ -153,7 +153,7 @@ handle_call({domain_create, Conf}, _From, State) ->
     DomainID = virtuerl_util:uuid4(),
     Domain0 = maps:merge(#{
                            id => DomainID,
-                           node => localhost,
+                           host => localhost,
                            name => DomainID,
                            vcpu => 4,
                            memory => 4096,
@@ -258,7 +258,7 @@ handle_call({add_port_fwd, DomId, PortFwd}, _From, #state{table = Table} = State
 handle_call(domains_list, _From, State) ->
     #state{table = Table} = State,
     Domains = dets:match_object(Table, '_'),
-    {reply, [ maps:merge(#{node => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains ], State};
+    {reply, [ maps:merge(#{host => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains ], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
     #state{table = Table} = State,
     Reply = case dets:lookup(Table, DomainID) of
@@ -267,7 +267,7 @@ handle_call({domain_get, #{id := DomainID}}, _From, State) ->
                                mac_addr := binary:encode_hex(MacAddr),
                                tap_name := iolist_to_binary(TapName)
                               },
-                    {ok, maps:merge(#{node => localhost, state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
+                    {ok, maps:merge(#{host => localhost, state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
                 [] -> notfound
             end,
     {reply, Reply, State};
