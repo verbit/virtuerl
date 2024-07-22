@@ -223,7 +223,7 @@ update_domains(Node, DomainListBox) ->
                        integer_to_binary(Vcpu),
                        [integer_to_binary(Memory), " M"],
                        lists:join($,, [ virtuerl_net:format_ip(Ip) || {Ip, _Prefixlen} <- Cidrs ])}
-                      || #{id := Id, name := Name, node := HostNode, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
+                      || #{id := Id, name := Name, host := HostNode, cidrs := Cidrs, vcpu := Vcpu, memory := Memory} <- Domains ],
 
     SelDomIdRes = selected_domain_id(DomainListBox),
     true = wxListCtrl:deleteAllItems(DomainListBox),
