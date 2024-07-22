@@ -124,26 +124,7 @@ start_link() ->
 
 
 init([]) ->
-    {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
-    Filtered = maps:filter(
-                 fun(NetId, NetConf) ->
-                         Cidrs = [ lists:flatten(io_lib:format("~s/~B", [Addr, Prefixlen])) || #{address := Addr, prefixlen := Prefixlen} <- maps:values(maps:with([cidr4, cidr6], NetConf)) ],
-                         Res = lists:sort(Cidrs) == lists:sort(["192.168.24.0/24", "fdbe:3c6a:3aef::/48"]),
-                         Res
-                 end,
-                 Nets),
-
-    {ok, NetId} = case maps:keys(Filtered) of
-                      [Res] -> {ok, Res};
-                      [] ->
-                          ?LOG_NOTICE(#{msg => "ghac: creating network for actions worker"}),
-                          {ok, Id} = virtuerl_ipam:ipam_create_net([{<<192:8, 168:8, 24:8, 0:8>>, 24}, {<<16#fdbe:16, 16#3c6a:16, 16#3aef:16, 0:80>>, 48}]),
-                          {ok, Id};
-                      _ -> error
-                  end,
-
-    self() ! sync,
-    {ok, {NetId}, {continue, ensure_base}}.
+    {ok, {}, {continue, ensure_net}}.
 
 
 wait_for_domain_shutdown(DomId, Timeout) ->
@@ -167,6 +148,27 @@ do_wait_for_domain_shutdown(DomId, Deadline) ->
     end.
 
 
+handle_continue(ensure_net, {}) ->
+    {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
+    Filtered = maps:filter(
+                 fun(NetId, NetConf) ->
+                         Cidrs = [ lists:flatten(io_lib:format("~s/~B", [Addr, Prefixlen])) || #{address := Addr, prefixlen := Prefixlen} <- maps:values(maps:with([cidr4, cidr6], NetConf)) ],
+                         Res = lists:sort(Cidrs) == lists:sort(["192.168.24.0/24", "fdbe:3c6a:3aef::/48"]),
+                         Res
+                 end,
+                 Nets),
+
+    {ok, NetId} = case maps:keys(Filtered) of
+                      [Res] -> {ok, Res};
+                      [] ->
+                          ?LOG_NOTICE(#{msg => "ghac: creating network for actions worker"}),
+                          {ok, Id} = virtuerl_ipam:ipam_create_net([{<<192:8, 168:8, 24:8, 0:8>>, 24}, {<<16#fdbe:16, 16#3c6a:16, 16#3aef:16, 0:80>>, 48}]),
+                          {ok, Id};
+                      _ -> error
+                  end,
+
+    self() ! sync,
+    {noreply, {NetId}, {continue, ensure_base}};
 handle_continue(ensure_base, {NetId} = State) ->
     ok = case lists:filter(fun(ImgName) -> string:equal(ImgName, "actions-base.qcow2") end, virtuerl_img:list_images()) of
              [_ImgFound] -> ok;
