@@ -1,5 +1,5 @@
 {application, virtuerl_ghac,
- [{description, "An OTP application"},
+ [{description, "GitHub Actions controller based on virtuerl VMM"},
   {vsn, git},
   {registered, []},
   {mod, {virtuerl_ghac_app, []}},

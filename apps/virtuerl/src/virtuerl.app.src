@@ -1,5 +1,5 @@
 {application, virtuerl,
- [{description, "An OTP application"},
+ [{description, "A minimalistic virtual machine manager"},
   {vsn, git},
   {registered, []},
   {mod, {virtuerl_app, []}},
