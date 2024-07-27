@@ -1,0 +1,7 @@
+#!/bin/bash
+
+read -s -p "sudo password: " SUDO_PASSWORD
+echo
+
+scriptDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
+echo -n "$SUDO_PASSWORD" | "$scriptDir/upgrade.escript" "$@"
