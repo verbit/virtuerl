@@ -24,8 +24,14 @@ delete_file(Filename) ->
 
 
 ends_with(Str, Suffix) ->
-    Suf = string:slice(Str, string:length(Str) - string:length(Suffix)),
-    string:equal(Suf, Suffix).
+    StrLen = string:length(Str),
+    SuffixLen = string:length(Suffix),
+    case StrLen < SuffixLen of
+        true -> false;
+        false ->
+            Suf = string:slice(Str, StrLen - SuffixLen),
+            string:equal(Suf, Suffix)
+    end.
 
 
 cmd(Cmd) ->
