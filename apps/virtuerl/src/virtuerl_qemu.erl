@@ -84,7 +84,7 @@ handle_continue(setup_base, #{id := DomainId, domain := Domain} = State) ->
              " -drive if=pflash,format=raw,file=OVMF_VARS_4M.ms.fd",
              " -drive file=root.qcow2,if=virtio -drive driver=raw,file=cloud_config.iso,if=virtio -qmp unix:qmp.sock,server=on,wait=off -serial unix:serial.sock,server=on,wait=off",
              CdromOpts]),  % -serial unix:serial.sock,server=on,wait=off
-    ?LOG_DEBUG(#{domain => DomainId, qemu_cmd => Cmd}),
+    ?LOG_INFO(#{domain => DomainId, qemu_cmd => Cmd}),
     {ok, Pid, OsPid} = exec:run_link(Cmd, [{cd, DomainHomePath}]),
     {noreply, State#{qemu_pid => {Pid, OsPid}}, {continue, setup_qmp}};
 handle_continue(setup_qmp, #{id := ID} = State) ->
