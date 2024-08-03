@@ -15,7 +15,7 @@ jobs:
       - name: Install prerequisites
         run: |
           sudo apt update
-          sudo apt install -y rebar3 g++ tree nftables ovmf swtpm
+          sudo apt install -y rebar3 g++ tree nftables ovmf swtpm make golang
       - name: Enable IP forwarding
         run: |
           sudo tee /etc/sysctl.d/99-local.conf << EOF
@@ -23,11 +23,15 @@ jobs:
           net.ipv6.conf.all.forwarding=1
           EOF
           sudo service procps restart
+      - name: Setup virtuerl_helper
+        run: |
+          make -C helper
+          mkdir -p ~/.local/bin
+          ln -s "${PWD}/helper/virtuerl_helper" ~/.local/bin/virtuerl_helper
       - name: Test
         run: |
           rebar3 efmt --check
-          rebar3 compile
-          sudo rebar3 ct
+          rebar3 ct
       - name: Create tar
         run: |
           rebar3 tar
