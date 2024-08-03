@@ -312,7 +312,13 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
     TapsToAdd = sets:subtract(TapsTarget, TapsActual),
 
     TapsMapsToAdd = maps:map(fun(_, {MacAddr, Net}) -> {MacAddr, maps:get(Net, Bridges)} end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
-    AddCmds = add_taps(TapsMapsToAdd),
+
+    AddCmds = lists:map(fun({Tap, {Mac, Bridge}}) ->
+                                MacAddrString = virtuerl_util:mac_to_str(Mac),
+                                io_lib:format("tuntap add dev ~s mode tap~nlink set dev ~s address ~s master ~s~nlink set ~s up~n",
+                                              [Tap, Tap, MacAddrString, Bridge, Tap])
+                        end,
+                        maps:to_list(TapsMapsToAdd)),
 
     BatchFileContents = [BrDeleteCmds, BrAddCmds, DeleteCmds, AddCmds],
 
@@ -349,12 +355,3 @@ run_batch(Contents) ->
     end,
     file:delete(Path),
     ok.
-
-
-add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
-add_taps([]) -> "";
-add_taps([{Tap, {Mac, Bridge}} | T]) ->
-    MacAddrString = virtuerl_util:mac_to_str(Mac),
-    Cmd = io_lib:format("tuntap add dev ~s mode tap~nlink set dev ~s address ~s master ~s~nlink set ~s up~n",
-                        [Tap, Tap, MacAddrString, Bridge, Tap]),
-    [Cmd, add_taps(T)].
