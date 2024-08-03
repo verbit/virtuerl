@@ -327,23 +327,25 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
     run_batch(BatchFileContents).
 
 
-run_nft(IoList) -> run_helper("nft -f", IoList).
+run_nft(IoList) -> run_helper("nft", IoList).
 
 
-run_batch(Contents) -> run_helper("ip -b", Contents).
+run_batch(Contents) -> run_helper("ip", Contents).
 
 
 run_helper(Command, Contents) ->
     ?LOG_DEBUG(#{what => run_helper, cmd => Command, batch => Contents}),
 
+    HelperPath = case application:get_env(helper_path) of
+                     {ok, Val} -> Val; undefined -> "virtuerl_helper"
+                 end,
+
     Path = iolist_to_binary(["/tmp/virtuerl/", "helper_", virtuerl_util:uuid4()]),
     ok = filelib:ensure_dir(Path),
     ok = file:write_file(Path, Contents),
 
-    HelperOut = os:cmd(binary_to_list(iolist_to_binary([Command, " ", Path]))),
-    case HelperOut of
-        "" -> ok;
-        _ -> error({error, HelperOut})
-    end,
+    % TODO: replace this with something that returns an exit status
+    HelperOut = os:cmd(binary_to_list(iolist_to_binary([HelperPath, " ", Command, " -f ", Path]))),
+    ?LOG_DEBUG(#{helper_out => HelperOut}),
     file:delete(Path),
     ok.
