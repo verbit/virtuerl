@@ -78,6 +78,7 @@ create_runner(NetId) ->
                  "users:\n",
                  "  - default\n",
                  "  - name: ilya\n",
+                 "    groups: kvm\n",
                  "    shell: /bin/bash\n",
                  "    sudo: ALL=(ALL) NOPASSWD:ALL\n",
                  "    ssh_authorized_keys:\n",
