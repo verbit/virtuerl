@@ -84,9 +84,11 @@ create_runner(NetId) ->
                  "      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQDCKxHNpVg1whPegPv0KcRQTOfyVIqLwvMfVLyT9OpBPXHDudsFz9soOgMUEyWm8ZJ+pJ9fRCg66B+D5/ZRTwJCBpyNncfXCwu8xEJgEeoIubObh6t6dHWqqxX/yhHAS5GIRUSypm78qg6V+SQ6SeJXSjOCLAbZmhyWgJrlDm9M6GTPQhPAztrgsCUrzxIpZ5el5BwJXrm3I+LOmofAUqgbLQz9HuGJzPpnfABDa9WoVfI0L7oTr0qGpWwx8l71b2s8AYl7GMD/bEkZKyi9SSwEVCHA88F7dYYrZ3+fMXE/mJf+v0ece2lIDT7Te1gtqiLu/izJNmqD+b6mtnnXxVxNOtynhv3t6uLE9kBX22SBCCRqPJzETGNXvYH6fATEe88dhLh8kTppLRB5UGUd/zztxuNBSpMwFXaq8SlTKURxvF8BuFIPCz0FW8fq+TA/xZfBYsiVt59jXgl6BQyEGY4bMuMtT2nD8QXwZ5vsj52mzKGJwBwduiaX302brHYUyQkuyLII5iqmCNZ5YLlMY76a61Yg9pWMeRwQscSO2k4a18GOo+sIrQVTyUQiT3KhRRaDNrZuCPicQRgkJuiS1fKt1cWjnOlyweLxSYbpKnoS0H7vt+NrtbU1u9FPknXQPQ0pxixPpV3zgUdfOLmisFH7WGVjwNVvZAlNc5uyqm0fbw== ilya@verbit.io\n",
                  "\n",
                  "runcmd:\n",
-                 "  - cd /opt/actions-runner && RUNNER_ALLOW_RUNASROOT=1 ./config.sh --unattended --url https://github.com/", Org, "/", Repo, " --token ", Token, " --ephemeral\n",
-                 "  - cd /opt/actions-runner && ./svc.sh install\n",
-                 "  - cd /opt/actions-runner && ./svc.sh start\n"]
+                 "  - apt install -y git\n",
+                 "  - chown -R ilya:ilya /opt/actions-runner\n",
+                 "  - cd /opt/actions-runner && sudo -H -u ilya ./config.sh --unattended --url https://github.com/", Org, "/", Repo, " --token ", Token, " --ephemeral\n",
+                 "  - /opt/actions-runner/svc.sh install ilya\n",
+                 "  - /opt/actions-runner/svc.sh start\n"]
            }).
 
 
@@ -127,12 +129,14 @@ init([]) ->
     {ok, {}, {continue, ensure_net}}.
 
 
+-spec wait_for_domain_shutdown(binary(), integer()) -> ok | {error, term()}.
 wait_for_domain_shutdown(DomId, Timeout) ->
     timer:sleep(2000),
     Deadline = erlang:system_time(millisecond) + Timeout,
     do_wait_for_domain_shutdown(DomId, Deadline).
 
 
+-spec do_wait_for_domain_shutdown(binary(), integer()) -> ok | {error, term()}.
 do_wait_for_domain_shutdown(DomId, Deadline) ->
     case virtuerl_mgt:domain_get(#{id => DomId}) of
         {ok, #{state := stopped}} -> ok;
@@ -196,7 +200,7 @@ handle_continue(ensure_base, {NetId} = State) ->
                               "#   - dnsmasq-base\n",
 
                               "runcmd:\n",
-                              "  - apt install -y gcc g++ pkg-config\n",
+                              "  - apt install -y git gcc g++ pkg-config\n",
                               "  - apt install -y --no-install-recommends rebar3 qemu-kvm qemu-utils dnsmasq-base gcc\n",
                               "  - mkdir -p /opt/actions-runner\n",
                               "  - curl -O -L https://github.com/actions/runner/releases/download/v2.316.1/actions-runner-linux-x64-2.316.1.tar.gz\n",
@@ -215,11 +219,14 @@ handle_continue(ensure_base, {NetId} = State) ->
                               "  condition: test -d /opt/actions-runner\n"]
                         }),
 
-                 ok = wait_for_domain_shutdown(DomId, 10 * 60 * 1000),  % 10 minutes
-                 virtuerl_mgt:image_from_domain(DomId, "actions-base"),
+                 Res = wait_for_domain_shutdown(DomId, 10 * 60 * 1000),  % 10 minutes
+                 case Res of
+                     ok -> virtuerl_mgt:image_from_domain(DomId, "actions-base");
+                     _ -> Res
+                 end,
                  virtuerl_mgt:domain_delete(#{id => DomId}),
 
-                 ok;
+                 Res;
              _ -> error
          end,
 

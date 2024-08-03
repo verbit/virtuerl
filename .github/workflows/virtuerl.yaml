@@ -25,9 +25,10 @@ jobs:
           sudo service procps restart
       - name: Test
         run: |
-          sudo rebar3 efmt --exclude-file _build/ --check
+          rebar3 efmt --check
+          rebar3 compile
           sudo rebar3 ct
       - name: Create tar
         run: |
-          sudo rebar3 tar
-          sudo find _build/ -name '*.tar.gz' -exec hack/repack {} \;
+          rebar3 tar
+          find _build/ -name '*.tar.gz' -exec hack/repack {} \;
