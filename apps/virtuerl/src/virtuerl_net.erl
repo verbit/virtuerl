@@ -327,33 +327,23 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
     run_batch(BatchFileContents).
 
 
-run_nft(IoList) ->
-    ?LOG_DEBUG(#{what => run_batch, batch => IoList}),
-
-    Path = iolist_to_binary(["/tmp/virtuerl/", "nftables_", virtuerl_util:uuid4(), ".conf"]),
-    ok = filelib:ensure_dir(Path),
-    ok = file:write_file(Path, IoList),
-
-    NftOut = os:cmd(io_lib:format("nft -f ~s", [Path])),
-    case NftOut of
-        "" -> ok;
-        _ -> error({nft_error, NftOut})
-    end,
-    file:delete(Path),
-    ok.
+run_nft(IoList) -> run_helper("nft -f", IoList).
 
 
-run_batch(Contents) ->
-    ?LOG_DEBUG(#{what => run_batch, batch => Contents}),
+run_batch(Contents) -> run_helper("ip -b", Contents).
 
-    Path = iolist_to_binary(["/tmp/virtuerl/", "iproute2_batch_", virtuerl_util:uuid4()]),
+
+run_helper(Command, Contents) ->
+    ?LOG_DEBUG(#{what => run_helper, cmd => Command, batch => Contents}),
+
+    Path = iolist_to_binary(["/tmp/virtuerl/", "helper_", virtuerl_util:uuid4()]),
     ok = filelib:ensure_dir(Path),
     ok = file:write_file(Path, Contents),
 
-    IpRoute2 = os:cmd(io_lib:format("ip -b ~s", [Path])),
-    case IpRoute2 of
+    HelperOut = os:cmd(binary_to_list(iolist_to_binary([Command, " ", Path]))),
+    case HelperOut of
         "" -> ok;
-        _ -> error({iproute2_error, IpRoute2})
+        _ -> error({error, HelperOut})
     end,
     file:delete(Path),
     ok.
