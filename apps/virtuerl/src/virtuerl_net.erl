@@ -29,16 +29,13 @@ init([]) ->
     {ok, {}}.
 
 
-terminate(_Reason, State) ->
+terminate(_Reason, _State) ->
     {ok, IfAddrs} = inet:getifaddrs(),
     Ifnames = [ Name || {Name, _} <- IfAddrs ],
     DeleteCmds = [ ["link del ", Ifname, "\n"] || Ifname <- Ifnames, startswith(Ifname, "verl") ],
     run_batch(DeleteCmds),
     ok.
 
-
-handle_call({vm_create, Conf}, _From, State) ->
-    {reply, ok, State};
 
 handle_call({net_update, Domains}, _From, State) ->
     reload_net(Domains),
@@ -70,14 +67,6 @@ startswith(Str, Pre) ->
     end.
 
 
-handle_interface(If, Table) ->
-    %% 1. Delete all devices without an address set
-    Addrs = maps:get(<<"addr_info">>, If, []),
-    case Addrs of
-        [] -> os:cmd(io_lib:format("ip addr del ~p", [maps:get(<<"ifname">>, If)]))
-    end.
-
-
 -spec get_cidrs(term) -> {[], binary()}.
 get_cidrs(If) ->
     Addrs = maps:get(<<"addr_info">>, If, []),
@@ -105,7 +94,6 @@ reload_net(Domains0) ->
     update_nftables(Domains),
     sync_taps(Matched, TargetAddrs, Domains),
 
-    update_bird_conf(Domains),
     ok.
 
 
@@ -209,16 +197,7 @@ update_nftables(Domains) ->
          "}\n"],
     % io:format("~s~n", [IoList]),
 
-    Path = iolist_to_binary(["/tmp/virtuerl/", "nftables_", virtuerl_util:uuid4(), ".conf"]),
-    ok = filelib:ensure_dir(Path),
-    ok = file:write_file(Path, IoList),
-
-    NftOut = os:cmd(io_lib:format("nft -f ~s", [Path])),
-    case NftOut of
-        "" -> ok;
-        _ -> error({nft_error, NftOut})
-    end,
-    file:delete(Path).
+    run_nft(IoList).
 
 
 network_cidrs_to_bride_cidrs(Cidrs) ->
@@ -283,36 +262,6 @@ format_cidr({<<Addr/binary>>, Prefixlen}) ->
     io_lib:format("~s/~B", [format_ip(Addr), Prefixlen]).
 
 
-format_bird_route(<<IP/binary>>) ->
-    io_lib:format("~s/~B", [format_ip(IP), bit_size(IP)]).
-
-
-build_routes(M) when is_map(M) -> build_routes(maps:to_list(M));
-build_routes([]) -> [];
-build_routes([{Addr, Bridge} | L]) ->
-    [io_lib:format("  route ~s via \"~s\";", [format_bird_route(Addr), Bridge]) | build_routes(L)].
-
-
-update_bird_conf(Domains) ->
-    Output = os:cmd("ip -j addr"),
-    {ok, JSON} = thoas:decode(Output),
-    Bridges = maps:from_list([ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>) ]),
-    AddrMap = maps:from_list([ {Addr, {bridge_addr(NetAddr), Prefixlen}}
-                               || {_, #{network_addrs := {NetAddr, Prefixlen}, ipv4_addr := Addr}} <- Domains ]),
-    AddrToBridgeMap = maps:map(fun(_, Net) -> maps:get(Net, Bridges) end, AddrMap),
-
-    % io:format("DOMAINS: ~p~n", [Domains]),
-    % io:format("AddrToBridgeMap: ~p~n", [AddrToBridgeMap]),
-    file:write_file("birderl.conf",
-                    lists:join("\n",
-                               ["protocol static {", "  ipv4;"] ++ build_routes(AddrToBridgeMap) ++ ["}\n"])),
-    reload_bird(Domains).
-
-
-reload_bird(Domains) ->
-    ok.
-
-
 generate_unique_bridge_name(Ifnames) ->
     Ifname = io_lib:format("verlbr~s", [binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
     case sets:is_element(Ifname, Ifnames) of
@@ -367,6 +316,22 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
     BatchFileContents = [BrDeleteCmds, BrAddCmds, DeleteCmds, AddCmds],
 
     run_batch(BatchFileContents).
+
+
+run_nft(IoList) ->
+    ?LOG_DEBUG(#{what => run_batch, batch => IoList}),
+
+    Path = iolist_to_binary(["/tmp/virtuerl/", "nftables_", virtuerl_util:uuid4(), ".conf"]),
+    ok = filelib:ensure_dir(Path),
+    ok = file:write_file(Path, IoList),
+
+    NftOut = os:cmd(io_lib:format("nft -f ~s", [Path])),
+    case NftOut of
+        "" -> ok;
+        _ -> error({nft_error, NftOut})
+    end,
+    file:delete(Path),
+    ok.
 
 
 run_batch(Contents) ->
