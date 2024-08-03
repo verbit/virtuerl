@@ -25,10 +25,15 @@ update_net(Node, Domains) ->
 
 init([]) ->
     ?LOG_INFO(#{what => "Started", who => virtuerl_net}),
+    process_flag(trap_exit, true),
     {ok, {}}.
 
 
 terminate(_Reason, State) ->
+    {ok, IfAddrs} = inet:getifaddrs(),
+    Ifnames = [ Name || {Name, _} <- IfAddrs ],
+    DeleteCmds = [ ["link del ", Ifname, "\n"] || Ifname <- Ifnames, startswith(Ifname, "verl") ],
+    run_batch(DeleteCmds),
     ok.
 
 
@@ -73,6 +78,7 @@ handle_interface(If, Table) ->
     end.
 
 
+-spec get_cidrs(term) -> {[], binary()}.
 get_cidrs(If) ->
     Addrs = maps:get(<<"addr_info">>, If, []),
     Ifname = maps:get(<<"ifname">>, If),
@@ -97,8 +103,7 @@ reload_net(Domains0) ->
     TargetAddrs = sets:from_list([ lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #{network_addrs := Cidrs}} <- Domains ]),
     % io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
     update_nftables(Domains),
-    sync_networks(Matched, TargetAddrs),
-    sync_taps(Domains),
+    sync_taps(Matched, TargetAddrs, Domains),
 
     update_bird_conf(Domains),
     ok.
@@ -308,33 +313,6 @@ reload_bird(Domains) ->
     ok.
 
 
-sync_networks(ActualAddrs, TargetAddrs) ->
-    Ifnames = sets:from_list([ Name || {_, Name} <- maps:to_list(ActualAddrs) ]),
-    ToDelete = maps:without(sets:to_list(TargetAddrs), ActualAddrs),
-    ToAdd = sets:subtract(TargetAddrs, sets:from_list(maps:keys(ActualAddrs))),
-    io:format("TO DELETE: ~p~n", [ToDelete]),
-    io:format("TO ADD: ~p~n", [sets:to_list(ToAdd)]),
-    maps:foreach(fun(_, V) ->
-                         Cmd = io_lib:format("ip link del ~s~n", [V]),
-                         io:format(Cmd),
-                         os:cmd(Cmd)
-                 end,
-                 ToDelete),
-    add_bridges(sets:to_list(ToAdd), Ifnames).
-
-
-add_bridges([], _) ->
-    ok;
-add_bridges([Cidrs | T], Ifnames) ->
-    Ifname = generate_unique_bridge_name(Ifnames),
-    AddrAddCmd = [ io_lib:format("ip addr add ~s dev ~s~n", [Cidr, Ifname]) || Cidr <- Cidrs ],
-    Cmd = lists:flatten([io_lib:format("ip link add name ~s type bridge~nip link set ~s up~n", [Ifname, Ifname]), AddrAddCmd]),
-    io:format(Cmd),
-    os:cmd(Cmd),
-    add_bridges(T, Ifnames),
-    ok.
-
-
 generate_unique_bridge_name(Ifnames) ->
     Ifname = io_lib:format("verlbr~s", [binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
     case sets:is_element(Ifname, Ifnames) of
@@ -350,10 +328,22 @@ to_vtap_mac(MacAddr) ->
     <<A:5, 0:1, 2:2, B:40>>.
 
 
-sync_taps(Domains) ->
-    Output = os:cmd("ip -j addr"),
-    {ok, JSON} = thoas:decode(Output),
-    Bridges = maps:from_list([ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>) ]),
+-spec sync_taps(#{[term()] => binary()}, term(), term()) -> ok.
+sync_taps(ActualAddrs, TargetAddrs, Domains) ->
+    Ifnames = sets:from_list([ Name || {_, Name} <- maps:to_list(ActualAddrs) ]),
+    ToDelete = maps:without(sets:to_list(TargetAddrs), ActualAddrs),
+    ToAdd = sets:subtract(TargetAddrs, sets:from_list(maps:keys(ActualAddrs))),
+    ?LOG_DEBUG("TO DELETE: ~p~n", [ToDelete]),
+    ?LOG_DEBUG("TO ADD: ~p~n", [sets:to_list(ToAdd)]),
+    BrDeleteCmds = [ io_lib:format("link del ~s~n", [BridgeName]) || BridgeName <- maps:values(ToDelete) ],
+    BrNameCidrsMap = maps:from_list([ {Cidrs, generate_unique_bridge_name(Ifnames)} || Cidrs <- sets:to_list(ToAdd) ]),
+    BrAddCmds = maps:values(maps:map(fun(Cidrs, Ifname) ->
+                                             AddrAddCmd = [ io_lib:format("addr add ~s dev ~s~n", [Cidr, Ifname]) || Cidr <- Cidrs ],
+                                             [io_lib:format("link add name ~s type bridge~nlink set ~s up~n", [Ifname, Ifname]), AddrAddCmd]
+                                     end,
+                                     BrNameCidrsMap)),
+
+    Bridges = maps:merge(maps:with(sets:to_list(TargetAddrs), ActualAddrs), BrNameCidrsMap),
 
     OutputTaps = os:cmd("ip -j link"),
     {ok, JSONTaps} = thoas:decode(OutputTaps),
@@ -367,27 +357,38 @@ sync_taps(Domains) ->
     % io:format("TapsMap: ~p~n", [TapsMap]),
 
     TapsToDelete = sets:subtract(TapsActual, TapsTarget),
-    lists:foreach(fun(E) ->
-                          Cmd = io_lib:format("ip link del ~s~n", [E]),
-                          io:format(Cmd),
-                          os:cmd(Cmd)
-                  end,
-                  sets:to_list(TapsToDelete)),
+    DeleteCmds = [ io_lib:format("link del ~s~n", [TapName]) || TapName <- sets:to_list(TapsToDelete) ],
 
     TapsToAdd = sets:subtract(TapsTarget, TapsActual),
 
     TapsMapsToAdd = maps:map(fun(_, {MacAddr, Net}) -> {MacAddr, maps:get(Net, Bridges)} end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
-    add_taps(TapsMapsToAdd),
+    AddCmds = add_taps(TapsMapsToAdd),
 
+    BatchFileContents = [BrDeleteCmds, BrAddCmds, DeleteCmds, AddCmds],
+
+    run_batch(BatchFileContents).
+
+
+run_batch(Contents) ->
+    ?LOG_DEBUG(#{what => run_batch, batch => Contents}),
+
+    Path = iolist_to_binary(["/tmp/virtuerl/", "iproute2_batch_", virtuerl_util:uuid4()]),
+    ok = filelib:ensure_dir(Path),
+    ok = file:write_file(Path, Contents),
+
+    IpRoute2 = os:cmd(io_lib:format("ip -b ~s", [Path])),
+    case IpRoute2 of
+        "" -> ok;
+        _ -> error({iproute2_error, IpRoute2})
+    end,
+    file:delete(Path),
     ok.
 
 
 add_taps(M) when is_map(M) -> add_taps(maps:to_list(M));
-add_taps([]) -> ok;
+add_taps([]) -> "";
 add_taps([{Tap, {Mac, Bridge}} | T]) ->
     MacAddrString = virtuerl_util:mac_to_str(Mac),
-    Cmd = io_lib:format("ip tuntap add dev ~s mode tap~nip link set dev ~s address ~s master ~s~nip link set ~s up~n",
+    Cmd = io_lib:format("tuntap add dev ~s mode tap~nlink set dev ~s address ~s master ~s~nlink set ~s up~n",
                         [Tap, Tap, MacAddrString, Bridge, Tap]),
-    io:format(Cmd),
-    os:cmd(Cmd),
-    add_taps(T).
+    [Cmd, add_taps(T)].
