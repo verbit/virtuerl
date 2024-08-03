@@ -28,6 +28,7 @@ jobs:
           make -C helper
           mkdir -p ~/.local/bin
           ln -s "${PWD}/helper/virtuerl_helper" ~/.local/bin/virtuerl_helper
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
       - name: Test
         run: |
           rebar3 efmt --check
