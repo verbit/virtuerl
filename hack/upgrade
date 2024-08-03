@@ -1,6 +1,9 @@
 #!/bin/bash
 
-read -s -p "sudo password: " SUDO_PASSWORD
+rebar3 tar
+make -C helper
+
+read -s -p "remote sudo password: " SUDO_PASSWORD
 echo
 
 scriptDir=$(dirname -- "$(readlink -f -- "$BASH_SOURCE")")
