@@ -30,6 +30,7 @@ init([]) ->
 
 
 terminate(_Reason, _State) ->
+    run_nft("table inet virtuerl\ndelete table inet virtuerl\n"),
     {ok, IfAddrs} = inet:getifaddrs(),
     Ifnames = [ Name || {Name, _} <- IfAddrs ],
     DeleteCmds = [ ["link del ", Ifname, "\n"] || Ifname <- Ifnames, startswith(Ifname, "verl") ],
