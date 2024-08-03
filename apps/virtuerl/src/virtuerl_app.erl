@@ -9,6 +9,7 @@
 start(_StartType, _StartArgs) ->
 
     httpc:set_options([{ipfamily, inet6fb4}]),
+    filelib:ensure_path("var/log"),
 
     case filelib:is_file("virtuerl.config") of
         true ->
