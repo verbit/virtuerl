@@ -313,10 +313,12 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
 
     TapsMapsToAdd = maps:map(fun(_, {MacAddr, Net}) -> {MacAddr, maps:get(Net, Bridges)} end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
 
+    User = string:trim(os:cmd("id -un")),
     AddCmds = lists:map(fun({Tap, {Mac, Bridge}}) ->
                                 MacAddrString = virtuerl_util:mac_to_str(Mac),
-                                io_lib:format("tuntap add dev ~s mode tap~nlink set dev ~s address ~s master ~s~nlink set ~s up~n",
-                                              [Tap, Tap, MacAddrString, Bridge, Tap])
+                                ["tuntap add dev ", Tap, " mode tap user ", User, "\n",
+                                 "link set dev ", Tap, " address ", MacAddrString, " master ", Bridge, "\n",
+                                 "link set ", Tap, " up\n"]
                         end,
                         maps:to_list(TapsMapsToAdd)),
 
