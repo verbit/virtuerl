@@ -333,7 +333,7 @@ handle_info({nodedown, _Node}, State) ->
     {noreply, State};
 handle_info({nodeup, _Node}, State) ->
     {noreply, State, {continue, sync_domains}};
-handle_info({'DOWN', _, process, Pid, Reason}, #state{table = Table, idmap = IdMap} = State) ->
+handle_info({'DOWN', _, process, Pid, normal}, #state{table = Table, idmap = IdMap} = State) ->
     NewIdMap = case IdMap of
                    #{Pid := DomId} ->
                        [{DomId, Domain}] = dets:lookup(Table, DomId),  % TODO: this is empty for a deleted domain
@@ -341,7 +341,7 @@ handle_info({'DOWN', _, process, Pid, Reason}, #state{table = Table, idmap = IdM
                        ok = dets:sync(Table),
                        maps:remove(Pid, IdMap);
                    #{} ->
-                       ?LOG_WARNING(#{module => ?MODULE, msg => "process down but not in registry", pid => Pid, reason => Reason}),
+                       ?LOG_WARNING(#{module => ?MODULE, msg => "process down but not in registry", pid => Pid}),
                        IdMap
                end,
     {noreply, State#state{idmap = NewIdMap}};
