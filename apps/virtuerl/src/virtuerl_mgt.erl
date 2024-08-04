@@ -336,7 +336,7 @@ handle_info({nodeup, _Node}, State) ->
 handle_info({'DOWN', _, process, Pid, Reason}, #state{table = Table, idmap = IdMap} = State) ->
     NewIdMap = case IdMap of
                    #{Pid := DomId} ->
-                       [{DomId, Domain}] = dets:lookup(Table, DomId),
+                       [{DomId, Domain}] = dets:lookup(Table, DomId),  % TODO: this is empty for a deleted domain
                        ok = dets:insert(Table, {DomId, Domain#{state => stopped}}),
                        ok = dets:sync(Table),
                        maps:remove(Pid, IdMap);
