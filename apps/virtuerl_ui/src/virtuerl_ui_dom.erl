@@ -281,7 +281,7 @@ create_domain_dialog(Node, Domain, Op) ->
       vcpu := Vcpu,
       memory := Memory,
       inbound_rules := InboundRules
-     } = Domain,
+     } = maps:merge(#{inbound_rules => []}, Domain),
     {ok, Nets} = erpc:call(Node, virtuerl_ipam, ipam_list_nets, []),
     NetworkChoices = maps:keys(Nets),
     ImageChoices = erpc:call(Node, virtuerl_img, list_images, []),
