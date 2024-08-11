@@ -46,6 +46,7 @@ main(_Args) ->
     {ok, TarData} = file:read_file(TarFilename),
     ok = ssh_sftp:write_file(SftpChan, TarFilename, TarData),
     {ok, HelperBin} = file:read_file("helper/virtuerl_helper"),
+    ssh_sftp:delete(SftpChan, "virtuerl_helper"),
     ok = ssh_sftp:write_file(SftpChan, "virtuerl_helper", HelperBin),
     io:format(" done~n"),
     % io:format("Deleting old release tar"),
