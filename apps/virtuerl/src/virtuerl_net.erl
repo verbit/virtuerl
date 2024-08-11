@@ -94,6 +94,7 @@ reload_net(Domains0) ->
     % io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
     update_nftables(Domains),
     sync_taps(Matched, TargetAddrs, Domains),
+    update_bird_conf(Domains),
 
     ok.
 
@@ -276,6 +277,40 @@ generate_unique_bridge_name(Ifnames) ->
 to_vtap_mac(MacAddr) ->
     <<A:5, _:1, 2:2, B:40>> = MacAddr,
     <<A:5, 0:1, 2:2, B:40>>.
+
+
+format_bird_route(<<IP/binary>>) ->
+    io_lib:format("~s/~B", [format_ip(IP), bit_size(IP)]).
+
+
+build_routes(M) when is_map(M) -> build_routes(maps:to_list(M));
+build_routes([]) -> [];
+build_routes([{Addr, Bridge} | L]) ->
+    [io_lib:format("  route ~s via \"~s\";", [format_bird_route(Addr), Bridge]) | build_routes(L)].
+
+
+update_bird_conf(Domains) ->
+    Output = os:cmd("ip -j addr"),
+    {ok, JSON} = thoas:decode(Output),
+
+    BridgeAddrsToName = [ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>) ],
+    BridgeAddrsToNameFlat = maps:from_list([ {parse_cidr(Addr), Name} || {Addrs, Name} <- BridgeAddrsToName, Addr <- Addrs ]),
+
+    AddrToBridgeName = [ {Addr, maps:get({bridge_addr(Addr, Prefixlen), Prefixlen}, BridgeAddrsToNameFlat)}
+                         || {_, #{cidrs := Cidrs}} <- Domains, {Addr, Prefixlen} <- Cidrs ],
+    AddrToBridgeName4 = lists:filter(fun({Addr, _}) -> bit_size(Addr) == 32 end, AddrToBridgeName),
+    AddrToBridgeName6 = lists:filter(fun({Addr, _}) -> bit_size(Addr) == 128 end, AddrToBridgeName),
+
+    ok = file:write_file("birderl.conf",
+                         lists:join("\n",
+                                    ["protocol static {", "  ipv4;"] ++ build_routes(AddrToBridgeName4) ++ ["}\n"] ++
+                                    ["protocol static {", "  ipv6;"] ++ build_routes(AddrToBridgeName6) ++ ["}\n"])),
+    reload_bird(Domains).
+
+
+reload_bird(Domains) ->
+    % {ok, S} = gen_tcp:connect({local, "/run/bird/bird.ctl"}, 0, [local, {active, true}, binary]).
+    ok.
 
 
 -spec sync_taps(#{[term()] => binary()}, term(), term()) -> ok.
