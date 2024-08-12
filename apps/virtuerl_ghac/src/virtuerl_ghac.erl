@@ -172,7 +172,6 @@ handle_continue(ensure_net, {}) ->
                       _ -> error
                   end,
 
-    self() ! sync,
     {noreply, {NetId}, {continue, ensure_base}};
 handle_continue(ensure_base, {NetId} = State) ->
     ok = case lists:filter(fun(ImgName) -> string:equal(ImgName, "actions-base.qcow2") end, virtuerl_img:list_images()) of
@@ -230,6 +229,7 @@ handle_continue(ensure_base, {NetId} = State) ->
                  Res;
              _ -> error
          end,
+    erlang:send_after(30 * 1000, self(), sync),
 
     {noreply, State}.
 
