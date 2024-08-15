@@ -23,6 +23,8 @@
          handle_continue/2]).
 
 -include_lib("kernel/include/logger.hrl").
+-include_lib("khepri/include/khepri.hrl").
+-include_lib("khepri/src/khepri_error.hrl").
 
 -define(SERVER,      ?MODULE).
 -define(APPLICATION, virtuerl).
@@ -87,16 +89,13 @@ start_link() ->
 
 
 init([]) ->
-    {ok, Table} = dets:open_file(domains, [{file, filename:join(home_path(), "domains.dets")}]),
-    %%  virtuerl_ipam:ipam_put_net({default, <<192:8, 168:8, 10:8, 0:8>>, 28}),
-    %%  application:ensure_all_started(grpcbox),
     net_kernel:monitor_nodes(true),
-    {ok, #state{table = Table, idmap = #{}}, {continue, sync_domains}}.
-%%  {ok, {Table}}.
+    {ok, #state{idmap = #{}}, {continue, sync_domains}}.
 
 
-handle_continue(sync_domains, #state{table = Table, idmap = IdMap} = State) ->
-    Domains = dets:match_object(Table, '_'),
+handle_continue(sync_domains, #state{idmap = IdMap} = State) ->
+    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
+    Domains = [ {Id, Dom} || #{id := Id} = Dom <- maps:values(DomainsMap) ],
     TargetDomains = maps:from_list(
                       [ {Id, case maps:get(host, Domain, localhost) of localhost -> node(); Else -> Else end}
                         || {Id, Domain} <- Domains,
@@ -145,7 +144,6 @@ generate_unique_tap_name(TapNames) ->
 
 
 handle_call({domain_create, Conf}, _From, State) ->
-    #state{table = Table} = State,
     DomainID = virtuerl_util:uuid4(),
     Domain0 = maps:merge(#{
                            id => DomainID,
@@ -163,8 +161,7 @@ handle_call({domain_create, Conf}, _From, State) ->
                  #{os_type := "windows"} ->
                      maps:merge(#{setup_iso => "Win11_23H2_EnglishInternational_x64v2_noprompt.iso"}, Domain0)
              end,
-    dets:insert_new(Table, {DomainID, Domain}),
-    dets:sync(Table),
+    ok = khepri:create([domain, DomainID], Domain),
     ?LOG_NOTICE(#{event => domain_requested, domain => Domain}),
 
     #{network_id := NetworkID} = Domain,
@@ -201,7 +198,8 @@ handle_call({domain_create, Conf}, _From, State) ->
     Ipv4Addr = maps:get(ipv4_addr, AddressesMap, undefined),
     Ipv6Addr = maps:get(ipv6_addr, AddressesMap, undefined),
 
-    Domains = dets:match_object(Table, '_'),
+    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
+    Domains = maps:values(DomainsMap),
     TapNames = sets:from_list([ Tap || #{tap_name := Tap} <- Domains ]),
     TapName = generate_unique_tap_name(TapNames),  % TODO: TapName should be generated on a per-deployment basis
     <<A:5, _:3, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
@@ -215,8 +213,7 @@ handle_call({domain_create, Conf}, _From, State) ->
                       cidrs => IpCidrs,
                       tap_name => TapName
                      },
-    dets:insert(Table, {DomainID, DomainWithIps}),
-    dets:sync(Table),
+    ok = khepri:put([domain, DomainID], DomainWithIps),
     ?LOG_NOTICE(#{event => domain_ready, domain => DomainWithIps}),
     virtuerl_pubsub:send({domain_created, DomainID}),
 
@@ -225,55 +222,49 @@ handle_call({domain_create, Conf}, _From, State) ->
                      maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))},
      State,
      {continue, sync_domains}};
-handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, #state{table = Table} = State) ->
+handle_call({domain_update, #{id := DomainID} = DomainUpdate0}, _From, State) ->
     DomainUpdate = maps:remove(id, DomainUpdate0),
-    Reply = case dets:lookup(Table, DomainID) of
-                [{_, Domain}] ->
-                    ok = dets:insert(Table, {DomainID, maps:merge(Domain, DomainUpdate)}),
-                    ok = dets:sync(Table),
+    Reply = case khepri:get([domain, DomainID]) of
+                {ok, Domain} ->
+                    ok = khepri:put([domain, DomainID], maps:merge(Domain, DomainUpdate)),
                     virtuerl_pubsub:send({domain_updated, DomainID}),
                     ok;
-                [] -> {error, notfound}
+                _ -> {error, notfound}
             end,
     {reply, Reply, State, {continue, sync_domains}};
-handle_call({add_port_fwd, DomId, PortFwd}, _From, #state{table = Table} = State) ->
-    Reply = case dets:lookup(Table, DomId) of
-                [{_, Domain}] ->
+handle_call({add_port_fwd, DomId, PortFwd}, _From, State) ->
+    Reply = case khepri:get([domain, DomId]) of
+                {ok, Domain} ->
                     NewFwds = case Domain of
                                   #{port_fwds := Fwds} -> Fwds;
                                   _ -> []
                               end,
                     DomainUpdate = #{port_fwds => [PortFwd | NewFwds]},
-                    ok = dets:insert(Table, {DomId, maps:merge(Domain, DomainUpdate)}),
-                    ok = dets:sync(Table),
+                    ok = khepri:put([domain, DomId], maps:merge(Domain, DomainUpdate)),
                     virtuerl_pubsub:send({domain_updated, DomId}),
                     ok;
-                [] -> {error, notfound}
+                _ -> {error, notfound}
             end,
     {reply, Reply, State, {continue, sync_domains}};
 handle_call(domains_list, _From, State) ->
-    #state{table = Table} = State,
-    Domains = dets:match_object(Table, '_'),
-    {reply, [ maps:merge(#{host => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || {Id, Domain} <- Domains ], State};
+    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
+    Domains = maps:values(DomainsMap),
+    {reply, [ maps:merge(#{host => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || #{id := Id} = Domain <- Domains ], State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
-    #state{table = Table} = State,
-    Reply = case dets:lookup(Table, DomainID) of
-                [{_, #{mac_addr := MacAddr, tap_name := TapName} = Domain}] ->
+    Reply = case khepri:get([domain, DomainID]) of
+                {ok, #{mac_addr := MacAddr, tap_name := TapName} = Domain} ->
                     DomRet = Domain#{
                                mac_addr := binary:encode_hex(MacAddr),
                                tap_name := iolist_to_binary(TapName)
                               },
                     {ok, maps:merge(#{host => localhost, state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
-                [] -> notfound
+                _ -> notfound
             end,
     {reply, Reply, State};
 handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
-    #state{table = Table} = State,
-    Res = case dets:lookup(Table, DomainID) of
-              [] -> {error, notfound};
-              [{_, Domain}] ->
-                  dets:insert(Table, {DomainID, Domain#{state => deleting}}),
-                  dets:sync(Table),
+    Res = case khepri:get([domain, DomainID]) of
+              {ok, Domain} ->
+                  ok = khepri:put([domain, DomainID], Domain#{state => deleting}),
                   spawn_link(fun() ->
                                      TargetNode = case Domain of
                                                       #{host := localhost} -> node();
@@ -290,16 +281,17 @@ handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
                                      % TODO: we don't really have to delete unused tap here as they will be deleted before the next domain is created
                                      %   however, it's of course cleaner to do so here, so consider adding it back
                                      % ok = gen_server:call(virtuerl_net, {net_update}),
-                                     dets:delete(Table, DomainID),
+                                     ok = khepri:delete([domain, DomainID]),
                                      virtuerl_pubsub:send({domain_deleted, DomainID})
                              end),
-                  ok
+                  ok;
+              _ -> {error, notfound}
+
           end,
     {reply, Res, State};
-handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, #state{table = Table} = State) ->
-    case dets:lookup(Table, DomainID) of
-        [] -> gen_server:reply(_From, {error, notfound});
-        [{_, Domain}] ->
+handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, State) ->
+    case khepri:get([domain, DomainID]) of
+        {ok, Domain} ->
             spawn(fun() ->
                           #{state := DomState} = Domain,
                           case DomState of
@@ -320,7 +312,8 @@ handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _Fr
                           end,
 
                           gen_server:reply(_From, ok)
-                  end)
+                  end);
+        _ -> gen_server:reply(_From, {error, notfound})
     end,
     {noreply, State}.
 
@@ -333,12 +326,11 @@ handle_info({nodedown, _Node}, State) ->
     {noreply, State};
 handle_info({nodeup, _Node}, State) ->
     {noreply, State, {continue, sync_domains}};
-handle_info({'DOWN', _, process, Pid, normal}, #state{table = Table, idmap = IdMap} = State) ->
+handle_info({'DOWN', _, process, Pid, normal}, #state{idmap = IdMap} = State) ->
     NewIdMap = case IdMap of
                    #{Pid := DomId} ->
-                       [{DomId, Domain}] = dets:lookup(Table, DomId),  % TODO: this is empty for a deleted domain
-                       ok = dets:insert(Table, {DomId, Domain#{state => stopped}}),
-                       ok = dets:sync(Table),
+                       {ok, Domain} = khepri:get([domain, DomId]),  % TODO: this is empty for a deleted domain
+                       ok = khepri:put([domain, DomId], Domain#{state => stopped}),
                        maps:remove(Pid, IdMap);
                    #{} ->
                        ?LOG_WARNING(#{module => ?MODULE, msg => "process down but not in registry", pid => Pid}),
@@ -350,8 +342,7 @@ handle_info(Info, State) ->
     {noreply, State}.
 
 
-terminate(_Reason, #state{table = Table}) ->
-    dets:close(Table),
+terminate(_Reason, _State) ->
     ok.
 
 
