@@ -93,7 +93,8 @@ handle_continue(setup_qmp, #{id := ID} = State) ->
     %%  {ok, _} = exec:run(iolist_to_binary(["inotifywait -e create --include 'qmp\\.sock' ", ID]), [sync]),
     case wait_for_socket(QmpSocketPath) of
         ok ->
-            {ok, QmpPid} = virtuerl_qmp:start_link(QmpSocketPath, self()),
+            % TODO: start_link might be too strong here, consider attaching it to a supervisor instead (or sth like gen_tcp's design)
+            {ok, QmpPid} = virtuerl_qmp:start_link(QmpSocketPath),
             virtuerl_qmp:exec(QmpPid, cont),
             {noreply, State#{qmp_pid => QmpPid}, {continue, setup_serial}};
         timeout ->
