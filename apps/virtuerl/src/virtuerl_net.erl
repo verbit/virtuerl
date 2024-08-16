@@ -379,11 +379,6 @@ run_helper(Command, Contents) ->
                      {ok, Val} -> Val; undefined -> "virtuerl_helper"
                  end,
 
-    Path = iolist_to_binary(["/tmp/virtuerl/", "helper_", virtuerl_util:uuid4()]),
-    ok = filelib:ensure_dir(Path),
-    ok = file:write_file(Path, Contents),
-
-    {ok, HelperOut} = virtuerl_util:cmd(iolist_to_binary([HelperPath, " ", Command, " -f ", Path])),
+    {ok, HelperOut} = virtuerl_util:cmd(iolist_to_binary([HelperPath, " ", Command, " -f -"]), Contents),
     ?LOG_DEBUG(#{helper_out => HelperOut}),
-    file:delete(Path),
     ok.
