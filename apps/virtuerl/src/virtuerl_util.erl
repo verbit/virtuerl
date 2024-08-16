@@ -1,6 +1,6 @@
 -module(virtuerl_util).
 
--export([uuid4/0, mac_to_str/1, delete_file/1, cmd/1, ends_with/2]).
+-export([uuid4/0, mac_to_str/1, delete_file/1, cmd/1, cmd/2, ends_with/2]).
 
 
 uuid4() ->
@@ -34,9 +34,25 @@ ends_with(Str, Suffix) ->
     end.
 
 
-cmd(Cmd) ->
-    Port = open_port({spawn, Cmd}, [exit_status]),
+cmd(Cmd) -> cmd(Cmd, []).
+
+
+cmd(Cmd, Stdin) ->
+    {ok, _Pid, OsPid} = exec:run(Cmd, [stdin, stderr, stdout, monitor]),
+    exec:send(OsPid, iolist_to_binary(Stdin)),
+    exec:send(OsPid, eof),
+    {Res, Reason} = read_cmd_out(OsPid, #{}),
+    case Reason of
+        normal -> {ok, Res};
+        {status, Status} -> {error, exec:status(Status), Res};
+        Else -> {error, unknown, Else, Res}
+    end.
+
+
+read_cmd_out(OsPid, Acc) ->
     receive
-        {Port, {exit_status, 0}} -> ok;
-        {Port, {exit_signal, _}} -> error
+        {FD, OsPid, Data} when FD == stdout; FD == stderr ->
+            PreEx = maps:get(FD, Acc, ""),
+            read_cmd_out(OsPid, Acc#{FD => [PreEx, Data]});
+        {'DOWN', OsPid, process, _Pid, Reason} -> {Acc, Reason}
     end.

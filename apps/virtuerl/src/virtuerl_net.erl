@@ -383,8 +383,7 @@ run_helper(Command, Contents) ->
     ok = filelib:ensure_dir(Path),
     ok = file:write_file(Path, Contents),
 
-    % TODO: replace this with something that returns an exit status
-    HelperOut = os:cmd(binary_to_list(iolist_to_binary([HelperPath, " ", Command, " -f ", Path]))),
+    {ok, HelperOut} = virtuerl_util:cmd(iolist_to_binary([HelperPath, " ", Command, " -f ", Path])),
     ?LOG_DEBUG(#{helper_out => HelperOut}),
     file:delete(Path),
     ok.

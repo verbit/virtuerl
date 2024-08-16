@@ -247,7 +247,7 @@ create_cloud_config(#{id := DomainID, name := DomainName, mac_addr := MacAddr, c
     UserDataPath = filename:join(IsoBasePath, "user-data"),
     ok = file:write_file(UserDataPath, UserData),
     IsoCmd = ["genisoimage -output ", filename:join(DomainBasePath, "cloud_config.iso"), " -volid cidata -joliet -rock ", UserDataPath, " ", MetaDataPath, " ", NetConfPath],
-    ok = virtuerl_util:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
+    {ok, _Out} = virtuerl_util:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
     ok = file:del_dir_r(IsoBasePath),
     ok.
 
@@ -266,7 +266,7 @@ create_unattend(#{id := DomainID} = Domain) ->
     ok = write_unattend(Domain, AutounattendPath),
     ok = write_unattend(Domain, UnattendPath),
     IsoCmd = ["genisoimage -R -iso-level 4 -o ", filename:join(DomainBasePath, "autounattend.iso"), " ", AutounattendPath, " ", UnattendPath],
-    ok = virtuerl_util:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
+    {ok, _Out} = virtuerl_util:cmd(binary_to_list(iolist_to_binary(IsoCmd))),
     ok.
 
 
