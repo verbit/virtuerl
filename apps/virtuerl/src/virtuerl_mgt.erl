@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/0,
+-export([start_link/2,
          home_path/0,
          image_from_domain/2,
          domain_update/1,
@@ -29,71 +29,103 @@
 -define(SERVER,      ?MODULE).
 -define(APPLICATION, virtuerl).
 
--record(state, {table, idmap}).
+-record(state, {server_id, vm_proc_mod, table, idmap}).
 
 
-create_vm() ->
-    gen_server:call(?SERVER, {domain_create, {default}}).
+create_vm() -> create_vm({default, ?MODULE}).
 
 
-%%create_vm(#{cpus := NumCPUs, memory := Memory}) ->
-domain_create(Conf) ->
-    gen_server:call(?SERVER, {domain_create, Conf}, infinity).
+create_vm(Ref) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_create, {default}}).
 
 
-domain_delete(Conf) ->
-    gen_server:call(?SERVER, {domain_delete, Conf}, infinity).
+domain_create(Conf) -> domain_create({default, ?MODULE}, Conf).
 
 
-domain_get(Conf) ->
-    gen_server:call(?SERVER, {domain_get, Conf}).
+domain_create(Ref, Conf) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_create, Conf}, infinity).
+
+
+domain_delete(Conf) -> domain_delete({default, ?MODULE}, Conf).
+
+
+domain_delete(Ref, Conf) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_delete, Conf}, infinity).
+
+
+domain_get(Conf) -> domain_get({default, ?MODULE}, Conf).
+
+
+domain_get(Ref, Conf) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_get, Conf}).
+
+
+domains_list() -> domains_list({default, ?MODULE}).
+
+
+domains_list(Ref) ->
+    gen_server:call({via, virtuerl_reg, Ref}, domains_list).
+
+
+domain_update(Conf) -> domain_update({default, ?MODULE}, Conf).
+
+
+domain_update(Ref, Conf) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, Conf}).
+
+
+domain_stop(Id) -> domain_stop({default, ?MODULE}, Id).
+
+
+domain_stop(Ref, Id) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, #{id => Id, state => stopped}}).
+
+
+domain_start(Id) -> domain_start({default, ?MODULE}, Id).
+
+
+domain_start(Ref, Id) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, #{id => Id, state => running}}).
+
+
+image_from_domain(DomainId, ImageName) -> image_from_domain({default, ?MODULE}, DomainId, ImageName).
+
+
+image_from_domain(Ref, DomainId, ImageName) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
+
+
+add_port_fwd(DomainId, PortFwd) -> add_port_fwd({default, ?MODULE}, DomainId, PortFwd).
+
+
+add_port_fwd(Ref, DomainId, PortFwd) ->
+    gen_server:call({via, virtuerl_reg, Ref}, {add_port_fwd, DomainId, PortFwd}).
 
 
 -spec domains_list() -> #{}.
-domains_list() ->
-    gen_server:call(?SERVER, domains_list).
-
-
-domain_update(Conf) ->
-    gen_server:call(?SERVER, {domain_update, Conf}).
-
-
-domain_stop(Id) ->
-    gen_server:call(?SERVER, {domain_update, #{id => Id, state => stopped}}).
-
-
-domain_start(Id) ->
-    gen_server:call(?SERVER, {domain_update, #{id => Id, state => running}}).
-
-
-image_from_domain(DomainId, ImageName) ->
-    gen_server:call(?SERVER, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
 
 
 -spec add_port_fwd(binary(), #{protos := [tcp | udp], source_port := integer(), target_port := integer()}) -> term().
-add_port_fwd(DomainId, PortFwd) ->
-    gen_server:call(?SERVER, {add_port_fwd, DomainId, PortFwd}).
-
 
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
-
 home_path() ->
     application:get_env(?APPLICATION, home, "var").
 
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(ServerId, Conf) ->
+    gen_server:start_link({via, virtuerl_reg, {ServerId, ?MODULE}}, ?MODULE, [ServerId, Conf], []).
 
 
-init([]) ->
+init([ServerId, Conf]) ->
+    #{vm_proc_mod := VmProcMod} = Conf,
     net_kernel:monitor_nodes(true),
-    {ok, #state{idmap = #{}}, {continue, sync_domains}}.
+    {ok, #state{server_id = ServerId, vm_proc_mod = VmProcMod, idmap = #{}}, {continue, sync_domains}}.
 
 
-handle_continue(sync_domains, #state{idmap = IdMap} = State) ->
+handle_continue(sync_domains, #state{vm_proc_mod = VmProcMod, idmap = IdMap} = State) ->
     {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
     Domains = [ {Id, Dom} || #{id := Id} = Dom <- maps:values(DomainsMap) ],
     TargetDomains = maps:from_list(
@@ -122,11 +154,12 @@ handle_continue(sync_domains, #state{idmap = IdMap} = State) ->
     VmPids = [ {Id,
                 supervisor:start_child({virtuerl_sup, Node},
                                        {Id,
-                                        {virtuerl_qemu, start_link, [maps:get(Id, maps:from_list(Domains))]},
+                                        {VmProcMod, start_link, [maps:get(Id, maps:from_list(Domains))]},
                                         transient,
                                         infinity,
                                         worker,
                                         []})} || {Id, Node} <- maps:to_list(ToAdd), lists:member(Node, AllNodes) ],
+    [ virtuerl_pubsub:send({domain_started, DomId}) || {DomId, _} <- VmPids ],
     VmPidToDomId = maps:from_list([ {VmPid, DomId} || {DomId, {ok, VmPid}} <- VmPids ]),
     [ monitor(process, VmPid) || {_, {ok, VmPid}} <- VmPids ],
 

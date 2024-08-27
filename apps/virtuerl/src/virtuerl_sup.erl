@@ -2,17 +2,17 @@
 
 -behaviour(supervisor).
 
--export([start_link/0]).
+-export([start_link/2]).
 -export([init/1]).
 
 -define(SERVER, ?MODULE).
 
 
-start_link() ->
-    supervisor:start_link({local, ?SERVER}, ?MODULE, []).
+start_link(ServerId, Conf) ->
+    supervisor:start_link({local, ?SERVER}, ?MODULE, [ServerId, Conf]).
 
 
-init([]) ->
+init([ServerId, Conf]) ->
     SupFlags = #{
                  strategy => one_for_one,
                  intensity => 300,
@@ -37,7 +37,7 @@ init([]) ->
                    worker,
                    []},
                   {virtuerl_mgt,
-                   {virtuerl_mgt, start_link, []},
+                   {virtuerl_mgt, start_link, [ServerId, Conf]},
                    permanent,
                    infinity,
                    worker,

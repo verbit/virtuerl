@@ -19,7 +19,15 @@ start(_StartType, _StartArgs) ->
             ok
     end,
 
-    virtuerl_sup:start_link().
+    {ok, Pid} = virtuerl_sup_sup:start_link(),
+
+    Servers = case application:get_env(servers) of
+                  undefined -> #{};
+                  {ok, Servers0} -> Servers0
+              end,
+    [ virtuerl_server:start(Name, Conf) || {Name, Conf} <- maps:to_list(Servers) ],
+
+    {ok, Pid}.
 
 
 start() ->
