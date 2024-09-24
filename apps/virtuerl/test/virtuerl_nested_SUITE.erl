@@ -13,6 +13,8 @@ all() -> [test_create_domain].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(virtuerl),
+    virtuerl_server:start(default, #{cluster => default}),
+    virtuerl_mgt_sup:start(default),
     Config.
 
 

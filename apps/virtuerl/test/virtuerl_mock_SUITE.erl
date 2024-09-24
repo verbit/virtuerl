@@ -11,7 +11,10 @@ all() -> [test_create_domain].
 
 init_per_suite(Config) ->
     {ok, _} = application:ensure_all_started(virtuerl),
-    virtuerl_server:start(default, #{vm_proc_mod => virtuerl_mock_vm}),
+    virtuerl_mock_net:start(),
+    virtuerl_server:start(default, #{cluster => default, vm_proc_mod => virtuerl_mock_vm, net_prov_mod => virtuerl_mock_net, prefix => "verl0"}),
+    virtuerl_server:start(test2, #{cluster => default, vm_proc_mod => virtuerl_mock_vm, net_prov_mod => virtuerl_mock_net, prefix => "verl1"}),
+    virtuerl_mgt_sup:start(default),
     Config.
 
 
@@ -61,17 +64,34 @@ runcmd:
         {domain_started, DomId} -> ok
     end,
 
+    ct:print("Before delete ~p~n", [virtuerl_mock_net:get_ifs()]),
+
     virtuerl_mgt:domain_delete(#{id => DomId}),
     % make sure address is actually released and reused
     receive
         {domain_deleted, DomId} -> ok
+    after
+        1000 ->
+            erlang:error("timed out waiting for domain_deleted DomId")
     end,
+
     {ok, #{id := Dom2Id, ipv4_addr := <<"192.168.17.8">>}} =
         virtuerl_mgt:domain_create(#{name => "test_domain_2", vcpu => 1, memory => 512, network_id => NetID, user_data => ""}),
+    receive
+        {domain_started, Dom2Id} -> ok
+    after
+        1000 ->
+            erlang:error("timed out waiting for domain_started Dom2Id")
+    end,
     virtuerl_mgt:domain_delete(#{id => Dom2Id}),
     receive
-        {domain_deleted, Dom2Id} -> ok
+        {domain_stopped, Dom2Id} -> ok
+    after
+        1000 ->
+            erlang:error("timed out waiting for domain_stopped Dom2Id")
     end,
+    ct:print("After stopped ~p~n", [virtuerl_mock_net:get_ifs()]),
+    [] = virtuerl_mock_net:get_ifs(),
 
     virtuerl_ipam:ipam_delete_net(NetID),
 

@@ -27,6 +27,12 @@ start(_StartType, _StartArgs) ->
               end,
     [ virtuerl_server:start(Name, Conf) || {Name, Conf} <- maps:to_list(Servers) ],
 
+    Clusters = case application:get_env(clusters) of
+                   undefined -> [];
+                   {ok, Clusters0} -> Clusters0
+               end,
+    [ virtuerl_mgt_sup:start(Cluster) || Cluster <- Clusters ],
+
     {ok, Pid}.
 
 

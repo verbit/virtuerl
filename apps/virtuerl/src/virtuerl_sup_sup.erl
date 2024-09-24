@@ -16,5 +16,7 @@ init([]) ->
                  intensity => 300,
                  period => 5
                 },
-    ChildSpecs = [#{id => virtuerl_reg, start => {virtuerl_reg, start_link, []}}],
+    ChildSpecs = [#{id => virtuerl_reg, start => {virtuerl_reg, start_link, []}},
+                  #{id => virtuerl_pubsub, start => {virtuerl_pubsub, start_link, []}},
+                  #{id => pg, start => {pg, start_link, []}}],
     {ok, {SupFlags, ChildSpecs}}.

@@ -2,31 +2,48 @@
 
 -behaviour(gen_server).
 
--export([start_link/0, update_net/2]).
+-export([start_link/2, update_net/2, update_net/3]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([parse_cidr/1, format_cidr/1, parse_ip/1, format_ip/1, format_ip_bitstring/1, bridge_addr/1, bridge_addr/2, normalize_net/1]).
 
 -include_lib("kernel/include/logger.hrl").
 
--define(SERVER, ?MODULE).
+
+-callback get_ifs() -> [If :: #{binary() => binary()}].
+
+
+-callback run_if_cmds(Cmds :: [Cmd :: term()]) -> ok | {error, Reason :: term()}.
+
+-behaviour(virtuerl_net).
+
+%% Callbacks for `virtuerl_net`
+-export([get_ifs/0, run_if_cmds/1]).
 
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+start_link(ServerId, Conf) ->
+    gen_server:start_link({via, virtuerl_reg, {ServerId, ?MODULE}}, ?MODULE, [Conf], []).
 
 
 update_net(Node, Domains) ->
-    gen_server:call({?SERVER, Node}, {net_update, Domains}, infinity).
+    erpc:call(Node, gen_server, call, [{via, virtuerl_reg, {default, ?MODULE}}, {net_update, Domains}, infinity]).
 
 
-init([]) ->
+update_net(Node, Ref, Domains) ->
+    erpc:call(Node, gen_server, call, [{via, virtuerl_reg, {Ref, ?MODULE}}, {net_update, Domains}, infinity]).
+
+
+-define(NET_PROVIDER, get(net_provider_mod)).
+
+
+init([#{net_prov_mod := NetProviderMod, prefix := IfPrefix}]) ->
     ?LOG_INFO(#{what => "Started", who => virtuerl_net}),
     process_flag(trap_exit, true),
-    {ok, {}}.
+    put(net_provider_mod, NetProviderMod),
+    {ok, #{prefix => iolist_to_binary(IfPrefix)}}.
 
 
 terminate(_Reason, _State) ->
@@ -38,13 +55,13 @@ terminate(_Reason, _State) ->
     ok.
 
 
-handle_call({net_update, Domains}, _From, State) ->
-    reload_net(Domains),
+handle_call({net_update, Domains}, _From, #{prefix := IfPrefix} = State) ->
+    reload_net(IfPrefix, Domains),
     {reply, ok, State}.
 
 
-handle_cast({net_update, Domains}, State) ->
-    reload_net(Domains),
+handle_cast({net_update, Domains}, #{prefix := IfPrefix} = State) ->
+    reload_net(IfPrefix, Domains),
     {noreply, State}.
 
 
@@ -68,7 +85,7 @@ startswith(Str, Pre) ->
     end.
 
 
--spec get_cidrs(term) -> {[], binary()}.
+-spec get_cidrs(term) -> {[], Ifname :: binary()}.
 get_cidrs(If) ->
     Addrs = maps:get(<<"addr_info">>, If, []),
     Ifname = maps:get(<<"ifname">>, If),
@@ -81,20 +98,24 @@ get_cidrs(If) ->
     end.
 
 
-reload_net(Domains0) ->
+get_ifs() ->
+    {ok, Ifs} = thoas:decode(os:cmd("ip -j -d addr")),
+    Ifs.
+
+
+reload_net(IfPrefix, Domains0) ->
     Domains = [ {Id, Dom} || #{id := Id} = Dom <- Domains0 ],
-    Output = os:cmd("ip -j addr"),
-    {ok, JSON} = thoas:decode(Output),
+    JSON = apply(?NET_PROVIDER, get_ifs, []),
     % io:format("~p~n", [JSON]),
-    Matched = maps:from_list([ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>) ]),
+    Matched = maps:from_list([ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), iolist_to_binary([IfPrefix, "br"])) ]),
     %%  lists:foreach(fun(L) -> handle_interface(L, Table) end, Matched),
     % io:format("Actual: ~p~n", [Matched]),
 
     TargetAddrs = sets:from_list([ lists:sort(network_cidrs_to_bride_cidrs(Cidrs)) || {_, #{network_addrs := Cidrs}} <- Domains ]),
     % io:format("Target: ~p~n", [sets:to_list(TargetAddrs)]),
     update_nftables(Domains),
-    sync_taps(Matched, TargetAddrs, Domains),
-    update_bird_conf(Domains),
+    sync_taps(IfPrefix, JSON, Matched, TargetAddrs, Domains),
+    update_bird_conf(IfPrefix, Domains),
 
     ok.
 
@@ -268,13 +289,13 @@ format_cidr({<<Addr/binary>>, Prefixlen}) ->
     io_lib:format("~s/~B", [format_ip(Addr), Prefixlen]).
 
 
-generate_unique_bridge_name(Ifnames) ->
-    Ifname = io_lib:format("verlbr~s", [binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
+generate_unique_bridge_name(IfPrefix, Ifnames) ->
+    Ifname = iolist_to_binary([IfPrefix, "br", binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
     case sets:is_element(Ifname, Ifnames) of
         false ->
             Ifname;
         true ->
-            generate_unique_bridge_name(Ifnames)
+            generate_unique_bridge_name(IfPrefix, Ifnames)
     end.
 
 
@@ -293,11 +314,10 @@ build_routes([{Addr, Bridge} | L]) ->
     [io_lib:format("  route ~s via \"~s\";", [format_bird_route(Addr), Bridge]) | build_routes(L)].
 
 
-update_bird_conf(Domains) ->
-    Output = os:cmd("ip -j addr"),
-    {ok, JSON} = thoas:decode(Output),
+update_bird_conf(IfPrefix, Domains) ->
+    JSON = apply(?NET_PROVIDER, get_ifs, []),
 
-    BridgeAddrsToName = [ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), <<"verlbr">>) ],
+    BridgeAddrsToName = [ get_cidrs(L) || L <- JSON, startswith(maps:get(<<"ifname">>, L), iolist_to_binary([IfPrefix, "br"])) ],
     BridgeAddrsToNameFlat = maps:from_list([ {parse_cidr(Addr), Name} || {Addrs, Name} <- BridgeAddrsToName, Addr <- Addrs ]),
 
     AddrToBridgeName = [ {Addr, maps:get({bridge_addr(Addr, Prefixlen), Prefixlen}, BridgeAddrsToNameFlat)}
@@ -317,28 +337,40 @@ reload_bird(Domains) ->
     ok.
 
 
--spec sync_taps(#{[term()] => binary()}, term(), term()) -> ok.
-sync_taps(ActualAddrs, TargetAddrs, Domains) ->
+run_if_cmds(Cmds) ->
+    User = string:trim(os:cmd("id -un")),
+    BatchFileContents = [ case Cmd of
+                              {br_del, BrName} -> io_lib:format("link del ~s~n", [BrName]);
+                              {br_add, BrName, Cidrs} ->
+                                  AddrAddCmd = [ io_lib:format("addr add ~s dev ~s~n", [Cidr, BrName]) || Cidr <- Cidrs ],
+                                  [io_lib:format("link add name ~s type bridge~nlink set ~s up~n", [BrName, BrName]), AddrAddCmd];
+                              {tap_del, TapName} -> io_lib:format("link del ~s~n", [TapName]);
+                              {tap_add, Tap, Mac, BrName} ->
+                                  MacAddrString = virtuerl_util:mac_to_str(Mac),
+                                  ["tuntap add dev ", Tap, " mode tap user ", User, "\n",
+                                   "link set dev ", Tap, " address ", MacAddrString, " master ", BrName, "\n",
+                                   "link set ", Tap, " up\n"]
+                          end || Cmd <- Cmds ],
+
+    run_batch(BatchFileContents).
+
+
+-spec sync_taps(IfPrefix :: binary(), Json :: #{}, #{[term()] => binary()}, term(), term()) -> ok.
+sync_taps(IfPrefix, IpRouteJson, ActualAddrs, TargetAddrs, Domains) ->
     Ifnames = sets:from_list([ Name || {_, Name} <- maps:to_list(ActualAddrs) ]),
     ToDelete = maps:without(sets:to_list(TargetAddrs), ActualAddrs),
     ToAdd = sets:subtract(TargetAddrs, sets:from_list(maps:keys(ActualAddrs))),
     ?LOG_DEBUG("TO DELETE: ~p~n", [ToDelete]),
     ?LOG_DEBUG("TO ADD: ~p~n", [sets:to_list(ToAdd)]),
-    BrDeleteCmds = [ io_lib:format("link del ~s~n", [BridgeName]) || BridgeName <- maps:values(ToDelete) ],
-    BrNameCidrsMap = maps:from_list([ {Cidrs, generate_unique_bridge_name(Ifnames)} || Cidrs <- sets:to_list(ToAdd) ]),
-    BrAddCmds = maps:values(maps:map(fun(Cidrs, Ifname) ->
-                                             AddrAddCmd = [ io_lib:format("addr add ~s dev ~s~n", [Cidr, Ifname]) || Cidr <- Cidrs ],
-                                             [io_lib:format("link add name ~s type bridge~nlink set ~s up~n", [Ifname, Ifname]), AddrAddCmd]
-                                     end,
-                                     BrNameCidrsMap)),
+    BrDeleteCmds = [ {br_del, BrName} || BrName <- maps:values(ToDelete) ],
+    BrNameCidrsMap = maps:from_list([ {Cidrs, generate_unique_bridge_name(IfPrefix, Ifnames)} || Cidrs <- sets:to_list(ToAdd) ]),
+    BrAddCmds = [ {br_add, BrName, Cidrs} || {Cidrs, BrName} <- maps:to_list(BrNameCidrsMap) ],
 
     Bridges = maps:merge(maps:with(sets:to_list(TargetAddrs), ActualAddrs), BrNameCidrsMap),
 
-    OutputTaps = os:cmd("ip -j link"),
-    {ok, JSONTaps} = thoas:decode(OutputTaps),
     % io:format("TAPS: ~p~n", [JSONTaps]),
-    TapsActual = sets:from_list([ maps:get(<<"ifname">>, L) || L <- JSONTaps, startswith(maps:get(<<"ifname">>, L), <<"verltap">>) ]),
-    TapsTarget = sets:from_list([ iolist_to_binary(TapName) || {_, #{tap_name := TapName}} <- Domains ]),  % TODO: persist tap_name as binary
+    TapsActual = sets:from_list([ maps:get(<<"ifname">>, L) || L <- IpRouteJson, startswith(maps:get(<<"ifname">>, L), iolist_to_binary([IfPrefix, "tap"])) ]),
+    TapsTarget = sets:from_list([ iolist_to_binary(TapName) || {_, #{tap_name := TapName}} <- Domains ]),
     % io:format("Taps Target: ~p~n", [sets:to_list(TapsTarget)]),
     % io:format("Taps Actual: ~p~n", [sets:to_list(TapsActual)]),
     TapsMap = maps:from_list([ {iolist_to_binary(Tap), {to_vtap_mac(MacAddr), network_cidrs_to_bride_cidrs(Cidrs)}}
@@ -346,24 +378,15 @@ sync_taps(ActualAddrs, TargetAddrs, Domains) ->
     % io:format("TapsMap: ~p~n", [TapsMap]),
 
     TapsToDelete = sets:subtract(TapsActual, TapsTarget),
-    DeleteCmds = [ io_lib:format("link del ~s~n", [TapName]) || TapName <- sets:to_list(TapsToDelete) ],
+    DeleteCmds = [ {tap_del, TapName} || TapName <- sets:to_list(TapsToDelete) ],
 
     TapsToAdd = sets:subtract(TapsTarget, TapsActual),
 
     TapsMapsToAdd = maps:map(fun(_, {MacAddr, Net}) -> {MacAddr, maps:get(Net, Bridges)} end, maps:with(sets:to_list(TapsToAdd), TapsMap)),
 
-    User = string:trim(os:cmd("id -un")),
-    AddCmds = lists:map(fun({Tap, {Mac, Bridge}}) ->
-                                MacAddrString = virtuerl_util:mac_to_str(Mac),
-                                ["tuntap add dev ", Tap, " mode tap user ", User, "\n",
-                                 "link set dev ", Tap, " address ", MacAddrString, " master ", Bridge, "\n",
-                                 "link set ", Tap, " up\n"]
-                        end,
-                        maps:to_list(TapsMapsToAdd)),
+    AddCmds = [ {tap_add, Tap, Mac, BrName} || {Tap, {Mac, BrName}} <- maps:to_list(TapsMapsToAdd) ],
 
-    BatchFileContents = [BrDeleteCmds, BrAddCmds, DeleteCmds, AddCmds],
-
-    run_batch(BatchFileContents).
+    apply(?NET_PROVIDER, run_if_cmds, [lists:flatten([DeleteCmds, BrDeleteCmds, BrAddCmds, AddCmds])]).
 
 
 run_nft(IoList) -> run_helper("nft", IoList).

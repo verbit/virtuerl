@@ -2,7 +2,9 @@
 
 -behaviour(gen_server).
 
--export([start_link/0, list_images/0, ensure_image/1]).
+-export([start_link/1,
+         list_images/0, list_images/1,
+         ensure_image/1, ensure_image/2]).
 -export([init/1,
          handle_call/3,
          handle_cast/2,
@@ -11,24 +13,27 @@
          code_change/3]).
 -export([]).
 
--define(SERVER,      ?MODULE).
--define(APPLICATION, virtuerl).
-
 %%%===================================================================
 %%% Spawning and gen_server implementation
 %%%===================================================================
 
 
-list_images() ->
-    gen_server:call(?SERVER, list_images).
+list_images() -> list_images(default).
 
 
-ensure_image(ImageName) ->
-    gen_server:call(?SERVER, {ensure_image, ImageName}, infinity).
+list_images(ServerId) ->
+    gen_server:call({via, virtuerl_reg, {ServerId, ?MODULE}}, list_images).
 
 
-start_link() ->
-    gen_server:start_link({local, ?SERVER}, ?MODULE, [], []).
+ensure_image(ImageName) -> ensure_image(default, ImageName).
+
+
+ensure_image(ServerId, ImageName) ->
+    gen_server:call({via, virtuerl_reg, {ServerId, ?MODULE}}, {ensure_image, ImageName}, infinity).
+
+
+start_link(ServerId) ->
+    gen_server:start_link({via, virtuerl_reg, {ServerId, ?MODULE}}, ?MODULE, [], []).
 
 
 init([]) ->

@@ -2,8 +2,10 @@
 
 -behaviour(gen_server).
 
--export([start_link/2,
+-export([start/1,
+         start_link/1,
          home_path/0,
+         notify/2,
          image_from_domain/2,
          domain_update/1,
          create_vm/0,
@@ -12,7 +14,7 @@
          domain_delete/1,
          domain_stop/1,
          domain_start/1,
-         domains_list/0,
+         domains_list/0, domains_list/1, domains_list/2,
          add_port_fwd/2]).
 -export([init/1,
          handle_call/3,
@@ -26,80 +28,91 @@
 -include_lib("khepri/include/khepri.hrl").
 -include_lib("khepri/src/khepri_error.hrl").
 
--define(SERVER,      ?MODULE).
 -define(APPLICATION, virtuerl).
 
--record(state, {server_id, vm_proc_mod, table, idmap}).
+-record(state, {cluster, table, idmap, workers}).
+
+
+notify(Pid, Msg) ->
+    gen_server:call(Pid, {notify, Msg}).
 
 
 create_vm() -> create_vm({default, ?MODULE}).
 
 
 create_vm(Ref) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_create, {default}}).
+    gen_server:call(?MODULE, {domain_create, {default}}).
 
 
 domain_create(Conf) -> domain_create({default, ?MODULE}, Conf).
 
 
 domain_create(Ref, Conf) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_create, Conf}, infinity).
+    gen_server:call(?MODULE, {domain_create, Conf}, infinity).
 
 
 domain_delete(Conf) -> domain_delete({default, ?MODULE}, Conf).
 
 
 domain_delete(Ref, Conf) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_delete, Conf}, infinity).
+    gen_server:call(?MODULE, {domain_delete, Conf}, infinity).
 
 
 domain_get(Conf) -> domain_get({default, ?MODULE}, Conf).
 
 
 domain_get(Ref, Conf) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_get, Conf}).
+    gen_server:call(?MODULE, {domain_get, Conf}).
 
 
 domains_list() -> domains_list({default, ?MODULE}).
 
 
+domains_list(Pid) when is_pid(Pid) ->
+    gen_server:call(Pid, domains_list);
 domains_list(Ref) ->
-    gen_server:call({via, virtuerl_reg, Ref}, domains_list).
+    gen_server:call(?MODULE, domains_list).
+
+
+domains_list(Ref, WorkerName) ->
+    gen_server:call(?MODULE, {domains_list, WorkerName}).
 
 
 domain_update(Conf) -> domain_update({default, ?MODULE}, Conf).
 
 
 domain_update(Ref, Conf) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, Conf}).
+    gen_server:call(?MODULE, {domain_update, Conf}).
 
 
 domain_stop(Id) -> domain_stop({default, ?MODULE}, Id).
 
 
+domain_stop(Pid, Id) when is_pid(Pid) ->
+    gen_server:call(Pid, {domain_update, #{id => Id, state => stopped}});
 domain_stop(Ref, Id) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, #{id => Id, state => stopped}}).
+    gen_server:call(?MODULE, {domain_update, #{id => Id, state => stopped}}).
 
 
 domain_start(Id) -> domain_start({default, ?MODULE}, Id).
 
 
 domain_start(Ref, Id) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {domain_update, #{id => Id, state => running}}).
+    gen_server:call(?MODULE, {domain_update, #{id => Id, state => running}}).
 
 
 image_from_domain(DomainId, ImageName) -> image_from_domain({default, ?MODULE}, DomainId, ImageName).
 
 
 image_from_domain(Ref, DomainId, ImageName) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
+    gen_server:call(?MODULE, {image_from_domain, #{id => DomainId, image_name => ImageName}}, infinity).
 
 
 add_port_fwd(DomainId, PortFwd) -> add_port_fwd({default, ?MODULE}, DomainId, PortFwd).
 
 
 add_port_fwd(Ref, DomainId, PortFwd) ->
-    gen_server:call({via, virtuerl_reg, Ref}, {add_port_fwd, DomainId, PortFwd}).
+    gen_server:call(?MODULE, {add_port_fwd, DomainId, PortFwd}).
 
 
 -spec domains_list() -> #{}.
@@ -115,66 +128,37 @@ home_path() ->
     application:get_env(?APPLICATION, home, "var").
 
 
-start_link(ServerId, Conf) ->
-    gen_server:start_link({via, virtuerl_reg, {ServerId, ?MODULE}}, ?MODULE, [ServerId, Conf], []).
+start(Cluster) ->
+    gen_server:start({local, ?MODULE}, ?MODULE, [Cluster], []).
 
 
-init([ServerId, Conf]) ->
-    #{vm_proc_mod := VmProcMod} = Conf,
-    net_kernel:monitor_nodes(true),
-    {ok, #state{server_id = ServerId, vm_proc_mod = VmProcMod, idmap = #{}}, {continue, sync_domains}}.
+start_link(Cluster) ->
+    gen_server:start_link({local, ?MODULE}, ?MODULE, [Cluster], []).
 
 
-handle_continue(sync_domains, #state{vm_proc_mod = VmProcMod, idmap = IdMap} = State) ->
-    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
-    Domains = [ {Id, Dom} || #{id := Id} = Dom <- maps:values(DomainsMap) ],
-    TargetDomains = maps:from_list(
-                      [ {Id, case maps:get(host, Domain, localhost) of localhost -> node(); Else -> Else end}
-                        || {Id, Domain} <- Domains,
-                           case Domain of
-                               #{state := stopped} -> false;
-                               _ -> true
-                           end ]),
-    AllNodes = nodes([this, visible]),
-    RunningDomains = maps:from_list(lists:flatten(
-                                      [ [ {Id, Node} || {Id, _, _, _} <- supervisor:which_children({virtuerl_sup, Node}), is_binary(Id) ]
-                                        || Node <- AllNodes ])),
-    ToDelete = maps:without(maps:keys(TargetDomains), RunningDomains),
-    ToAdd = maps:without(maps:keys(RunningDomains), TargetDomains),
-    [ supervisor:terminate_child({virtuerl_sup, Node}, Id) || {Id, Node} <- maps:to_list(ToDelete) ],
-    [ supervisor:delete_child({virtuerl_sup, Node}, Id) || {Id, Node} <- maps:to_list(ToDelete) ],
-
-    % lists:foreach(fun () -> ok end, List)
-    DomsByNode = maps:groups_from_list(
-                   fun({_Id, Dom}) -> case maps:get(host, Dom, localhost) of localhost -> node(); Else -> Else end end,
-                   fun({_Id, Dom}) -> Dom end,
-                   Domains),
-    [ virtuerl_net:update_net(Node, Doms) || {Node, Doms} <- maps:to_list(DomsByNode), lists:member(Node, AllNodes) ],
-
-    VmPids = [ {Id,
-                supervisor:start_child({virtuerl_sup, Node},
-                                       {Id,
-                                        {VmProcMod, start_link, [maps:get(Id, maps:from_list(Domains))]},
-                                        transient,
-                                        infinity,
-                                        worker,
-                                        []})} || {Id, Node} <- maps:to_list(ToAdd), lists:member(Node, AllNodes) ],
-    [ virtuerl_pubsub:send({domain_started, DomId}) || {DomId, _} <- VmPids ],
-    VmPidToDomId = maps:from_list([ {VmPid, DomId} || {DomId, {ok, VmPid}} <- VmPids ]),
-    [ monitor(process, VmPid) || {_, {ok, VmPid}} <- VmPids ],
-
-    {noreply, State#state{idmap = maps:merge(IdMap, VmPidToDomId)}}.
+init([Cluster]) ->
+    pg:monitor(Cluster),
+    Pids = pg:get_members(Cluster),
+    [ Pid ! {enslave, self()} || Pid <- Pids ],
+    {ok, #state{cluster = Cluster, workers = #{}}, {continue, sync_domains}}.
 
 
-generate_unique_tap_name(TapNames) ->
-    TapName = io_lib:format("verltap~s", [binary:encode_hex(<<(rand:uniform(16#ffffff)):24>>)]),
-    case sets:is_element(TapName, TapNames) of
-        false ->
-            TapName;
-        true ->
-            generate_unique_tap_name(TapNames)
-    end.
+handle_continue(sync_domains, #state{cluster = Cluster} = State) ->
+    Pids = pg:get_members(Cluster),
+    [ virtuerl_host:sync(Pid) || Pid <- Pids ],
+    {noreply, State}.
 
+
+handle_call({notify, Msg}, _From, State) ->
+    virtuerl_pubsub:send(Msg),
+    {reply, ok, State};
+handle_call({register_name, Name, Pid}, _From, State) ->
+    #state{workers = Workers} = State,
+    {Res, NewState} = case Workers of
+                          #{Name := _} -> {no, State};
+                          _ -> {yes, State#state{workers = Workers#{Name => Pid}}}
+                      end,
+    {reply, Res, NewState, {continue, sync_domains}};
 
 handle_call({domain_create, Conf}, _From, State) ->
     DomainID = virtuerl_util:uuid4(),
@@ -233,8 +217,6 @@ handle_call({domain_create, Conf}, _From, State) ->
 
     {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
     Domains = maps:values(DomainsMap),
-    TapNames = sets:from_list([ Tap || #{tap_name := Tap} <- Domains ]),
-    TapName = generate_unique_tap_name(TapNames),  % TODO: TapName should be generated on a per-deployment basis
     <<A:5, _:3, B:40>> = <<(rand:uniform(16#ffffffffffff)):48>>,
     MacAddr = <<A:5, 1:1, 2:2, B:40>>,
 
@@ -243,15 +225,14 @@ handle_call({domain_create, Conf}, _From, State) ->
                       mac_addr => MacAddr,
                       ipv4_addr => Ipv4Addr,
                       ipv6_addr => Ipv6Addr,
-                      cidrs => IpCidrs,
-                      tap_name => TapName
+                      cidrs => IpCidrs
                      },
     ok = khepri:put([domain, DomainID], DomainWithIps),
     ?LOG_NOTICE(#{event => domain_ready, domain => DomainWithIps}),
     virtuerl_pubsub:send({domain_created, DomainID}),
 
     {reply,
-     {ok, maps:merge(#{id => DomainID, tap_name => iolist_to_binary(TapName), mac_addr => binary:encode_hex(MacAddr)},
+     {ok, maps:merge(#{id => DomainID, mac_addr => binary:encode_hex(MacAddr)},
                      maps:map(fun(_, V) -> iolist_to_binary(virtuerl_net:format_ip(V)) end, AddressesMap))},
      State,
      {continue, sync_domains}};
@@ -283,45 +264,40 @@ handle_call(domains_list, _From, State) ->
     {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
     Domains = maps:values(DomainsMap),
     {reply, [ maps:merge(#{host => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || #{id := Id} = Domain <- Domains ], State};
+handle_call({domains_list, WorkerName}, _From, State) ->
+    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
+    Domains0 = maps:values(DomainsMap),
+    Domains1 = [ maps:merge(#{host => localhost, state => running, name => Id, vcpu => 1, memory => 512}, Domain) || #{id := Id} = Domain <- Domains0 ],
+
+    FilteredDomains = [ Dom || #{host := Host} = Dom <- Domains1,
+                               case {WorkerName, Host} of
+                                   {default, localhost} -> true;
+                                   {Name, Name} -> true;
+                                   _ -> false
+                               end ],
+
+    {reply, FilteredDomains, State};
 handle_call({domain_get, #{id := DomainID}}, _From, State) ->
     Reply = case khepri:get([domain, DomainID]) of
-                {ok, #{mac_addr := MacAddr, tap_name := TapName} = Domain} ->
+                {ok, #{mac_addr := MacAddr} = Domain} ->
                     DomRet = Domain#{
-                               mac_addr := binary:encode_hex(MacAddr),
-                               tap_name := iolist_to_binary(TapName)
+                               mac_addr := binary:encode_hex(MacAddr)
                               },
                     {ok, maps:merge(#{host => localhost, state => running, name => DomainID, vcpu => 1, memory => 512}, DomRet)};
                 _ -> notfound
             end,
     {reply, Reply, State};
 handle_call({domain_delete, #{id := DomainID}}, _From, State) ->
-    Res = case khepri:get([domain, DomainID]) of
-              {ok, Domain} ->
-                  ok = khepri:put([domain, DomainID], Domain#{state => deleting}),
-                  spawn_link(fun() ->
-                                     TargetNode = case Domain of
-                                                      #{host := localhost} -> node();
-                                                      #{host := Else} -> Else;
-                                                      _ -> node()
-                                                  end,
-                                     io:format("terminating ~p~n", [DomainID]),
-                                     supervisor:terminate_child({virtuerl_sup, TargetNode}, DomainID),
-                                     io:format("done terminating ~p~n", [DomainID]),
-                                     supervisor:delete_child({virtuerl_sup, TargetNode}, DomainID),
-                                     DomainHomePath = filename:join([virtuerl_mgt:home_path(), "domains", DomainID]),
-                                     file:del_dir_r(DomainHomePath),
-                                     ok = virtuerl_ipam:unassign(DomainID),
-                                     % TODO: we don't really have to delete unused tap here as they will be deleted before the next domain is created
-                                     %   however, it's of course cleaner to do so here, so consider adding it back
-                                     % ok = gen_server:call(virtuerl_net, {net_update}),
-                                     ok = khepri:delete([domain, DomainID]),
-                                     virtuerl_pubsub:send({domain_deleted, DomainID})
-                             end),
-                  ok;
-              _ -> {error, notfound}
+    case khepri:get([domain, DomainID]) of
+        {ok, Domain} ->
+            ok = khepri:put([domain, DomainID], Domain#{state => deleting}),
+            ok = virtuerl_ipam:unassign(DomainID),  % TODO: would be nice to keep networking as long as the node is shutting down (for debugging)
+            ok = khepri:delete([domain, DomainID]),
+            virtuerl_pubsub:send({domain_deleted, DomainID}),
+            {reply, ok, State, {continue, sync_domains}};
+        _ -> {reply, {error, notfound}, State}
 
-          end,
-    {reply, Res, State};
+    end;
 handle_call({image_from_domain, #{id := DomainID, image_name := ImageName}}, _From, State) ->
     case khepri:get([domain, DomainID]) of
         {ok, Domain} ->
@@ -355,21 +331,17 @@ handle_cast(_Request, State) ->
     {noreply, State}.
 
 
-handle_info({nodedown, _Node}, State) ->
+handle_info({_Ref, join, Cluster, Pids}, #state{cluster = Cluster} = State) ->
+    ?LOG_NOTICE(#{joined => Pids}),
+    [ Pid ! {enslave, self()} || Pid <- Pids ],
     {noreply, State};
-handle_info({nodeup, _Node}, State) ->
-    {noreply, State, {continue, sync_domains}};
-handle_info({'DOWN', _, process, Pid, normal}, #state{idmap = IdMap} = State) ->
-    NewIdMap = case IdMap of
-                   #{Pid := DomId} ->
-                       {ok, Domain} = khepri:get([domain, DomId]),  % TODO: this is empty for a deleted domain
-                       ok = khepri:put([domain, DomId], Domain#{state => stopped}),
-                       maps:remove(Pid, IdMap);
-                   #{} ->
-                       ?LOG_WARNING(#{module => ?MODULE, msg => "process down but not in registry", pid => Pid}),
-                       IdMap
-               end,
-    {noreply, State#state{idmap = NewIdMap}};
+handle_info({_Ref, leave, Cluster, Pids}, #state{cluster = Cluster} = State) ->
+    ?LOG_NOTICE(#{left => Pids}),
+    #state{workers = Workers} = State,
+    PidToName = maps:from_list([ {Pid, Name} || {Name, Pid} <- maps:to_list(Workers) ]),
+    NewWorkers = maps:without(Pids, PidToName),
+    {noreply, State#state{workers = NewWorkers}};
+
 handle_info(Info, State) ->
     ?LOG_NOTICE(#{module => ?MODULE, msg => "unhandled info message", info => Info}),
     {noreply, State}.
