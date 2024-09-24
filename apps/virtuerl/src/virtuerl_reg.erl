@@ -54,4 +54,4 @@ handle_call({whereis_name, Name}, _From, State) ->
 
 
 handle_cast({unregister_name, Name}, State) ->
-    {noreply, ok, maps:remove(Name, State)}.
+    {noreply, maps:remove(Name, State)}.
