@@ -130,29 +130,6 @@ init([]) ->
     {ok, {}, {continue, ensure_net}}.
 
 
--spec wait_for_domain_shutdown(binary(), integer()) -> ok | {error, term()}.
-wait_for_domain_shutdown(DomId, Timeout) ->
-    timer:sleep(2000),
-    Deadline = erlang:system_time(millisecond) + Timeout,
-    do_wait_for_domain_shutdown(DomId, Deadline).
-
-
--spec do_wait_for_domain_shutdown(binary(), integer()) -> ok | {error, term()}.
-do_wait_for_domain_shutdown(DomId, Deadline) ->
-    case virtuerl_mgt:domain_get(#{id => DomId}) of
-        {ok, #{state := stopped}} -> ok;
-        {error, Error} -> {error, Error};
-        _ ->
-            case erlang:system_time(millisecond) > Deadline of
-                true ->
-                    {error, timeout};
-                false ->
-                    timer:sleep(2000),
-                    do_wait_for_domain_shutdown(DomId, Deadline)
-            end
-    end.
-
-
 handle_continue(ensure_net, {}) ->
     {ok, Nets} = virtuerl_ipam:ipam_list_nets(),
     Filtered = maps:filter(
@@ -179,54 +156,43 @@ handle_continue(ensure_base, {NetId} = State) ->
              [] ->
                  ?LOG_NOTICE(#{msg => "ghac: creating base image domain"}),
                  % create image
-                 {ok, #{id := DomId}} =
-                     virtuerl_mgt:domain_create(
-                       #{
-                         network_id => NetId,
-                         name => "actions-base",
-                         vcpu => 2,
-                         memory => 8192,
-                         base_image => "debian-12-genericcloud-amd64-20240507-1740.qcow2",
-                         user_data =>
-                             ["#cloud-config\n",
-                              "\n",
-                              % "# apt_get_command: ["apt-get", "--option=Dpkg::Options::=--force-confold", "--option=Dpkg::options::=--force-unsafe-io", "--assume-yes", "--quiet", "--no-install-recommends"]\n",
-                              "package_upgrade: true\n",
-                              "# packages:\n",
-                              "#   - libvirt-daemon-system\n",
-                              "#   - libvirt-dev\n",
-                              "#   - qemu-kvm\n",
-                              "#   - qemu-utils\n",
-                              "#   - dnsmasq-base\n",
+                 CloudConfig = ["#cloud-config\n",
+                                "\n",
+                                % "# apt_get_command: ["apt-get", "--option=Dpkg::Options::=--force-confold", "--option=Dpkg::options::=--force-unsafe-io", "--assume-yes", "--quiet", "--no-install-recommends"]\n",
+                                "package_upgrade: true\n",
+                                "# packages:\n",
+                                "#   - libvirt-daemon-system\n",
+                                "#   - libvirt-dev\n",
+                                "#   - qemu-kvm\n",
+                                "#   - qemu-utils\n",
+                                "#   - dnsmasq-base\n",
 
-                              "runcmd:\n",
-                              "  - apt install -y git gcc g++ pkg-config\n",
-                              "  - apt install -y --no-install-recommends rebar3 qemu-kvm qemu-utils dnsmasq-base gcc\n",
-                              "  - mkdir -p /opt/actions-runner\n",
-                              "  - curl -O -L https://github.com/actions/runner/releases/download/v2.316.1/actions-runner-linux-x64-2.316.1.tar.gz\n",
-                              "  - tar xzf ./actions-runner-linux-x64-2.316.1.tar.gz -C /opt/actions-runner\n",
-                              "  - rm ./actions-runner-linux-x64-2.316.1.tar.gz\n",
+                                "runcmd:\n",
+                                "  - apt install -y git gcc g++ pkg-config\n",
+                                "  - apt install -y --no-install-recommends rebar3 qemu-kvm qemu-utils dnsmasq-base gcc\n",
+                                "  - mkdir -p /opt/actions-runner\n",
+                                "  - curl -O -L https://github.com/actions/runner/releases/download/v2.316.1/actions-runner-linux-x64-2.316.1.tar.gz\n",
+                                "  - tar xzf ./actions-runner-linux-x64-2.316.1.tar.gz -C /opt/actions-runner\n",
+                                "  - rm ./actions-runner-linux-x64-2.316.1.tar.gz\n",
 
-                              "apt:\n",
-                              "  primary:\n",
-                              "    - arches: [default]\n",
-                              "      search:\n",
-                              "        - http://mirror.ipb.de/debian/\n",
-                              "        - http://security.debian.org/debian-security\n",
+                                "apt:\n",
+                                "  primary:\n",
+                                "    - arches: [default]\n",
+                                "      search:\n",
+                                "        - http://mirror.ipb.de/debian/\n",
+                                "        - http://security.debian.org/debian-security\n",
 
-                              "power_state:\n",
-                              "  mode: poweroff\n",
-                              "  condition: test -d /opt/actions-runner\n"]
-                        }),
-
-                 Res = wait_for_domain_shutdown(DomId, 10 * 60 * 1000),  % 10 minutes
-                 case Res of
-                     ok -> virtuerl_mgt:image_from_domain(DomId, "actions-base");
-                     _ -> Res
-                 end,
-                 virtuerl_mgt:domain_delete(#{id => DomId}),
-
-                 Res;
+                                "power_state:\n",
+                                "  mode: poweroff\n",
+                                "  condition: test -d /opt/actions-runner\n"],
+                 virtuerl_img:build_image("debian-12-genericcloud-amd64-20241004-1890.qcow2",
+                                          CloudConfig,
+                                          "actions-base.qcow2",
+                                          #{
+                                            host => localhost,
+                                            network_id => NetId,
+                                            timeout_seconds => 10 * 60
+                                           });
              _ -> error
          end,
     erlang:send_after(30 * 1000, self(), sync),
