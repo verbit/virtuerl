@@ -15,6 +15,7 @@
          domain_stop/1,
          domain_start/1,
          domains_list/0, domains_list/1, domains_list/2,
+         list_workers/0,
          add_port_fwd/2]).
 -export([init/1,
          handle_call/3,
@@ -35,6 +36,10 @@
 
 notify(Pid, Msg) ->
     gen_server:call(Pid, {notify, Msg}).
+
+
+list_workers() ->
+    gen_server:call(?MODULE, list_workers).
 
 
 create_vm() -> create_vm({default, ?MODULE}).
@@ -143,7 +148,28 @@ init([Cluster]) ->
     {ok, #state{cluster = Cluster, workers = #{}}, {continue, sync_domains}}.
 
 
-handle_continue(sync_domains, #state{cluster = Cluster} = State) ->
+schedule(Domains, Workers) ->
+    case Workers of
+        [] -> [];
+        _ ->
+            [ Dom#{
+                host => lists:nth(rand:uniform(length(Workers)), Workers),
+                state => running
+               } || #{state := scheduling} = Dom <- Domains ]
+    end.
+
+
+handle_continue(sync_domains, State) ->
+    #state{workers = Workers, cluster = Cluster} = State,
+    {ok, DomainsMap} = khepri:get_many([domain, ?KHEPRI_WILDCARD_STAR]),
+    Domains = maps:values(DomainsMap),
+    ScheduledDoms = schedule(Domains, maps:keys(Workers)),
+    lists:foreach(fun(Dom) ->
+                          #{id := DomId} = Dom,
+                          khepri:put([domain, DomId], Dom)
+                  end,
+                  ScheduledDoms),
+
     Pids = pg:get_members(Cluster),
     [ virtuerl_host:sync(Pid) || Pid <- Pids ],
     {noreply, State}.
@@ -159,12 +185,14 @@ handle_call({register_name, Name, Pid}, _From, State) ->
                           _ -> {yes, State#state{workers = Workers#{Name => Pid}}}
                       end,
     {reply, Res, NewState, {continue, sync_domains}};
+handle_call(list_workers, _From, State) ->
+    #state{workers = Workers} = State,
+    {reply, Workers, State};
 
 handle_call({domain_create, Conf}, _From, State) ->
     DomainID = virtuerl_util:uuid4(),
     Domain0 = maps:merge(#{
                            id => DomainID,
-                           host => localhost,
                            name => DomainID,
                            vcpu => 4,
                            memory => 4096,
@@ -172,11 +200,16 @@ handle_call({domain_create, Conf}, _From, State) ->
                            created_at => erlang:system_time(millisecond)
                           },
                          Conf),  % TODO: save ipv4/6 addr as well
+    DomainState = case Domain0 of
+                      #{host := _Host} -> running;
+                      #{} -> scheduling
+                  end,
+    Domain1 = maps:put(state, DomainState, Domain0),
     Domain = case Domain0 of
                  #{os_type := "linux"} ->
-                     maps:merge(#{base_image => "debian-12-genericcloud-amd64-20240211-1654.qcow2"}, Domain0);
+                     maps:merge(#{base_image => "debian-12-genericcloud-amd64-20240211-1654.qcow2"}, Domain1);
                  #{os_type := "windows"} ->
-                     maps:merge(#{setup_iso => "Win11_23H2_EnglishInternational_x64v2_noprompt.iso"}, Domain0)
+                     maps:merge(#{setup_iso => "Win11_23H2_EnglishInternational_x64v2_noprompt.iso"}, Domain1)
              end,
     ok = khepri:create([domain, DomainID], Domain),
     ?LOG_NOTICE(#{event => domain_requested, domain => Domain}),

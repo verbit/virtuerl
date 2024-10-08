@@ -289,7 +289,7 @@ create_domain_dialog(Node, Domain, Op) ->
     DialogSizer = wxBoxSizer:new(?wxVERTICAL),
     DialogGridSizer = wxFlexGridSizer:new(1, 2, 0, 0),
     wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Host")),
-    Nodes = erpc:call(Node, erlang, nodes, [[this, visible]]),
+    Nodes = virtuerl_mgt:list_workers(),
     HostChoice = wxChoice:new(Dialog, ?wxID_ANY, [{choices, [ atom_to_list(Host) || Host <- Nodes ]}]),
     wxSizer:add(DialogGridSizer, HostChoice),
     wxSizer:add(DialogGridSizer, wxStaticText:new(Dialog, ?wxID_ANY, "Name")),

@@ -71,7 +71,7 @@ handle_continue(sync_domains, #state{server_id = ServerId, vm_proc_mod = VmProcM
     io:format("DOMAINS1: ~p~n", [Domains1]),
     Domains = [ {Id, Dom} || #{id := Id} = Dom <- Domains1 ],
     TargetDomains = maps:from_list(
-                      [ {Id, case maps:get(host, Domain, localhost) of localhost -> node(); Else -> Else end}
+                      [ {Id, case maps:get(host, Domain, undefined) of ServerId -> node(); Else -> Else end}
                         || {Id, Domain} <- Domains,
                            case Domain of
                                #{state := stopped} -> false;
@@ -98,11 +98,11 @@ handle_continue(sync_domains, #state{server_id = ServerId, vm_proc_mod = VmProcM
 
     % lists:foreach(fun () -> ok end, List)
     DomsByNode0 = maps:groups_from_list(
-                    fun({_Id, Dom}) -> case maps:get(host, Dom, localhost) of localhost -> node(); Else -> Else end end,
+                    fun({_Id, Dom}) -> case maps:get(host, Dom, undefined) of ServerId -> node(); Else -> Else end end,
                     fun({_Id, Dom}) -> Dom end,
                     Domains),
     DomsByNode = maps:merge(#{node() => []}, DomsByNode0),
-    [ virtuerl_net:update_net(Node, ServerId, Doms) || {Node, Doms} <- maps:to_list(DomsByNode), lists:member(Node, AllNodes) ],
+    [ virtuerl_net:update_net(Node, ServerId, Doms) || {Node, Doms} <- maps:to_list(DomsByNode) ],
 
     io:format("DomsByNode: ~p~n", [DomsByNode]),
     io:format("RUNNING: ~p~n", [RunningDomains]),
@@ -118,7 +118,7 @@ handle_continue(sync_domains, #state{server_id = ServerId, vm_proc_mod = VmProcM
                                           transient,
                                           infinity,
                                           worker,
-                                          []})} || {Id, Node} <- maps:to_list(ToAdd), lists:member(Node, AllNodes) ],
+                                          []})} || {Id, Node} <- maps:to_list(ToAdd) ],
     io:format("VMPIDS: ~p~n", [VmPids]),
     [ virtuerl_mgt:notify(ControllerPid, {domain_started, DomId}) || {DomId, _} <- VmPids ],
     VmPidToDomId = maps:from_list([ {VmPid, DomId} || {DomId, {ok, VmPid}} <- VmPids ]),
@@ -138,8 +138,10 @@ handle_cast(_Request, _State) ->
     erlang:error(not_implemented).
 
 
-handle_info({enslave, ControllerPid}, State) ->
+handle_info({enslave, ControllerPid}, #state{server_id = ServerId} = State) ->
     ?LOG_NOTICE(#{who => ?MODULE, msg => "got enslaved!", controller => ControllerPid}),
+    yes = gen_server:call(ControllerPid, {register_name, ServerId, self()}),
+    ?LOG_NOTICE(#{who => ?MODULE, msg => "successfully registered!", controller => ControllerPid, self => self(), name => ServerId}),
     {noreply, State#state{controller = ControllerPid}, {continue, sync_domains}};
 handle_info({'DOWN', _, process, Pid, normal}, #state{idmap = IdMap} = State) ->
     NewIdMap = case IdMap of
