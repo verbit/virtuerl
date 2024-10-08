@@ -117,12 +117,18 @@ handle_continue(setup_serial, #{id := ID} = State) ->
 
 
 handle_info({qmp, Event}, #{id := ID, domain := Domain} = State) ->
-    ?LOG_INFO(#{domain => ID, qmp => Event}),
+    ?LOG_DEBUG(#{domain => ID, qmp => Event}),
     case Event of
+        #{<<"event">> := <<"RTC_CHANGE">>} -> {noreply, State};
+        #{<<"event">> := <<"NIC_RX_FILTER_CHANGED">>} -> {noreply, State};
+        % the above events are *known* but unactionable events, for which we simply do nothing when they occur
         #{<<"event">> := <<"STOP">>} ->
             DomainUpdated = Domain#{state => stopped},
             {stop, normal, State#{domain => DomainUpdated}};
-        _ -> {noreply, State}
+        _ ->
+            % an unknown event, log it with a higher level
+            ?LOG_NOTICE(#{domain => ID, qmp => Event}),
+            {noreply, State}
     end;
 handle_info({tcp, SerialSocket, Data}, #{id := ID, domain := Domain, serial_socket := SerialSocket} = State) ->
     virtuerl_pubsub:send({domain_out, ID, Data}),
