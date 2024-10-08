@@ -52,6 +52,7 @@ handle_continue(setup_base, #{id := DomainId, domain := Domain} = State) ->
             BaseImageOpts = case Domain of
                                 #{base_image := BaseImage} ->
                                     {ok, BaseImagePath} = virtuerl_img:ensure_image(BaseImage),
+                                    % TODO: use relative path
                                     ["-b ", filename:absname(BaseImagePath), " -F qcow2 "];
                                 _ -> []
                             end,
