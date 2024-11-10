@@ -79,8 +79,9 @@ domains_list(Ref) ->
     gen_server:call(?MODULE, domains_list).
 
 
-domains_list(Ref, WorkerName) ->
-    gen_server:call(?MODULE, {domains_list, WorkerName}).
+-spec domains_list(Pid :: pid(), WorkerName :: term()) -> [Domain :: #{}].
+domains_list(Pid, WorkerName) ->
+    gen_server:call(Pid, {domains_list, WorkerName}).
 
 
 domain_update(Conf) -> domain_update({default, ?MODULE}, Conf).

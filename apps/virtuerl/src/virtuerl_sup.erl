@@ -2,24 +2,28 @@
 
 -behaviour(supervisor).
 
--export([start_link/2, start_child/3, which_children/2, delete_child/3, terminate_child/3]).
+-export([start_link/2,
+         start_child/2,
+         which_children/1,
+         delete_child/2,
+         terminate_child/2]).
 -export([init/1]).
 
 
-start_child(ServerId, Node, ChildSpec) ->
-    erpc:call(Node, supervisor, start_child, [{via, virtuerl_reg, {ServerId, ?MODULE}}, ChildSpec]).
+start_child(ServerId, ChildSpec) ->
+    supervisor:start_child({via, virtuerl_reg, {ServerId, ?MODULE}}, ChildSpec).
 
 
-which_children(ServerId, Node) ->
-    erpc:call(Node, supervisor, which_children, [{via, virtuerl_reg, {ServerId, ?MODULE}}]).
+which_children(ServerId) ->
+    supervisor:which_children({via, virtuerl_reg, {ServerId, ?MODULE}}).
 
 
-terminate_child(ServerId, Node, DomId) ->
-    erpc:call(Node, supervisor, terminate_child, [{via, virtuerl_reg, {ServerId, ?MODULE}}, DomId]).
+terminate_child(ServerId, DomId) ->
+    supervisor:terminate_child({via, virtuerl_reg, {ServerId, ?MODULE}}, DomId).
 
 
-delete_child(ServerId, Node, DomId) ->
-    erpc:call(Node, supervisor, delete_child, [{via, virtuerl_reg, {ServerId, ?MODULE}}, DomId]).
+delete_child(ServerId, DomId) ->
+    supervisor:delete_child({via, virtuerl_reg, {ServerId, ?MODULE}}, DomId).
 
 
 start_link(ServerId, Conf) ->

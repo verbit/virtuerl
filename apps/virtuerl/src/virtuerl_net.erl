@@ -2,7 +2,7 @@
 
 -behaviour(gen_server).
 
--export([start_link/2, update_net/2, update_net/3]).
+-export([start_link/2, update_net/2]).
 -export([init/1, handle_call/3, handle_cast/2, handle_info/2, terminate/2, code_change/3]).
 -export([parse_cidr/1, format_cidr/1, parse_ip/1, format_ip/1, format_ip_bitstring/1, bridge_addr/1, bridge_addr/2, normalize_net/1]).
 
@@ -28,12 +28,8 @@ start_link(ServerId, Conf) ->
     gen_server:start_link({via, virtuerl_reg, {ServerId, ?MODULE}}, ?MODULE, [Conf], []).
 
 
-update_net(Node, Domains) ->
-    erpc:call(Node, gen_server, call, [{via, virtuerl_reg, {default, ?MODULE}}, {net_update, Domains}, infinity]).
-
-
-update_net(Node, Ref, Domains) ->
-    erpc:call(Node, gen_server, call, [{via, virtuerl_reg, {Ref, ?MODULE}}, {net_update, Domains}, infinity]).
+update_net(Ref, Domains) ->
+    gen_server:call({via, virtuerl_reg, {Ref, ?MODULE}}, {net_update, Domains}, infinity).
 
 
 -define(NET_PROVIDER, get(net_provider_mod)).
